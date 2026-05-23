@@ -1,0 +1,71 @@
+/* ==========================================================================
+   Custom scrollbars — applied kit-wide via tokens.css
+
+   Native scrollbar across every browser, themed via the standardized
+   `scrollbar-color` property. We keep platform chrome (track, thumb,
+   arrow buttons on Windows / Linux Chromium) and just retint it to match
+   the kit's text token — auto-inverts under [data-theme='dark'].
+
+   Auto-hide behavior is driven by <ScrollbarHost>: it sets [data-scrolling]
+   on whatever element is being scrolled, removes it `hideAfter` ms (default
+   1000) after the last scroll event. The CSS swaps `scrollbar-color`
+   between the idle and active states. The change is instant — neither
+   Firefox nor any current Chromium version animates `scrollbar-color`,
+   so we don't pretend.
+
+   Customizable per-element (or globally on :root) via CSS variables:
+
+     --scrollbar-thumb        -- thumb color at rest (transparent = auto-hide)
+     --scrollbar-thumb-hover  -- thumb color while scrolled (or 1s after)
+     --scrollbar-track        -- track color
+
+   Cross-browser map:
+
+     Chrome / Edge (Blink) ......... scrollbar-color, scrollbar-gutter, native
+                                     arrow buttons preserved on platforms
+                                     that draw them (Windows, Linux)
+     Safari macOS (WebKit) ......... scrollbar-color (Safari 18+), overlay
+                                     scrollbars otherwise
+     Safari iOS .................... system overlay scrollbars — already
+                                     auto-hide, not stylable, gutter not
+                                     reserved (touch device)
+     Firefox ....................... scrollbar-color, scrollbar-gutter
+   ========================================================================== */
+
+@layer base {
+	:root {
+		--scrollbar-thumb: transparent;
+		--scrollbar-thumb-hover: rgb(var(--text) / 0.35);
+		--scrollbar-track: transparent;
+	}
+
+	/* Reserve scrollbar gutter only on devices with a real cursor. On touch
+	   devices (iOS, Android) scrollbars are system overlays — they never
+	   take layout space, so reserving a gutter there just adds dead space. */
+	@media (hover: hover) and (pointer: fine) {
+		html {
+			scrollbar-gutter: stable;
+		}
+	}
+
+	/* Smooth anchor-link and programmatic scroll. Affects in-page #hash jumps
+	   and `element.scrollTo / scrollIntoView` calls without an explicit
+	   `behavior: 'auto'` — they animate instead of snapping. Direct user
+	   input (wheel, touch, drag) is unaffected and stays pixel-perfect.
+	   Disabled when the user prefers reduced motion. */
+	@media (prefers-reduced-motion: no-preference) {
+		html {
+			scroll-behavior: smooth;
+		}
+	}
+
+	*,
+	*::before,
+	*::after {
+		scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+	}
+
+	*[data-scrolling] {
+		scrollbar-color: var(--scrollbar-thumb-hover) var(--scrollbar-track);
+	}
+}

@@ -1,0 +1,148 @@
+@import 'tailwindcss';
+@import './scrollbar.css';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme {
+	/* ── Default accent palette ───────────── */
+	--primary: 25 91 255;
+	--success: 70 201 58;
+	--warn: 255 186 0;
+	--danger: 255 71 87;
+	--info: 14 165 233;
+	--dark: 45 55 72;
+	--light: 244 247 248;
+	--fg: 17 18 20;
+	--gradient-end: 168 85 247;
+
+	--shadow-opacity: 0.05;
+	--background-opacity: 0.2;
+	--radius: 12px;
+	--transition: 0.25s ease;
+	--font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, system-ui, Helvetica, Arial, sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+	--line-height: 1.2;
+
+	--color-primary: rgb(var(--primary));
+	--color-warn: rgb(var(--warn));
+	--color-danger: rgb(var(--danger));
+	--color-success: rgb(var(--success));
+	--color-dark: rgb(var(--dark));
+	--color-light: rgb(var(--light));
+
+
+	/* ── Neutral canvas (light) — shared by every theme ────────────────── */
+	--background: 244 247 248;
+	--text: 44 62 80;
+	--on-accent: 255 255 255;
+	--gray-1: 249 252 253;
+	--gray-2: 237 240 242;
+	--gray-3: 240 243 244;
+	--gray-4: 230 233 234;
+}
+
+/* ── Neutral canvas (dark) — shared by every theme ───────────────────── */
+[data-theme='dark'] {
+	--background: 24, 24, 30;
+	--text: 255 255 255;
+	--on-accent: 255 255 255;
+	--gray-1: 34 34 42;
+	--gray-2: 42 42 52;
+	--gray-3: 32 32 40;
+	--gray-4: 6 8 12;
+	--shadow-opacity: 0.3;
+	--background-opacity: 0.6;
+	--dark: 60 65 75;
+}
+
+/*
+ * Per-theme overrides. Each theme tunes `--primary` and `--gradient-end`
+ * together: the end-stop is an analogous hue ~30–50° from primary so the
+ * `gradient` variant blends cleanly without crossing a hue boundary.
+ * Semantic colours (success/warn/danger/info) come from @theme above and
+ * stay stable across every theme — same muscle memory, same legibility.
+ */
+
+/* ── Petrol — cyan-petrol → indigo ───────────────────────────────────── */
+.theme-petrol {
+	--primary: 6 148 178;
+	--gradient-end: 99 102 241;
+}
+
+/* ── Indigo — blue-violet → fuchsia ──────────────────────────────────── */
+.theme-indigo {
+	--primary: 99 102 241;
+	--gradient-end: 217 70 239;
+}
+
+/* ── Pine — emerald → teal-mint ──────────────────────────────────────── */
+.theme-pine {
+	--primary: 5 150 105;
+	--gradient-end: 45 212 191;
+}
+
+/* ── Wine — rose-burgundy → sunset orange ────────────────────────────── */
+.theme-wine {
+	--primary: 225 29 72;
+	--gradient-end: 249 115 22;
+}
+
+/* ── Bronze — orange-bronze → amber ──────────────────────────────────── */
+.theme-bronze {
+	--primary: 234 88 12;
+	--gradient-end: 250 204 21;
+}
+
+/* ── Graphite — slate → indigo ───────────────────────────────────────── */
+.theme-graphite {
+	--primary: 100 116 139;
+	--gradient-end: 99 102 241;
+}
+
+html {
+	background: rgb(var(--background));
+	color: rgb(var(--text));
+	font-family: var(--font-sans);
+	color-scheme: light;
+	transition:
+		background-color 280ms ease,
+		color 280ms ease;
+}
+
+[data-theme='dark'] {
+	color-scheme: dark;
+}
+
+/*
+ * Universal optical centering for kit text containers.
+ *
+ * text-box-trim crops the line-box to cap-height (top) and alphabetic
+ * baseline (bottom), removing per-font leading and descender variance.
+ * After trim, `align-items: center` on the flex parent centres the visible
+ * glyphs themselves — not the line-box — so every font (Geist, Manrope,
+ * Bricolage…) lines up identically inside buttons, chips, segmented, etc.
+ *
+ * Wrapped in @supports — Chrome 133+, Safari 18.2+. Older browsers fall
+ * back to the original behaviour (slight per-font drift, same as today).
+ *
+ * `:where()` keeps specificity at 0 so any component can opt out.
+ */
+@supports (text-box: trim-both cap alphabetic) {
+	:where(
+		.button__content,
+		.button__animate,
+		.chip__text,
+		.chip__icon,
+		.segmented__label,
+		.segmented__icon,
+		.picker-btn__label,
+		.tabs__label,
+		.menu__item-label,
+		.alert__title,
+		.alert__message,
+		.input__prefix,
+		.input__suffix
+	) {
+		text-box: trim-both cap alphabetic;
+	}
+}

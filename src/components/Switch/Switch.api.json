@@ -1,0 +1,79 @@
+[
+	{
+		"name": "checked",
+		"type": "boolean",
+		"required": false,
+		"default": "$bindable(false)",
+		"description": "Boolean state. Use `bind:checked` for two-way control."
+	},
+	{
+		"name": "shape",
+		"type": "SwitchShape",
+		"required": false,
+		"default": "'default'",
+		"description": "Pill (default) or square track."
+	},
+	{
+		"name": "size",
+		"type": "SwitchSize",
+		"required": false,
+		"default": "'medium'",
+		"description": "Visual size."
+	},
+	{
+		"name": "indeterminate",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Centre the knob and lock interaction."
+	},
+	{
+		"name": "loading",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Spinner overlay (collapses the track to a circle)."
+	},
+	{
+		"name": "ghostKnob",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Icon-knob mode — drops the white pill so the inline icon snippet IS the knob."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Track + bg accent (only the swooping bg circle is tinted; knob always stays white)."
+	},
+	{
+		"name": "knob",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Knob content (rendered inside the circle — small icon)."
+	},
+	{
+		"name": "iconOn",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "On-state inline label/icon (rendered in the track when checked)."
+	},
+	{
+		"name": "iconOff",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Off-state inline label/icon (rendered in the track when unchecked)."
+	},
+	{
+		"name": "onchange",
+		"type": "(event: Event, checked: boolean) => void",
+		"required": false,
+		"default": null,
+		"description": "Fired on toggle."
+	}
+]

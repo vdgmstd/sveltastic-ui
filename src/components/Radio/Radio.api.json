@@ -1,0 +1,65 @@
+[
+	{
+		"name": "value",
+		"type": "V",
+		"required": true,
+		"default": null,
+		"description": "The token this radio represents. Selected when `group === value`."
+	},
+	{
+		"name": "group",
+		"type": "V",
+		"required": false,
+		"default": "$bindable()",
+		"description": "Currently selected token in the group; bind with `bind:group`."
+	},
+	{
+		"name": "name",
+		"type": "string",
+		"required": false,
+		"default": null,
+		"description": "Native input `name` attribute. Auto-generated if omitted."
+	},
+	{
+		"name": "loading",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Spinner overlay."
+	},
+	{
+		"name": "labelPosition",
+		"type": "'before' | 'after'",
+		"required": false,
+		"default": "'after'",
+		"description": "Label placement relative to the disc."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Palette name or hex / rgb."
+	},
+	{
+		"name": "icon",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Glyph rendered as the active indicator. Hidden until selected."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Label content."
+	},
+	{
+		"name": "onchange",
+		"type": "(event: Event, value: V) => void",
+		"required": false,
+		"default": null,
+		"description": "Fired on selection."
+	}
+]

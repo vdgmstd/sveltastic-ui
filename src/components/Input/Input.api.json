@@ -1,0 +1,149 @@
+[
+	{
+		"name": "value",
+		"type": "string",
+		"required": false,
+		"default": "$bindable('')",
+		"description": "Bound input value (strings only — for numbers/dates use `bind:value` and let `type` coerce)."
+	},
+	{
+		"name": "variant",
+		"type": "InputVariant",
+		"required": false,
+		"default": "'default'",
+		"description": "Visual style."
+	},
+	{
+		"name": "labelStyle",
+		"type": "InputLabelStyle",
+		"required": false,
+		"default": "'default'",
+		"description": "Label placement / behaviour."
+	},
+	{
+		"name": "label",
+		"type": "string",
+		"required": false,
+		"default": null,
+		"description": "Label text."
+	},
+	{
+		"name": "placeholder",
+		"type": "string",
+		"required": false,
+		"default": null,
+		"description": "Placeholder text. Renders as a fake placeholder that fades on focus."
+	},
+	{
+		"name": "shape",
+		"type": "InputShape",
+		"required": false,
+		"default": "'default'",
+		"description": "Shape of the field."
+	},
+	{
+		"name": "block",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Stretch to container."
+	},
+	{
+		"name": "iconPosition",
+		"type": "'before' | 'after'",
+		"required": false,
+		"default": "'before'",
+		"description": "Icon side."
+	},
+	{
+		"name": "loading",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Spinner overlay."
+	},
+	{
+		"name": "passwordReveal",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Eye-toggle button when `type === 'password'`."
+	},
+	{
+		"name": "fieldState",
+		"type": "InputState",
+		"required": false,
+		"default": "'default'",
+		"description": "Tints background / label / icon. Named `fieldState` to avoid colliding with the `$state` rune."
+	},
+	{
+		"name": "progress",
+		"type": "number",
+		"required": false,
+		"default": "0",
+		"description": "0..100 progress bar at the bottom."
+	},
+	{
+		"name": "transparent",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Drop background."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "Custom palette color."
+	},
+	{
+		"name": "iconColor",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "When set, the icon background fills with this color on focus (and the glyph turns white). When unset, only the glyph color changes on focus."
+	},
+	{
+		"name": "mask",
+		"type": "MaskOptions",
+		"required": false,
+		"default": null,
+		"description": "Mask pattern — string (e.g. `'###-###'`), alternatives array, or full maska options. Tokens: `#` digit, `@` letter, `*` alphanumeric."
+	},
+	{
+		"name": "icon",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Leading / trailing glyph."
+	},
+	{
+		"name": "message",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Feedback message under the field; color follows `fieldState`."
+	},
+	{
+		"name": "field",
+		"type": "Snippet<[{ id: string; focused: boolean }]>",
+		"required": false,
+		"default": null,
+		"description": "Replaces the inner `<input>` element with arbitrary content (chips, filter input, custom display). The shell — bg, focus-ripple, label, icon button with `iconColor` focus-fill, variant + state styling — is preserved. The consumer is responsible for wiring their own `<input>` (mask / `value` / `oninput`) within the snippet. Receives the wrapper id and current focus state."
+	},
+	{
+		"name": "forceFocus",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "External force-focused override. When `true`, the field renders as if focused (icon lifts, ripple fills, label floats) regardless of real DOM focus. For composite controls (Select / DateTimePicker) that own their own activation state and need the trigger to look active while a popover is open."
+	},
+	{
+		"name": "oniconclick",
+		"type": "(event: MouseEvent) => void",
+		"required": false,
+		"default": null,
+		"description": "Fires when the icon is clicked."
+	}
+]

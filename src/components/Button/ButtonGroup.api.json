@@ -1,0 +1,9 @@
+[
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": null
+	}
+]

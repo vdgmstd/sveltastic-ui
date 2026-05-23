@@ -1,0 +1,9 @@
+[
+	{
+		"name": "inset",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Inset divider — leaves a gutter on the left to align with item label."
+	}
+]

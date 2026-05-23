@@ -1,0 +1,72 @@
+[
+	{
+		"name": "value",
+		"type": "string",
+		"required": false,
+		"default": "$bindable('')",
+		"description": "Bound text value."
+	},
+	{
+		"name": "label",
+		"type": "string",
+		"required": false,
+		"default": null,
+		"description": "Static label (above) or floating placeholder."
+	},
+	{
+		"name": "placeholder",
+		"type": "string",
+		"required": false,
+		"default": null,
+		"description": "Placeholder text. Renders as a fake placeholder that fades on focus."
+	},
+	{
+		"name": "labelStyle",
+		"type": "InputLabelStyle",
+		"required": false,
+		"default": "'default'",
+		"description": "Label behavior."
+	},
+	{
+		"name": "variant",
+		"type": "InputVariant",
+		"required": false,
+		"default": "'default'",
+		"description": "Visual variant."
+	},
+	{
+		"name": "fieldState",
+		"type": "InputState",
+		"required": false,
+		"default": "'default'",
+		"description": "State color."
+	},
+	{
+		"name": "block",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Stretch to container."
+	},
+	{
+		"name": "autoGrow",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Auto-grow with content."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "Custom palette accent."
+	},
+	{
+		"name": "mask",
+		"type": "MaskOptions",
+		"required": false,
+		"default": null,
+		"description": "Mask pattern — string, alternatives array, or full maska options. Tokens: `#` digit, `@` letter, `*` alphanumeric."
+	}
+]

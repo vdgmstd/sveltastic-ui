@@ -1,0 +1,72 @@
+[
+	{
+		"name": "value",
+		"type": "string",
+		"required": false,
+		"default": "$bindable()",
+		"description": "Active tab value. Bindable."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Palette accent. Drives the thumb fill and active-state color via `--c`."
+	},
+	{
+		"name": "variant",
+		"type": "TabsVariant",
+		"required": false,
+		"default": "'underline'",
+		"description": "Rail variant. Mirrors `<Segmented>` for the four filled looks plus the classic `underline`: - `underline` — transparent track, animated bottom bar (default). - `default` — gray track, solid accent thumb. - `tonal` — accent-tinted track, soft accent thumb (replaces old `pill`). - `border` — outlined track and thumb. - `relief` — sunken track, raised accent thumb with depth."
+	},
+	{
+		"name": "size",
+		"type": "Size",
+		"required": false,
+		"default": "'medium'",
+		"description": "Sizing scale — shared with Button / Segmented (`xl` | `large` | `medium` | `small` | `mini`)."
+	},
+	{
+		"name": "panelVariant",
+		"type": "TabsPanelVariant",
+		"required": false,
+		"default": "'plain'",
+		"description": "Panel surface — `'plain'` blends in, `'card'` wraps the active panel in a Card-like surface."
+	},
+	{
+		"name": "transition",
+		"type": "TabsTransition",
+		"required": false,
+		"default": "'crossfade'",
+		"description": "Cross-panel transition. Default `crossfade`."
+	},
+	{
+		"name": "transitionDuration",
+		"type": "number",
+		"required": false,
+		"default": "240",
+		"description": "Transition duration in ms."
+	},
+	{
+		"name": "disabled",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Disable every tab at once."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Composition slot — `<TabList>` and `<TabPanel>` go here, in any layout."
+	},
+	{
+		"name": "onchange",
+		"type": "(value: string) => void",
+		"required": false,
+		"default": null,
+		"description": "Fired on selection change."
+	}
+]

@@ -1,0 +1,86 @@
+[
+	{
+		"name": "mode",
+		"type": "'single' | 'multiple'",
+		"required": false,
+		"default": "'single'",
+		"description": "Selection mode. `single` collapses siblings on open; `multiple` allows any combination."
+	},
+	{
+		"name": "value",
+		"type": "string | string[] | null",
+		"required": false,
+		"default": "$bindable(mode === 'multiple' ? [] : null)",
+		"description": "Bonded item keys (or single key when `mode='single'`). Two-way bindable."
+	},
+	{
+		"name": "layout",
+		"type": "CollapseGroupLayout",
+		"required": false,
+		"default": "'stack'",
+		"description": "Visual layout. `stack` — separate cards with gap. `fused` — items joined as one block. `card` — wrapped in a shared card surface."
+	},
+	{
+		"name": "variant",
+		"type": "CollapseVariant",
+		"required": false,
+		"default": null,
+		"description": "Default `variant` cascaded to children."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "Default `color` cascaded to children."
+	},
+	{
+		"name": "size",
+		"type": "Size",
+		"required": false,
+		"default": null,
+		"description": "Default `size` cascaded to children."
+	},
+	{
+		"name": "shape",
+		"type": "Shape",
+		"required": false,
+		"default": null,
+		"description": "Default `shape` cascaded to children."
+	},
+	{
+		"name": "gap",
+		"type": "number",
+		"required": false,
+		"default": "8",
+		"description": "Vertical gap between items (px). Ignored for `fused` and `card` layouts."
+	},
+	{
+		"name": "title",
+		"type": "string",
+		"required": false,
+		"default": "''",
+		"description": "Title row above the items (visible in all layouts)."
+	},
+	{
+		"name": "header",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Header snippet — overrides `title`."
+	},
+	{
+		"name": "footer",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Footer row below the items."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Group children."
+	}
+]

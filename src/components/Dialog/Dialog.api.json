@@ -1,0 +1,72 @@
+[
+	{
+		"name": "open",
+		"type": "boolean",
+		"required": false,
+		"default": "$bindable(false)",
+		"description": "Open state. Two-way bindable."
+	},
+	{
+		"name": "closable",
+		"type": "boolean",
+		"required": false,
+		"default": "true",
+		"description": "Render the top-right close button."
+	},
+	{
+		"name": "persistent",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Block Esc and backdrop-click close paths. The explicit close button (or consumer action) is the only way out."
+	},
+	{
+		"name": "size",
+		"type": "DialogSize",
+		"required": false,
+		"default": "'medium'",
+		"description": "Preset width. `'fullscreen'` stretches to the viewport."
+	},
+	{
+		"name": "align",
+		"type": "DialogAlign",
+		"required": false,
+		"default": "'center'",
+		"description": "Vertical alignment. `'top'` pins the dialog 6vh from the top."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Accent palette — drives focus outline and selection tint."
+	},
+	{
+		"name": "header",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Sticky header strip. Provides the accessible name via `aria-labelledby`."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Dialog body."
+	},
+	{
+		"name": "footer",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Sticky footer strip — typical place for action buttons."
+	},
+	{
+		"name": "onclose",
+		"type": "() => void",
+		"required": false,
+		"default": null,
+		"description": "Fires when the dialog closes (any reason)."
+	}
+]

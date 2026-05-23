@@ -1,0 +1,121 @@
+[
+	{
+		"name": "value",
+		"type": "string",
+		"required": false,
+		"default": "$bindable()",
+		"description": "Selected day (`YYYY-MM-DD`) in `single` mode."
+	},
+	{
+		"name": "range",
+		"type": "DateRange",
+		"required": false,
+		"default": "$bindable()",
+		"description": "Selected range in `range` mode."
+	},
+	{
+		"name": "mode",
+		"type": "CalendarMode",
+		"required": false,
+		"default": "'single'",
+		"description": "Selection mode."
+	},
+	{
+		"name": "locale",
+		"type": "string",
+		"required": false,
+		"default": null,
+		"description": "Locale for weekday / month labels. Defaults to `'en-US'`."
+	},
+	{
+		"name": "weekStart",
+		"type": "WeekStart",
+		"required": false,
+		"default": null,
+		"description": "First day of the week. Defaults to the locale's convention."
+	},
+	{
+		"name": "min",
+		"type": "DateLike",
+		"required": false,
+		"default": null,
+		"description": "Lower bound (inclusive)."
+	},
+	{
+		"name": "max",
+		"type": "DateLike",
+		"required": false,
+		"default": null,
+		"description": "Upper bound (inclusive)."
+	},
+	{
+		"name": "disabledDate",
+		"type": "(date: Temporal.PlainDate) => boolean",
+		"required": false,
+		"default": null,
+		"description": "Predicate to disable individual days."
+	},
+	{
+		"name": "disabled",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Disable the entire calendar."
+	},
+	{
+		"name": "size",
+		"type": "Size",
+		"required": false,
+		"default": "'medium'",
+		"description": "Visual size — matches the kit's `Size` scale."
+	},
+	{
+		"name": "bare",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Drop the calendar's own background, padding, and border-radius — useful when embedded in a surface that already provides chrome (Dialog, Menu, Card)."
+	},
+	{
+		"name": "variant",
+		"type": "'default' | 'transparent'",
+		"required": false,
+		"default": "'default'",
+		"description": "Visual variant. `'transparent'` drops the background only (padding and radius are kept) so the calendar inherits the surface it is placed on."
+	},
+	{
+		"name": "color",
+		"type": "CalendarColor",
+		"required": false,
+		"default": "'primary'",
+		"description": "Calendar chrome accent. Use `dayColor` for per-day overrides."
+	},
+	{
+		"name": "dayColor",
+		"type": "(date: Temporal.PlainDate) => Color | undefined",
+		"required": false,
+		"default": null,
+		"description": "Per-day color override. Returning `undefined` keeps the calendar's `color`."
+	},
+	{
+		"name": "showFooter",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Show \"Today\" / \"Clear\" footer."
+	},
+	{
+		"name": "day",
+		"type": "Snippet<[Temporal.PlainDate, DayState]>",
+		"required": false,
+		"default": null,
+		"description": "Custom day renderer."
+	},
+	{
+		"name": "onchange",
+		"type": "(value: string | DateRange) => void",
+		"required": false,
+		"default": null,
+		"description": "Fires when a day is picked. Payload is the ISO string for `single`, `DateRange` for `range`."
+	}
+]

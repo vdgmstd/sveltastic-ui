@@ -1,0 +1,23 @@
+[
+	{
+		"name": "value",
+		"type": "string",
+		"required": true,
+		"default": null,
+		"description": "Matching `<Tab value>` to display this panel for."
+	},
+	{
+		"name": "keepMounted",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Keep mounted when inactive (just hidden). Default: unmount."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Panel content."
+	}
+]

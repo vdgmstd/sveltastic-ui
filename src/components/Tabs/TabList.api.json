@@ -1,0 +1,23 @@
+[
+	{
+		"name": "ariaLabel",
+		"type": "string",
+		"required": false,
+		"default": null,
+		"description": "Trigger row label for screen readers."
+	},
+	{
+		"name": "block",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Stretch the row to fill its container; tabs distribute evenly."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "`<Tab>` children."
+	}
+]

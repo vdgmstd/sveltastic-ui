@@ -1,0 +1,16 @@
+[
+	{
+		"name": "label",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Section caption (small uppercase)."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Body — usually `<ListItem>` children."
+	}
+]

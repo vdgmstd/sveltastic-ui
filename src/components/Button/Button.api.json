@@ -1,0 +1,142 @@
+[
+	{
+		"name": "variant",
+		"type": "Variant",
+		"required": false,
+		"default": "'default'",
+		"description": "Visual variant."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Palette name (`'primary' | 'success' | 'danger' | 'warning' | 'dark' | 'light' | social`) or hex / `rgb(...)` / `r,g,b`."
+	},
+	{
+		"name": "gradientEnd",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "End-stop color for the `gradient` variant. Defaults to the `--gradient-end` token."
+	},
+	{
+		"name": "size",
+		"type": "Size",
+		"required": false,
+		"default": "'medium'",
+		"description": "Predefined size or any custom value (passed through as `--button-font` / pad multipliers)."
+	},
+	{
+		"name": "shape",
+		"type": "Shape",
+		"required": false,
+		"default": "'default'",
+		"description": "Border-radius shape."
+	},
+	{
+		"name": "iconOnly",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Icon-only mode — square padding, larger glyph, no text-side gap."
+	},
+	{
+		"name": "loading",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Loading overlay. Blocks pointer events."
+	},
+	{
+		"name": "upload",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Animated diagonal sweep evoking an upload progress feel."
+	},
+	{
+		"name": "block",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Stretch to container width."
+	},
+	{
+		"name": "active",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Force the visual \"pressed\" / selected state (toggle buttons)."
+	},
+	{
+		"name": "pressedDisabled",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Active visuals + non-interactive (cursor + opacity)."
+	},
+	{
+		"name": "animationType",
+		"type": "ButtonAnimationType",
+		"required": false,
+		"default": "'horizontal'",
+		"description": "Hover-driven content swap when an `animate` snippet is provided."
+	},
+	{
+		"name": "animateInactive",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Disable the `animate`-snippet swap even if the snippet is present."
+	},
+	{
+		"name": "fixedWidth",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Lock the button width to the wider of the two snippets so the swap doesn't reflow."
+	},
+	{
+		"name": "ripple",
+		"type": "boolean",
+		"required": false,
+		"default": "true",
+		"description": "Disable the click ripple."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Default content."
+	},
+	{
+		"name": "animate",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Hover-state content (slides in from the right by default)."
+	},
+	{
+		"name": "onclick",
+		"type": "(event: MouseEvent) => void",
+		"required": false,
+		"default": null,
+		"description": "Click handler. Forwarded after any default navigation when `href` is set on a link button."
+	},
+	{
+		"name": "href",
+		"type": "undefined | string",
+		"required": false,
+		"default": null,
+		"description": null
+	},
+	{
+		"name": "disabled",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": null
+	}
+]

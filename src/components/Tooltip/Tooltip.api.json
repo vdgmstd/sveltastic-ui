@@ -1,0 +1,86 @@
+[
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": true,
+		"default": null,
+		"description": "Trigger content. Required."
+	},
+	{
+		"name": "content",
+		"type": "Snippet",
+		"required": true,
+		"default": null,
+		"description": "Tooltip body."
+	},
+	{
+		"name": "placement",
+		"type": "TooltipPlacement",
+		"required": false,
+		"default": "'top'",
+		"description": "Side of the trigger."
+	},
+	{
+		"name": "open",
+		"type": "boolean",
+		"required": false,
+		"default": "$bindable(false)",
+		"description": "Show / hide. Two-way bindable."
+	},
+	{
+		"name": "trigger",
+		"type": "TooltipTrigger",
+		"required": false,
+		"default": "'hover'",
+		"description": "Activation strategy."
+	},
+	{
+		"name": "variant",
+		"type": "TooltipVariant",
+		"required": false,
+		"default": "'default'",
+		"description": "Visual variant."
+	},
+	{
+		"name": "shape",
+		"type": "TooltipShape",
+		"required": false,
+		"default": "'default'",
+		"description": "Border radius shape."
+	},
+	{
+		"name": "arrow",
+		"type": "boolean",
+		"required": false,
+		"default": "true",
+		"description": "Show the pointer arrow."
+	},
+	{
+		"name": "interactive",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Keep the bubble open while the pointer is over it."
+	},
+	{
+		"name": "delay",
+		"type": "number",
+		"required": false,
+		"default": "0",
+		"description": "Show-delay in ms (hover/focus only)."
+	},
+	{
+		"name": "loading",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Spinner overlay."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'dark'",
+		"description": "Palette color."
+	}
+]

@@ -1,0 +1,93 @@
+[
+	{
+		"name": "variant",
+		"type": "ChipVariant",
+		"required": false,
+		"default": "'default'",
+		"description": "Visual variant. Mirrors Button vocabulary so chips and buttons read as the same family."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Palette name or hex / `rgb(...)` / `r,g,b`."
+	},
+	{
+		"name": "gradientEnd",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "End-stop color for the `gradient` variant. Defaults to the `--gradient-end` token."
+	},
+	{
+		"name": "size",
+		"type": "Size",
+		"required": false,
+		"default": "'medium'",
+		"description": "Predefined size matching Button's scale (chip glyph proportions are tighter)."
+	},
+	{
+		"name": "shape",
+		"type": "Shape",
+		"required": false,
+		"default": "'default'",
+		"description": "Default = pill (chip identity). `square` = `var(--radius)` corners. `circle` = round icon-only chip."
+	},
+	{
+		"name": "active",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Pressed / selected look — for filter and toggle chips. Pairs with `onclick`."
+	},
+	{
+		"name": "closable",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Show a trailing close button."
+	},
+	{
+		"name": "disabled",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Disabled — blocks click and close."
+	},
+	{
+		"name": "closeAriaLabel",
+		"type": "string",
+		"required": false,
+		"default": "'Remove'",
+		"description": "Aria-label for the close button. Override for localized labels."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Default content."
+	},
+	{
+		"name": "icon",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Leading glyph."
+	},
+	{
+		"name": "onclick",
+		"type": "(event: MouseEvent) => void",
+		"required": false,
+		"default": null,
+		"description": "Click handler. Promotes the chip body to a real `<button>`."
+	},
+	{
+		"name": "onclose",
+		"type": "(event: MouseEvent) => void",
+		"required": false,
+		"default": null,
+		"description": "Close handler."
+	}
+]

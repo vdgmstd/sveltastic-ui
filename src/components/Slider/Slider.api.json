@@ -1,0 +1,86 @@
+[
+	{
+		"name": "value",
+		"type": "number | [number, number]",
+		"required": false,
+		"default": "$bindable(0)",
+		"description": "Current value (single mode) or `[start, end]` for range mode."
+	},
+	{
+		"name": "min",
+		"type": "number",
+		"required": false,
+		"default": "0",
+		"description": "Minimum."
+	},
+	{
+		"name": "max",
+		"type": "number",
+		"required": false,
+		"default": "100",
+		"description": "Maximum."
+	},
+	{
+		"name": "step",
+		"type": "number",
+		"required": false,
+		"default": "1",
+		"description": "Step."
+	},
+	{
+		"name": "size",
+		"type": "SliderSize",
+		"required": false,
+		"default": "'medium'",
+		"description": "Visual size."
+	},
+	{
+		"name": "disabled",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Disabled."
+	},
+	{
+		"name": "showTooltip",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Show numeric tooltip on hover / focus."
+	},
+	{
+		"name": "alwaysShowTooltip",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Always-on tooltip (ignores hover/focus state)."
+	},
+	{
+		"name": "ticks",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Show step ticks on the track."
+	},
+	{
+		"name": "formatValue",
+		"type": "(value: number) => string",
+		"required": false,
+		"default": null,
+		"description": "Format the tooltip value."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Palette color."
+	},
+	{
+		"name": "onchange",
+		"type": "(value: number | [number, number]) => void",
+		"required": false,
+		"default": null,
+		"description": "Fired on value change."
+	}
+]

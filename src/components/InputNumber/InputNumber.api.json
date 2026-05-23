@@ -1,0 +1,135 @@
+[
+	{
+		"name": "value",
+		"type": "number",
+		"required": false,
+		"default": "$bindable(0)",
+		"description": "Current value (bindable)."
+	},
+	{
+		"name": "min",
+		"type": "number",
+		"required": false,
+		"default": "-Infinity",
+		"description": "Minimum value (inclusive)."
+	},
+	{
+		"name": "max",
+		"type": "number",
+		"required": false,
+		"default": "Infinity",
+		"description": "Maximum value (inclusive)."
+	},
+	{
+		"name": "step",
+		"type": "number",
+		"required": false,
+		"default": "1",
+		"description": "Increment step. Used by buttons, native ↑/↓ keys, and long-press repeat."
+	},
+	{
+		"name": "size",
+		"type": "Size",
+		"required": false,
+		"default": "'medium'",
+		"description": "Visual size — matches the kit's `Size` scale."
+	},
+	{
+		"name": "shape",
+		"type": "Shape",
+		"required": false,
+		"default": null,
+		"description": "Border-radius shape."
+	},
+	{
+		"name": "block",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Stretch to container width."
+	},
+	{
+		"name": "disabled",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Disabled."
+	},
+	{
+		"name": "readonly",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Read-only — buttons + field both inert; value cannot change."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Field accent color — drives focus ripple and outline. Defaults to `primary`."
+	},
+	{
+		"name": "incrementColor",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "Color for the `+` (increment) button hover/press tint. Falls back to `color`."
+	},
+	{
+		"name": "decrementColor",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "Color for the `−` (decrement) button hover/press tint. Falls back to `color`."
+	},
+	{
+		"name": "decrementIcon",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Override the decrement button glyph."
+	},
+	{
+		"name": "incrementIcon",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Override the increment button glyph."
+	},
+	{
+		"name": "decrementLabel",
+		"type": "string",
+		"required": false,
+		"default": "'Decrement'",
+		"description": "Aria-label for the decrement button."
+	},
+	{
+		"name": "incrementLabel",
+		"type": "string",
+		"required": false,
+		"default": "'Increment'",
+		"description": "Aria-label for the increment button."
+	},
+	{
+		"name": "animationDuration",
+		"type": "number",
+		"required": false,
+		"default": "500",
+		"description": "Tween duration (ms) for the rolling digits. Same time regardless of step. Defaults to 500."
+	},
+	{
+		"name": "square",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "@deprecated Use `shape=\"square\"`."
+	},
+	{
+		"name": "onchange",
+		"type": "(value: number) => void",
+		"required": false,
+		"default": null,
+		"description": "Fired on every committed value change (after clamping)."
+	}
+]

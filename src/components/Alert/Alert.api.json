@@ -1,0 +1,114 @@
+[
+	{
+		"name": "variant",
+		"type": "AlertVariant",
+		"required": false,
+		"default": "'relief'",
+		"description": "Visual variant."
+	},
+	{
+		"name": "color",
+		"type": "Color",
+		"required": false,
+		"default": "'primary'",
+		"description": "Palette name, hex, `rgb(...)`, or `\"r,g,b\"` triplet."
+	},
+	{
+		"name": "gradientEnd",
+		"type": "Color",
+		"required": false,
+		"default": null,
+		"description": "End-stop color for the `gradient` variant. Defaults to the `--gradient-end` token."
+	},
+	{
+		"name": "open",
+		"type": "boolean",
+		"required": false,
+		"default": "$bindable(true)",
+		"description": "Show / hide the alert. Two-way bindable."
+	},
+	{
+		"name": "collapsed",
+		"type": "boolean | undefined",
+		"required": false,
+		"default": "$bindable(undefined)",
+		"description": "Collapse toggle on the title. `undefined` disables the affordance entirely; `true`/`false` enables a click-to-collapse handle on the title with a `Plus` / `Minus` icon. Two-way bindable."
+	},
+	{
+		"name": "closable",
+		"type": "boolean",
+		"required": false,
+		"default": "false",
+		"description": "Show a top-right close button."
+	},
+	{
+		"name": "progress",
+		"type": "number",
+		"required": false,
+		"default": "0",
+		"description": "Progress bar at the bottom, 0–100. `0` hides the bar."
+	},
+	{
+		"name": "page",
+		"type": "number",
+		"required": false,
+		"default": "$bindable(0)",
+		"description": "Current page (1-based). `0` disables the pagination UI. Two-way bindable."
+	},
+	{
+		"name": "pages",
+		"type": "number",
+		"required": false,
+		"default": "0",
+		"description": "Total page count. Required when `page > 0`."
+	},
+	{
+		"name": "children",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Default content."
+	},
+	{
+		"name": "icon",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Icon rendered in the left strip (50px wide, centered)."
+	},
+	{
+		"name": "title",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Title row. Click-to-collapse if `collapsed` is a boolean."
+	},
+	{
+		"name": "footer",
+		"type": "Snippet",
+		"required": false,
+		"default": null,
+		"description": "Footer row (bottom-right)."
+	},
+	{
+		"name": "pagesContent",
+		"type": "Snippet<[number]>",
+		"required": false,
+		"default": null,
+		"description": "Per-page content. Receives the current 1-based page as its argument."
+	},
+	{
+		"name": "onclose",
+		"type": "() => void",
+		"required": false,
+		"default": null,
+		"description": "Fires when the close button is clicked."
+	},
+	{
+		"name": "onbeforechange",
+		"type": "(detail: AlertPageChangeDetail) => void",
+		"required": false,
+		"default": null,
+		"description": "Fires right before `page` changes through the built-in pager."
+	}
+]
