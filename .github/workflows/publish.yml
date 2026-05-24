@@ -1,0 +1,64 @@
+name: Publish to npm
+
+on:
+  # Manual trigger from the Actions tab.
+  workflow_dispatch:
+
+  # Auto-trigger when a tag like v1.0.3 is pushed.
+  # Recommended release flow:
+  #   npm version patch && git push --follow-tags
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write   # needed for npm publish --provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run check
+
+      - name: Confirm package.json version matches the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "tag     = $TAG_VERSION"
+          echo "package = $PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::tag $TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          {
+            echo "### sveltastic-ui publish"
+            echo ""
+            echo "- Version:  \`$PKG_VERSION\`"
+            echo "- Trigger:  \`${{ github.event_name }}\`"
+            echo "- Ref:      \`${{ github.ref }}\`"
+            echo "- Status:   ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
