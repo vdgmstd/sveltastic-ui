@@ -1,6 +1,7 @@
 # sveltastic-ui
 
 [![npm version](https://img.shields.io/npm/v/sveltastic-ui?style=flat&color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/sveltastic-ui)
+[![Publish to npm](https://github.com/vdgmstd/sveltastic-ui/actions/workflows/publish.yml/badge.svg)](https://github.com/vdgmstd/sveltastic-ui/actions/workflows/publish.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat)](#license)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?style=flat&logo=svelte&logoColor=white)](https://svelte.dev)
 [![Tailwind v4](https://img.shields.io/badge/Tailwind-v4-06B6D4?style=flat&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
