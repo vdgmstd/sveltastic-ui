@@ -155,8 +155,8 @@
 		border-radius: 12px;
 		box-shadow: 0 8px 30px -10px rgb(0 0 0 / 0.2);
 		font-size: 0.9rem;
-		-webkit-backdrop-filter: blur(14px) saturate(160%);
-		backdrop-filter: blur(14px) saturate(160%);
+		-webkit-backdrop-filter: var(--frost);
+		backdrop-filter: var(--frost);
 		transition: transform 150ms ease, box-shadow 150ms ease;
 	}
 	.notif--border {

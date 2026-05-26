@@ -514,7 +514,8 @@
 		border-bottom: 3px solid rgb(var(--c));
 		border-radius: inherit;
 		pointer-events: none;
-		filter: contrast(2) grayscale(0.4);
+		--relief-bg-filter: contrast(2) grayscale(0.4);
+		filter: var(--relief-bg-filter);
 	}
 	.button--relief.button--active .button__content { padding-bottom: 6px; }
 	.button--relief.button--active .button__bg::before { border-bottom-width: 0; }

@@ -244,7 +244,7 @@
 	:where(.avatar--hidden) { display: none; }
 
 	:where(.avatar--shape-circle) { border-radius: 50%; }
-	:where(.avatar--shape-square) { border-radius: var(--radius); }
+	:where(.avatar--shape-square) { border-radius: 15%; }
 
 	:where(.avatar--has-icons) { isolation: isolate; }
 

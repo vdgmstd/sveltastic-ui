@@ -207,7 +207,6 @@
 	.tooltip {
 		--c: var(--dark);
 		--tooltip-bg: rgb(var(--c) / 0.92);
-		--tooltip-blur: blur(12px) saturate(160%);
 		position: absolute;
 		z-index: 100000;
 		max-width: 350px;
@@ -219,8 +218,8 @@
 		background: var(--tooltip-bg);
 		color: rgb(var(--light));
 		border-radius: 10px;
-		-webkit-backdrop-filter: var(--tooltip-blur);
-		backdrop-filter: var(--tooltip-blur);
+		-webkit-backdrop-filter: var(--frost);
+		backdrop-filter: var(--frost);
 	}
 	:global([data-theme='dark']) .tooltip--variant-default {
 		box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 24px -8px rgb(0 0 0 / 0.6);
@@ -233,8 +232,8 @@
 		content: '';
 		position: absolute;
 		background: var(--tooltip-bg);
-		-webkit-backdrop-filter: var(--tooltip-blur);
-		backdrop-filter: var(--tooltip-blur);
+		-webkit-backdrop-filter: var(--frost);
+		backdrop-filter: var(--frost);
 		pointer-events: none;
 	}
 	.tooltip--top::after {

@@ -256,7 +256,7 @@
 	:where(.chip--disabled) { pointer-events: none; opacity: 0.45; }
 
 	:where(.chip--shape-default) { border-radius: 50vmax; }
-	:where(.chip--shape-square) { border-radius: var(--radius); }
+	:where(.chip--shape-square) { border-radius: var(--chip-radius); }
 	:where(.chip--shape-circle) {
 		border-radius: 50vmax;
 		aspect-ratio: 1 / 1;
@@ -276,6 +276,7 @@
 		--chip-gap: 10px;
 		--chip-close-size: 24px;
 		--chip-close-icon: 14px;
+		--chip-radius: 20px;
 	}
 	:where(.chip--size-large) {
 		--chip-font: 1rem;
@@ -284,6 +285,7 @@
 		--chip-gap: 8px;
 		--chip-close-size: 22px;
 		--chip-close-icon: 13px;
+		--chip-radius: 15px;
 	}
 	:where(.chip--size-medium) {
 		--chip-font: 0.8rem;
@@ -292,6 +294,7 @@
 		--chip-gap: 6px;
 		--chip-close-size: 18px;
 		--chip-close-icon: 11px;
+		--chip-radius: 12px;
 	}
 	:where(.chip--size-small) {
 		--chip-font: 0.75rem;
@@ -300,6 +303,7 @@
 		--chip-gap: 5px;
 		--chip-close-size: 16px;
 		--chip-close-icon: 10px;
+		--chip-radius: 9px;
 	}
 	:where(.chip--size-mini) {
 		--chip-font: 0.6rem;
@@ -308,6 +312,7 @@
 		--chip-gap: 4px;
 		--chip-close-size: 13px;
 		--chip-close-icon: 8px;
+		--chip-radius: 7px;
 	}
 
 	:where(.chip--default) { color: rgb(var(--on-accent)); }

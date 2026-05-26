@@ -393,7 +393,7 @@
 	}
 	.card-content--caption .card__actions {
 		opacity: 0;
-		transform: translateY(50%) translateY(10px);
+		transform: translateY(calc(50% + 10px));
 		pointer-events: none;
 		transition:
 			opacity 240ms cubic-bezier(0.4, 0, 0.2, 1),
@@ -401,7 +401,7 @@
 	}
 	.card-content--caption .card:hover .card__actions {
 		opacity: 1;
-		transform: translateY(50%) translateY(0);
+		transform: translateY(50%);
 		pointer-events: auto;
 		transition:
 			opacity 240ms cubic-bezier(0.4, 0, 0.2, 1) 100ms,
@@ -466,7 +466,7 @@
 		right: 16px;
 		bottom: 32px;
 		opacity: 0;
-		transform: translateY(50%) translateY(10px);
+		transform: translateY(calc(50% + 10px));
 		pointer-events: none;
 		transition:
 			opacity 240ms cubic-bezier(0.4, 0, 0.2, 1),
@@ -474,7 +474,7 @@
 	}
 	.card-content--frosted .card:hover .card__actions {
 		opacity: 1;
-		transform: translateY(50%) translateY(0);
+		transform: translateY(50%);
 		pointer-events: auto;
 		transition:
 			opacity 240ms cubic-bezier(0.4, 0, 0.2, 1) 100ms,
@@ -516,8 +516,8 @@
 		position: absolute;
 		inset: 0;
 		background: rgb(var(--gray-1) / 0.6);
-		-webkit-backdrop-filter: saturate(180%) blur(20px);
-		backdrop-filter: saturate(180%) blur(20px);
+		-webkit-backdrop-filter: var(--frost);
+		backdrop-filter: var(--frost);
 		border-radius: inherit;
 		opacity: 0;
 		transform: translateY(100%);

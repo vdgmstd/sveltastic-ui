@@ -3,19 +3,6 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-/*
- * Tailwind v4 tree-shakes any variable declared inside `@theme {}` that isn't
- * referenced by a generated utility class or by user CSS that Tailwind can
- * statically see. Kit components reference most tokens through raw
- * `rgb(var(--token))` calls inside scoped `<style>` blocks, which Tailwind
- * can't see in consumer projects (it doesn't scan `node_modules` by default).
- *
- * `@theme static {}` opts that block out of tree-shaking — every variable in
- * it is emitted unconditionally. The plain `@theme {}` block below stays
- * tree-shaken: those are the colour/font tokens that Tailwind uses to derive
- * `bg-*`, `text-*`, `font-*` utility classes — consumers only need them
- * when they actually write those classes, so tree-shaking is correct there.
- */
 @theme static {
 	/* ── Default accent palette (raw RGB triplets, used via rgb(var(--X))) ── */
 	--primary: 25 91 255;
@@ -34,6 +21,7 @@
 	--radius: 12px;
 	--transition: 0.25s ease;
 	--line-height: 1.2;
+	--frost: blur(12px) saturate(160%);
 
 	/* ── Neutral canvas (light) — shared by every theme ────────────────── */
 	--background: 244 247 248;
@@ -46,9 +34,6 @@
 }
 
 @theme {
-	/* Utility-deriving tokens: Tailwind generates `bg-primary`, `text-warn`,
-	   `font-sans` etc. from these. Tree-shaking is fine — they only matter
-	   when the consumer actually writes those utility classes. */
 	--font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, system-ui, Helvetica, Arial, sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
@@ -73,14 +58,6 @@
 	--background-opacity: 0.6;
 	--dark: 60 65 75;
 }
-
-/*
- * Per-theme overrides. Each theme tunes `--primary` and `--gradient-end`
- * together: the end-stop is an analogous hue ~30–50° from primary so the
- * `gradient` variant blends cleanly without crossing a hue boundary.
- * Semantic colours (success/warn/danger/info) come from @theme above and
- * stay stable across every theme — same muscle memory, same legibility.
- */
 
 /* ── Petrol — cyan-petrol → indigo ───────────────────────────────────── */
 .theme-petrol {
@@ -134,15 +111,6 @@ html {
 
 /*
  * Universal optical centering for kit text containers.
- *
- * text-box-trim crops the line-box to cap-height (top) and alphabetic
- * baseline (bottom), removing per-font leading and descender variance.
- * After trim, `align-items: center` on the flex parent centres the visible
- * glyphs themselves — not the line-box — so every font (Geist, Manrope,
- * Bricolage…) lines up identically inside buttons, chips, segmented, etc.
- *
- * Wrapped in @supports — Chrome 133+, Safari 18.2+. Older browsers fall
- * back to the original behaviour (slight per-font drift, same as today).
  *
  * `:where()` keeps specificity at 0 so any component can opt out.
  */

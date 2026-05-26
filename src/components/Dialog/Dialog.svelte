@@ -177,7 +177,8 @@
 	}
 	.dialog[open]::backdrop {
 		background: rgb(0 0 0 / 0.45);
-		backdrop-filter: saturate(180%) blur(8px);
+		-webkit-backdrop-filter: var(--frost);
+		backdrop-filter: var(--frost);
 	}
 	@starting-style {
 		.dialog[open]::backdrop {

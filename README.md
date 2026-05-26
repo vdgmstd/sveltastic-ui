@@ -1,4 +1,4 @@
-# sveltastic-ui
+# SVELTASTIC UI [BETA] [WIP]
 
 [![npm version](https://img.shields.io/npm/v/sveltastic-ui?style=flat&color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/sveltastic-ui)
 [![Publish to npm](https://github.com/vdgmstd/sveltastic-ui/actions/workflows/publish.yml/badge.svg)](https://github.com/vdgmstd/sveltastic-ui/actions/workflows/publish.yml)
