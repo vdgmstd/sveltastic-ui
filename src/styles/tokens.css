@@ -3,8 +3,21 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-@theme {
-	/* ── Default accent palette ───────────── */
+/*
+ * Tailwind v4 tree-shakes any variable declared inside `@theme {}` that isn't
+ * referenced by a generated utility class or by user CSS that Tailwind can
+ * statically see. Kit components reference most tokens through raw
+ * `rgb(var(--token))` calls inside scoped `<style>` blocks, which Tailwind
+ * can't see in consumer projects (it doesn't scan `node_modules` by default).
+ *
+ * `@theme static {}` opts that block out of tree-shaking — every variable in
+ * it is emitted unconditionally. The plain `@theme {}` block below stays
+ * tree-shaken: those are the colour/font tokens that Tailwind uses to derive
+ * `bg-*`, `text-*`, `font-*` utility classes — consumers only need them
+ * when they actually write those classes, so tree-shaking is correct there.
+ */
+@theme static {
+	/* ── Default accent palette (raw RGB triplets, used via rgb(var(--X))) ── */
 	--primary: 25 91 255;
 	--success: 70 201 58;
 	--warn: 255 186 0;
@@ -15,21 +28,12 @@
 	--fg: 17 18 20;
 	--gradient-end: 168 85 247;
 
+	/* ── Surface tokens ────────────────────────────────────────────────── */
 	--shadow-opacity: 0.05;
 	--background-opacity: 0.2;
 	--radius: 12px;
 	--transition: 0.25s ease;
-	--font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, system-ui, Helvetica, Arial, sans-serif;
-	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 	--line-height: 1.2;
-
-	--color-primary: rgb(var(--primary));
-	--color-warn: rgb(var(--warn));
-	--color-danger: rgb(var(--danger));
-	--color-success: rgb(var(--success));
-	--color-dark: rgb(var(--dark));
-	--color-light: rgb(var(--light));
-
 
 	/* ── Neutral canvas (light) — shared by every theme ────────────────── */
 	--background: 244 247 248;
@@ -39,6 +43,21 @@
 	--gray-2: 237 240 242;
 	--gray-3: 240 243 244;
 	--gray-4: 230 233 234;
+}
+
+@theme {
+	/* Utility-deriving tokens: Tailwind generates `bg-primary`, `text-warn`,
+	   `font-sans` etc. from these. Tree-shaking is fine — they only matter
+	   when the consumer actually writes those utility classes. */
+	--font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, system-ui, Helvetica, Arial, sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+	--color-primary: rgb(var(--primary));
+	--color-warn: rgb(var(--warn));
+	--color-danger: rgb(var(--danger));
+	--color-success: rgb(var(--success));
+	--color-dark: rgb(var(--dark));
+	--color-light: rgb(var(--light));
 }
 
 /* ── Neutral canvas (dark) — shared by every theme ───────────────────── */

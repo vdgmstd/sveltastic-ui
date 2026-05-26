@@ -454,8 +454,8 @@
 		flex-direction: column;
 		gap: 4px;
 		background: rgb(var(--gray-2) / 0.52);
-		backdrop-filter: saturate(180%) blur(20px);
 		-webkit-backdrop-filter: saturate(180%) blur(20px);
+		backdrop-filter: saturate(180%) blur(20px);
 		color: rgb(var(--text));
 		border: 0;
 		border-radius: 20px;

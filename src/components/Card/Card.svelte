@@ -516,8 +516,8 @@
 		position: absolute;
 		inset: 0;
 		background: rgb(var(--gray-1) / 0.6);
-		backdrop-filter: saturate(180%) blur(20px);
 		-webkit-backdrop-filter: saturate(180%) blur(20px);
+		backdrop-filter: saturate(180%) blur(20px);
 		border-radius: inherit;
 		opacity: 0;
 		transform: translateY(100%);

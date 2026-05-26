@@ -1,6 +1,6 @@
 {
 	"name": "sveltastic-ui",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Svelte 5 + Tailwind v4 component library — runes-native, SSR-safe, tree-shakable.",
 	"type": "module",
 	"license": "MIT",

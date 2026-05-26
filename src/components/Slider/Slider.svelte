@@ -445,8 +445,8 @@
 		width: 100%;
 		height: 100%;
 		margin: 0;
-		appearance: none;
 		-webkit-appearance: none;
+		appearance: none;
 		background: transparent;
 		pointer-events: none;
 		outline: none;
@@ -454,8 +454,8 @@
 		z-index: 3;
 	}
 	.slider__input::-webkit-slider-thumb {
-		appearance: none;
 		-webkit-appearance: none;
+		appearance: none;
 		width: calc(var(--thumb-w) + 16px);
 		height: calc(var(--thumb-h) + 8px);
 		background: transparent;
@@ -477,8 +477,8 @@
 	}
 	.slider__input::-moz-range-track,
 	.slider__input::-webkit-slider-runnable-track {
-		appearance: none;
 		-webkit-appearance: none;
+		appearance: none;
 		background: transparent;
 		border: 0;
 		box-shadow: none;
