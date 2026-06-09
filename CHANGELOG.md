@@ -4,7 +4,7 @@ All notable changes to `sveltastic-ui` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project uses
 semantic-ish versioning (see the note on 1.1.0 below).
 
-## [1.1.0] — 2026-06-08
+## [1.1.0] — 2026-06-09
 
 > **⚠️ Breaking, despite the minor version.** This release replaces every
 > component's flat API with a compound **`X.Root` + parts** surface and **removes
