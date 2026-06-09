@@ -1,55 +1,74 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
-	import type { Color, Size } from '../../types';
-	import type { TabsVariant, TabsPanelVariant, TabsTransition } from './context';
+	import type { Color, Size, WithElementRef } from '../../types';
+	import type {
+		TabsVariant,
+		TabsPanelVariant,
+		TabsTransition,
+		TabsOrientation,
+		TabsActivationMode
+	} from './context';
 
-	export type { TabsVariant, TabsPanelVariant, TabsTransition } from './context';
+	export type {
+		TabsVariant,
+		TabsPanelVariant,
+		TabsTransition,
+		TabsOrientation,
+		TabsActivationMode
+	} from './context';
 
-	export type TabsProps = {
-		/** Active tab value. Bindable. */
-		value?: string;
-		/** Palette accent. Drives the thumb fill and active-state color via `--c`. */
-		color?: Color;
-		/**
-		 * Rail variant. Mirrors `<Segmented>` for the four filled looks plus the classic `underline`:
-		 * - `underline` — transparent track, animated bottom bar (default).
-		 * - `default` — gray track, solid accent thumb.
-		 * - `tonal` — accent-tinted track, soft accent thumb (replaces old `pill`).
-		 * - `border` — outlined track and thumb.
-		 * - `relief` — sunken track, raised accent thumb with depth.
-		 */
-		variant?: TabsVariant;
-		/** Sizing scale — shared with Button / Segmented (`xl` | `large` | `medium` | `small` | `mini`). */
-		size?: Size;
-		/** Panel surface — `'plain'` blends in, `'card'` wraps the active panel in a Card-like surface. */
-		panelVariant?: TabsPanelVariant;
-		/** Cross-panel transition. Default `crossfade`. */
-		transition?: TabsTransition;
-		/** Transition duration in ms. */
-		transitionDuration?: number;
-		/** Disable every tab at once. */
-		disabled?: boolean;
-		/** Composition slot — `<TabList>` and `<TabPanel>` go here, in any layout. */
-		children?: Snippet;
-		/** Fired on selection change. */
-		onchange?: (value: string) => void;
-		/** Class merged onto the root. */
-		class?: string;
-		/** Inline style merged onto the root. */
-		style?: string;
-	};
+	export type TabsRootProps = WithElementRef<
+		{
+			/** Active tab value. Bindable. */
+			value?: string;
+			/** Palette accent. Drives the thumb fill and active-state color via `--c`. */
+			color?: Color;
+			/** Rail variant: `underline` bottom bar (default), or filled `default`/`flat`/`border`/`relief` thumb. */
+			variant?: TabsVariant;
+			/** Sizing scale — shared with Button / Segmented (`xl` | `large` | `medium` | `small` | `mini`). */
+			size?: Size;
+			/** Panel surface — `'plain'` blends in, `'card'` wraps the active panel in a Card-like surface. */
+			panelVariant?: TabsPanelVariant;
+			/** Cross-panel transition. Default `crossfade`. */
+			transition?: TabsTransition;
+			/** Transition duration in ms. */
+			transitionDuration?: number;
+			/** Layout + arrow-key axis. Default `horizontal`. */
+			orientation?: TabsOrientation;
+			/** `automatic` selects on arrow-focus (default); `manual` moves focus only, Enter/Space selects. */
+			activationMode?: TabsActivationMode;
+			/** Wrap arrow navigation past the ends. Default `false`. */
+			loop?: boolean;
+			/** Disable every tab at once. */
+			disabled?: boolean;
+			/** Emit a click ripple into the active thumb (filled variants). */
+			ripple?: boolean;
+			/** Composition slot — `<Tabs.List>` and `<Tabs.Content>` go here, in any layout. */
+			children?: Snippet;
+			/** Fired on selection change. */
+			onValueChange?: (value: string) => void;
+			/** Render-delegation: receive the merged props and render your own root element. */
+			child?: Snippet<[{ props: Record<string, unknown> }]>;
+			/** Class merged onto the root. */
+			class?: string;
+			/** Inline style merged onto the root. */
+			style?: string;
+		},
+		HTMLDivElement
+	>;
 </script>
 
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import { crossfade, fade, slide } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
+	import { createAttachmentKey } from 'svelte/attachments';
 	import { rgbTriplet } from '../../utils/color';
-	import { cn } from '../../utils/cn';
-	import { nextId } from '../../state/ids.svelte';
-	import { createTabsContext, type TabsContext, type TabsTransitionFn } from './context';
+	import { boolAttr } from '../../utils/attrs';
+	import { mergeProps } from '../../utils/mergeProps';
+	import { attachRef } from '../../utils/ref';
+	import { setTabsContext } from './context';
+	import { TabsRootState } from './tabsState.svelte';
 
 	let {
+		ref = $bindable(null),
 		value = $bindable(),
 		color = 'primary',
 		variant = 'underline',
@@ -57,127 +76,75 @@
 		panelVariant = 'plain',
 		transition = 'crossfade',
 		transitionDuration = 240,
+		orientation = 'horizontal',
+		activationMode = 'automatic',
+		loop = false,
 		disabled = false,
+		ripple = true,
 		children,
-		onchange,
+		onValueChange,
+		child,
 		class: className,
-		style: userStyle
-	}: TabsProps = $props();
+		style: userStyle,
+		...rest
+	}: TabsRootProps = $props();
 
-	const baseId = nextId('tabs');
+	const baseId = $props.id();
 	let triplet = $derived(rgbTriplet(color));
 
-	type Entry = { el: HTMLElement; getDisabled: () => boolean };
-	const order: string[] = $state([]);
-	const entries = new Map<string, Entry>();
-	let thumbLayer = $state<HTMLElement | undefined>(undefined);
+	const root = setTabsContext(
+		new TabsRootState({
+			baseId,
+			getValue: () => value,
+			setValueProp: (next) => {
+				value = next;
+			},
+			color: () => color,
+			variant: () => variant,
+			size: () => size,
+			panelVariant: () => panelVariant,
+			transition: () => transition,
+			transitionDuration: () => transitionDuration,
+			orientation: () => orientation,
+			activationMode: () => activationMode,
+			loop: () => loop,
+			disabled: () => disabled,
+			ripple: () => ripple,
+			onValueChange: () => onValueChange
+		})
+	);
 
-	function setActive(next: string): void {
-		if (value === next) return;
-		value = next;
-		onchange?.(next);
-	}
-
-	function tabId(v: string): string { return `${baseId}-tab-${v}`; }
-	function panelId(v: string): string { return `${baseId}-panel-${v}`; }
-
-	function register(v: string, el: HTMLElement, getDisabled: () => boolean): void {
-		entries.set(v, { el, getDisabled });
-		if (!order.includes(v)) order.push(v);
-		if (value === undefined && !getDisabled()) setActive(v);
-	}
-
-	function unregister(v: string): void {
-		entries.delete(v);
-		const i = order.indexOf(v);
-		if (i >= 0) order.splice(i, 1);
-	}
-
-	function getEl(v: string): HTMLElement | undefined {
-		return entries.get(v)?.el;
-	}
-
-	function focusEntry(v: string): void {
-		entries.get(v)?.el.focus();
-		setActive(v);
-	}
-
-	function focusNext(from: string, dir: 1 | -1): void {
-		const ids = order.filter((v) => !entries.get(v)?.getDisabled());
-		if (ids.length === 0) return;
-		const i = ids.indexOf(from);
-		const next = i === -1 ? (dir > 0 ? 0 : ids.length - 1) : (i + dir + ids.length) % ids.length;
-		focusEntry(ids[next]);
-	}
-
-	function focusEdge(edge: 'first' | 'last'): void {
-		const ids = order.filter((v) => !entries.get(v)?.getDisabled());
-		if (ids.length === 0) return;
-		focusEntry(edge === 'first' ? ids[0] : ids[ids.length - 1]);
-	}
-
-	const initialDuration = untrack(() => transitionDuration);
-	const [crossSend, crossReceive] = crossfade({
-		duration: initialDuration,
-		easing: cubicOut,
-		fallback: (node) => fade(node, { duration: initialDuration, easing: cubicOut })
+	$effect(() => {
+		root.roving.orientation = orientation === 'vertical' ? 'vertical' : 'horizontal';
+		root.roving.loop = loop;
 	});
 
-	const noopTransition: TabsTransitionFn = () => ({ duration: 0 });
+	$effect(() => {
+		if (value !== undefined) root.roving.setCurrent(value);
+	});
 
-	let send = $derived<TabsTransitionFn>(
-		transition === 'crossfade'
-			? (node, p) => crossSend(node, p)
-			: transition === 'fade'
-				? (node) => fade(node, { duration: transitionDuration, easing: cubicOut })
-				: transition === 'slide'
-					? (node) => slide(node, { duration: transitionDuration, easing: cubicOut, axis: 'y' })
-					: noopTransition
+	const refKey = createAttachmentKey();
+	const attrs = $derived({
+		class: 'tabs-root',
+		'data-orientation': orientation,
+		'data-disabled': boolAttr(disabled),
+		'data-testid': 'tabs'
+	});
+	const merged = $derived(
+		mergeProps(rest, attrs, {
+			class: className,
+			[refKey]: attachRef<HTMLDivElement>((n) => (ref = n))
+		})
 	);
-	let receive = $derived<TabsTransitionFn>(
-		transition === 'crossfade'
-			? (node, p) => crossReceive(node, p)
-			: transition === 'fade'
-				? (node) => fade(node, { duration: transitionDuration, easing: cubicOut })
-				: transition === 'slide'
-					? (node) => slide(node, { duration: transitionDuration, easing: cubicOut, axis: 'y' })
-					: noopTransition
-	);
-
-	const ctx: TabsContext = {
-		get value() { return value; },
-		get color() { return color; },
-		get variant() { return variant; },
-		get size() { return size; },
-		get panelVariant() { return panelVariant; },
-		get transition() { return transition; },
-		get disabled() { return disabled; },
-		get order() { return order; },
-		get send() { return send; },
-		get receive() { return receive; },
-		get thumbLayer() { return thumbLayer; },
-		baseId,
-		setActive,
-		tabId,
-		panelId,
-		register,
-		unregister,
-		getEl,
-		focusNext,
-		focusEdge,
-		setThumbLayer: (el) => { thumbLayer = el; }
-	};
-	createTabsContext(ctx);
 </script>
 
-<div
-	class={cn('tabs-root', className)}
-	style:--c={triplet}
-	style={userStyle}
-	data-testid="tabs"
->
-	{@render children?.()}
-</div>
+{#if child}
+	{@render child({ props: { ...merged, style: `--c:${triplet};${userStyle ?? ''}` } })}
+{:else}
+	<div {...merged} style:--c={triplet} style={userStyle}>
+		{@render children?.()}
+	</div>
+{/if}
 
 <style>
 	:where(.tabs-root) {

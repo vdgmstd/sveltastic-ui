@@ -3,6 +3,7 @@
 </script>
 
 <script lang="ts">
+	import './scrollbar.css';
 	import { onMount } from 'svelte';
 
 	interface Props {

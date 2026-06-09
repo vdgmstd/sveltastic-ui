@@ -1,1 +1,1 @@
-export type TimeParts = { h: number; m: number; s: number };
+export type { TimeParts } from '../../../utils/date';

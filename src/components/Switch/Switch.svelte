@@ -1,43 +1,44 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
-	import type { Color } from '../../types';
+	import type { Color, Shape, Size, WithElementRef } from '../../types';
 
-	export type SwitchSize = 'small' | 'medium' | 'large';
-	export type SwitchShape = 'default' | 'square';
-
-	export type SwitchProps = {
-		/** Boolean state. Use `bind:checked` for two-way control. */
-		checked?: boolean;
-		/** Pill (default) or square track. */
-		shape?: SwitchShape;
-		/** Visual size. */
-		size?: SwitchSize;
-		/** Centre the knob and lock interaction. */
-		indeterminate?: boolean;
-		/** Spinner overlay (collapses the track to a circle). */
-		loading?: boolean;
-		/** Icon-knob mode — drops the white pill so the inline icon snippet IS the knob. */
-		ghostKnob?: boolean;
-		/** Track + bg accent (only the swooping bg circle is tinted; knob always stays white). */
-		color?: Color;
-		/** Knob content (rendered inside the circle — small icon). */
-		knob?: Snippet;
-		/** On-state inline label/icon (rendered in the track when checked). */
-		iconOn?: Snippet;
-		/** Off-state inline label/icon (rendered in the track when unchecked). */
-		iconOff?: Snippet;
-		/** Fired on toggle. */
-		onchange?: (event: Event, checked: boolean) => void;
-	} & Omit<HTMLInputAttributes, 'type' | 'checked' | 'children' | 'onchange' | 'size'>;
+	export type SwitchRootProps = WithElementRef<
+		{
+			/** Boolean state. Use `bind:checked` for two-way control. */
+			checked?: boolean;
+			/** Pill (`default` / `circle`) or square (`square`) track. */
+			shape?: Shape;
+			/** Visual size. */
+			size?: Size;
+			/** Centre the knob and lock interaction (renders as a mixed `checkbox`). */
+			indeterminate?: boolean;
+			/** Spinner overlay (collapses the track to a circle). */
+			loading?: boolean;
+			/** Icon-knob mode — drops the white pill so a `<Switch.Icon state="knob">` IS the knob. */
+			ghostKnob?: boolean;
+			/** Track + bg accent (only the swooping bg circle is tinted; knob always stays white). */
+			color?: Color;
+			/** Accessible name — required when no visible `<Switch.Label>` is associated with the control. */
+			ariaLabel?: string;
+			/** Composition: place `<Switch.Thumb>` + optional `<Switch.Icon>` parts here. */
+			children?: Snippet;
+			/** Render-delegation: receive the merged props and render your own track element. */
+			child?: Snippet<[{ props: Record<string, unknown> }]>;
+			/** Fires with the next checked state on toggle. */
+			onCheckedChange?: (checked: boolean) => void;
+		} & Omit<HTMLInputAttributes, 'type' | 'checked' | 'children' | 'size' | 'onchange'>,
+		HTMLInputElement
+	>;
 </script>
 
 <script lang="ts">
-	import { Tween } from 'svelte/motion';
-	import { cubicOut, backOut } from 'svelte/easing';
-	import { rgbTriplet } from '../../utils/color';
 	import { cn } from '../../utils/cn';
+	import { mergeProps } from '../../utils/mergeProps';
+	import { attachRef } from '../../utils/ref';
 	import Spinner from '../../primitives/Spinner.svelte';
+	import { setSwitchContext } from './context';
+	import { SwitchRootState } from './switchState.svelte';
 
 	let {
 		checked = $bindable(false),
@@ -47,100 +48,98 @@
 		loading = false,
 		ghostKnob = false,
 		color = 'primary',
-		knob,
-		iconOn,
-		iconOff,
-		onchange,
+		ariaLabel,
+		children,
+		child,
+		onCheckedChange,
+		ref = $bindable(null),
+		id: idProp,
 		disabled = false,
 		class: className,
 		style: userStyle,
 		...rest
-	}: SwitchProps = $props();
+	}: SwitchRootProps = $props();
 
-	let triplet = $derived(rgbTriplet(color));
+	const uid = $props.id();
+	let id = $derived(idProp ?? uid);
 
-	const pressScale = new Tween(1, { duration: 110, easing: cubicOut });
-	let pressToken = 0;
+	const root = setSwitchContext(
+		new SwitchRootState({
+			getId: () => id,
+			getChecked: () => checked,
+			setCheckedProp: (v) => (checked = v),
+			onCheckedChange: () => onCheckedChange,
+			getShape: () => shape,
+			getSize: () => size,
+			getColor: () => color,
+			getDisabled: () => !!disabled,
+			getLoading: () => loading,
+			getIndeterminate: () => indeterminate,
+			getGhostKnob: () => ghostKnob,
+			getAriaLabel: () => ariaLabel
+		})
+	);
 
-	async function runPress(): Promise<void> {
-		if (disabled || loading || indeterminate) return;
-		const token = ++pressToken;
-		pressScale.set(1, { duration: 0 });
-		await pressScale.set(0.88, { duration: 110, easing: cubicOut });
-		if (token !== pressToken) return;
-		await pressScale.set(1, { duration: 460, easing: backOut });
-	}
+	// Spinner diameter tracks the height token (track collapses to a circle inset 2px each side).
+	const SPINNER_BY_SIZE: Record<string, { size: number; thickness: number }> = {
+		mini: { size: 14, thickness: 2.4 },
+		small: { size: 18, thickness: 2.8 },
+		medium: { size: 24, thickness: 3.2 },
+		large: { size: 32, thickness: 3.6 },
+		xl: { size: 40, thickness: 4 }
+	};
+	let spinner = $derived(SPINNER_BY_SIZE[size] ?? SPINNER_BY_SIZE.medium);
 
-	function handlePointerDown(event: PointerEvent): void {
-		if (disabled || loading || indeterminate) return;
-		if (event.button !== 0 && event.pointerType === 'mouse') return;
-		void runPress();
-	}
-
-	function handleKeyDown(event: KeyboardEvent): void {
-		if (disabled || loading || indeterminate) return;
-		if (event.repeat) return;
-		if (event.key !== ' ') return;
-		void runPress();
-	}
-
-	function handleChange(event: Event): void {
-		if (indeterminate || loading || disabled) {
-			(event.currentTarget as HTMLInputElement).checked = checked;
+	function handleChange(event: Event & { currentTarget: EventTarget & HTMLInputElement }): void {
+		if (root.isLocked) {
+			event.currentTarget.checked = checked;
 			return;
 		}
-		const next = (event.currentTarget as HTMLInputElement).checked;
-		checked = next;
-		onchange?.(event, next);
+		root.setChecked(event.currentTarget.checked);
 	}
+
+	const attrs = $derived({
+		class: cn('switch', root.sizeModifier),
+		...root.wrapperAttrs
+	});
+	const styleVars = $derived(
+		`--c:${root.triplet};` +
+			`--ps:${root.press.scale};` +
+			(shape === 'square' ? '--track-radius:var(--rad-xs);--inner-radius:var(--rad-xs);' : '') +
+			(userStyle ?? '')
+	);
+	const merged = $derived(
+		mergeProps(rest, attrs, {
+			class: className,
+			style: styleVars
+		})
+	);
 </script>
 
-<div
-	class={cn(
-		'switch',
-		`switch--size-${size}`,
-		ghostKnob && 'switch--icon',
-		indeterminate && 'switch--indeterminate',
-		loading && 'switch--loading',
-		disabled && 'switch--disabled',
-		className
-	)}
-	style:--c={triplet}
-	style:--ps={pressScale.current}
-	style:--track-radius={shape === 'square' ? '5px' : null}
-	style:--inner-radius={shape === 'square' ? '5px' : null}
-	style={userStyle}
-	data-shape={shape}
-	data-testid="switch"
->
+{#snippet body()}
 	<input
-		type="checkbox"
-		role="switch"
+		{@attach attachRef<HTMLInputElement>((node) => (ref = node))}
 		class="switch__input"
-		checked={checked || indeterminate}
-		{disabled}
-		aria-checked={indeterminate ? 'mixed' : checked ? 'true' : 'false'}
+		{id}
+		{...root.inputAttrs}
 		onchange={handleChange}
-		onpointerdown={handlePointerDown}
-		onkeydown={handleKeyDown}
-		{...rest}
 	/>
-	<div class="switch__circle">
-		{#if knob}{@render knob()}{/if}
-	</div>
-	<div class="switch__text switch__text--on" aria-hidden="true">
-		{#if iconOn}{@render iconOn()}{/if}
-	</div>
-	<div class="switch__text switch__text--off" aria-hidden="true">
-		{#if iconOff}{@render iconOff()}{/if}
-	</div>
+	{@render children?.()}
 	<div class="switch__background" aria-hidden="true"></div>
 	{#if loading}
 		<span class="switch__loading" aria-hidden="true">
-			<Spinner color={color} size={24} thickness={3.2} speed={800} />
+			<Spinner {color} size={spinner.size} thickness={spinner.thickness} speed={800} />
 		</span>
 	{/if}
-</div>
+{/snippet}
+
+{#if child}
+	{@render child({ props: merged })}
+{:else}
+	<span {...merged}>
+		{@render body()}
+	</span>
+{/if}
 
 <style>
 	:where(.switch) {
@@ -149,8 +148,8 @@
 		--track-h: 28px;
 		--knob-d: 20px;
 		--knob-pad: 4px;
-		--track-radius: 20px;
-		--inner-radius: 50%;
+		--track-radius: var(--rad-xl);
+		--inner-radius: var(--rad-circle);
 		position: relative;
 		display: inline-flex;
 		align-items: center;
@@ -170,24 +169,45 @@
 		transform-origin: center;
 		transition: background-color 0.25s;
 	}
-	.switch:hover:not(.switch--disabled):not(.switch--loading) {
+	.switch:hover:not([data-disabled]):not([data-loading]) {
 		background: color-mix(in oklab, rgb(var(--gray-2)), rgb(var(--text)) 14%);
 	}
-	:where(.switch--disabled) { opacity: 0.5; pointer-events: none; }
+	:where(.switch[data-disabled]) {
+		opacity: 0.5;
+		pointer-events: none;
+	}
+	.switch:has(.switch__input:focus-visible) {
+		outline: 2px solid rgb(var(--c) / 0.6);
+		outline-offset: 2px;
+	}
 
+	:where(.switch--size-mini) {
+		--track-w: 30px;
+		--track-h: 18px;
+		--knob-d: 14px;
+		--knob-pad: 2px;
+		--track-radius: var(--rad-md);
+	}
 	:where(.switch--size-small) {
 		--track-w: 38px;
 		--track-h: 22px;
 		--knob-d: 16px;
 		--knob-pad: 3px;
-		--track-radius: 16px;
+		--track-radius: var(--rad-lg);
 	}
 	:where(.switch--size-large) {
 		--track-w: 60px;
 		--track-h: 36px;
 		--knob-d: 26px;
 		--knob-pad: 5px;
-		--track-radius: 24px;
+		--track-radius: var(--rad-2xl);
+	}
+	:where(.switch--size-xl) {
+		--track-w: 72px;
+		--track-h: 44px;
+		--knob-d: 32px;
+		--knob-pad: 6px;
+		--track-radius: var(--rad-2xl);
 	}
 
 	.switch__input {
@@ -202,42 +222,7 @@
 		z-index: 100;
 	}
 
-	.switch__circle {
-		position: absolute;
-		left: var(--knob-pad);
-		width: var(--knob-d);
-		height: var(--knob-d);
-		border-radius: var(--inner-radius);
-		background: color-mix(in oklab, rgb(var(--gray-2)), rgb(var(--on-accent)) 0%);
-		color: rgb(var(--text));
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 10;
-		transition: 0.25s;
-	}
-
-	/* Active "drag" — knob widens toward the slide direction. */
-	.switch__input:active ~ .switch__circle {
-		width: calc(var(--knob-d) + 5px);
-	}
-	.switch__input:active:checked ~ .switch__circle {
-		left: calc(100% - var(--knob-d) - var(--knob-pad) - 6px);
-	}
-
-	/* Settled checked position. */
-	.switch__input:checked ~ .switch__circle {
-		left: calc(100% - var(--knob-d) - var(--knob-pad));
-		color: rgb(var(--c));
-		box-shadow: -5px 0 25px 0 rgb(var(--background) / 0.6);
-	}
-
-	/*
-	 * Background swoop: a circle 100% wide × 100% padding-bottom (so it's a
-	 * perfect circle equal in size to the track width). Sits at left:-100%
-	 * when off, slides to left:0 and fills the track when on.
-	 */
+	/* Background swoop: a track-wide circle that slides from left:-100% to left:0 when on. */
 	.switch__background {
 		position: absolute;
 		left: -100%;
@@ -251,76 +236,19 @@
 		transition: 0.25s ease-out;
 		z-index: 2;
 	}
-	.switch__input:checked ~ .switch__background {
+	.switch[data-checked] .switch__background {
 		opacity: 1;
 		left: 0;
 	}
 
-	/*
-	 * Inline labels/icons. Default padding shifts the content RIGHT of the
-	 * knob (knob sits on the left in OFF state). On toggle, padding flips
-	 * via :checked override and the .on/.off pair swap places via translate.
-	 */
-	.switch__text {
-		position: relative;
-		z-index: 9;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 5px 5px 5px 25px;
-		font-size: 0.7rem;
-		color: rgb(var(--text));
-		white-space: nowrap;
-		overflow: hidden;
-		transition: 0.25s 0.05s;
-	}
-	.switch__text--on {
-		position: absolute;
-		opacity: 0;
-		transform: translateX(-100%);
-	}
-	.switch__input:checked ~ .switch__text {
-		padding-left: 5px;
-		padding-right: 25px;
-		color: rgb(255 255 255);
-	}
-	.switch__input:checked ~ .switch__text--on {
-		position: relative;
-		opacity: 1;
-		transform: translateX(0);
-	}
-	.switch__input:checked ~ .switch__text--off {
-		position: absolute;
-		opacity: 0;
-		transform: translateX(100%);
-	}
-
-	/* Icon-knob (ghost) — strip the white pill, keep only the knob's icon. */
-	.switch--icon .switch__circle {
-		background: transparent !important;
-		box-shadow: none !important;
-	}
-	.switch--icon .switch__input:checked ~ .switch__circle {
-		color: rgb(255 255 255) !important;
-	}
-
-	/* Indeterminate — knob centered. */
-	.switch--indeterminate .switch__input { pointer-events: none; }
-	.switch--indeterminate .switch__circle {
-		left: 50% !important;
-		transform: translateX(-50%);
-	}
-
 	/* Loading — collapses track to a circle and shows the kit spinner overlay. */
-	:where(.switch--loading) {
+	:where(.switch[data-loading]) {
 		min-width: var(--track-h) !important;
 		width: var(--track-h) !important;
-		border-radius: 50% !important;
+		border-radius: var(--rad-circle) !important;
 		pointer-events: none;
 	}
-	.switch--loading .switch__circle,
-	.switch--loading .switch__background,
-	.switch--loading .switch__text {
+	.switch[data-loading] .switch__background {
 		opacity: 0 !important;
 	}
 	.switch__loading {

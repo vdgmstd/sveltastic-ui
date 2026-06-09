@@ -83,8 +83,7 @@ export function rgbTriplet(color: Color | undefined): string {
 	return 'var(--primary)';
 }
 
-/** Full `rgb()` / `rgba()` string for cases where a complete color is needed (rare in the kit). */
-export function cssColor(color: Color | undefined, alpha = 1): string {
-	const triplet = rgbTriplet(color);
-	return alpha >= 1 ? `rgb(${triplet})` : `rgb(${triplet} / ${alpha})`;
+/** Full `rgb()` string for cases where a complete color is needed (rare in the kit). */
+export function cssColor(color: Color | undefined): string {
+	return `rgb(${rgbTriplet(color)})`;
 }

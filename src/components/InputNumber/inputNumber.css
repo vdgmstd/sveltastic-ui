@@ -1,0 +1,220 @@
+:where(.input-number) {
+	--c: var(--primary);
+	--inb-radius: var(--radius);
+	display: inline-flex;
+	align-items: stretch;
+	background: rgb(var(--gray-2));
+	border-radius: var(--inb-radius);
+	overflow: hidden;
+	transition: outline-color 200ms var(--ease-standard);
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+}
+:where(.input-number[data-block]) {
+	display: flex;
+	width: 100%;
+}
+.input-number[data-block] .input-number__field {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.input-number[data-block] .input-number__input {
+	width: 100%;
+}
+
+:where(.input-number[data-disabled]) {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+:where(.input-number--shape-square) {
+	border-radius: 0;
+}
+:where(.input-number--shape-circle) {
+	border-radius: var(--rad-pill);
+}
+
+.input-number:has(.input-number__input:focus-visible) {
+	outline-color: rgb(var(--c) / 0.55);
+}
+
+.input-number__field {
+	position: relative;
+	display: flex;
+	align-items: stretch;
+	flex: 0 0 auto;
+	overflow: hidden;
+}
+.input-number__input {
+	position: relative;
+	z-index: 1;
+	padding: var(--space-4) var(--space-3);
+	width: 8ch;
+	text-align: center;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: inherit;
+	font-variant-numeric: tabular-nums;
+	outline: none;
+}
+.input-number__input:disabled {
+	cursor: not-allowed;
+}
+@media (pointer: coarse) {
+	.input-number__input {
+		font-size: max(16px, 1em);
+	}
+}
+
+.input-number__btn {
+	--c-btn: var(--c);
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 32px;
+	padding: 0;
+	background: transparent;
+	-webkit-user-select: none;
+	user-select: none;
+	border: 0;
+	color: rgb(var(--text) / 0.55);
+	cursor: pointer;
+	font: inherit;
+	outline: none;
+	overflow: hidden;
+	transition:
+		color 260ms cubic-bezier(0.33, 1, 0.68, 1),
+		background-color 260ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+.input-number__btn::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: rgb(var(--c-btn) / 0.28);
+	opacity: 0;
+	transform: scale(0.6);
+	border-radius: inherit;
+	pointer-events: none;
+	transition:
+		transform 280ms cubic-bezier(0.33, 1, 0.68, 1),
+		opacity 220ms cubic-bezier(0.33, 1, 0.68, 1);
+	z-index: 0;
+}
+.input-number__btn > * {
+	position: relative;
+	z-index: 1;
+	transform: scale(var(--ps, 1));
+	transform-origin: center;
+}
+.input-number__btn:hover:not(:disabled) {
+	background: rgb(var(--c-btn) / 0.15);
+	color: rgb(var(--c-btn));
+}
+.input-number__btn:active:not(:disabled)::before {
+	opacity: 1;
+	transform: scale(1.02);
+	transition:
+		transform 200ms var(--ease-back),
+		opacity 120ms var(--ease-standard);
+}
+.input-number__btn:focus-visible {
+	outline: 2px solid rgb(var(--c-btn) / 0.55);
+	outline-offset: -3px;
+}
+.input-number__btn:disabled {
+	color: rgb(var(--text) / 0.2);
+	cursor: not-allowed;
+}
+.input-number:has(.input-number__input:focus) .input-number__btn:not(:hover):not(:disabled) {
+	color: rgb(var(--c-btn) / 0.65);
+}
+
+.input-number__btn svg {
+	transition: transform var(--dur) var(--ease-back);
+}
+.input-number__btn:hover:not(:disabled) svg {
+	transform: scale(1.18);
+}
+.input-number__btn:active:not(:disabled) svg {
+	transform: scale(1.08);
+	transition: transform 140ms var(--ease-back);
+}
+
+:where(.input-number--size-xl) {
+	font-size: var(--fs-xl);
+	--inb-radius: var(--rad-xl);
+}
+.input-number--size-xl .input-number__btn {
+	width: 44px;
+}
+.input-number--size-xl .input-number__input {
+	padding: var(--space-6) var(--space-4);
+	width: 8ch;
+}
+
+:where(.input-number--size-large) {
+	font-size: var(--fs-lg);
+	--inb-radius: var(--rad-lg);
+}
+.input-number--size-large .input-number__btn {
+	width: 38px;
+}
+.input-number--size-large .input-number__input {
+	padding: var(--space-5) 7px;
+	width: 8ch;
+}
+
+:where(.input-number--size-medium) {
+	font-size: var(--fs-md);
+	--inb-radius: var(--rad-md);
+}
+.input-number--size-medium .input-number__btn {
+	width: 32px;
+}
+.input-number--size-medium .input-number__input {
+	padding: var(--space-4) var(--space-3);
+	width: 8ch;
+}
+
+:where(.input-number--size-small) {
+	font-size: var(--fs-sm);
+	--inb-radius: var(--rad-sm);
+}
+.input-number--size-small .input-number__btn {
+	width: 28px;
+}
+.input-number--size-small .input-number__input {
+	padding: var(--space-3) 5px;
+	width: 8ch;
+}
+
+:where(.input-number--size-mini) {
+	font-size: var(--fs-xs);
+	--inb-radius: var(--rad-xs);
+}
+.input-number--size-mini .input-number__btn {
+	width: 24px;
+}
+.input-number--size-mini .input-number__input {
+	padding: var(--space-2) var(--space-2);
+	width: 8ch;
+}
+
+.input-number--shape-square.input-number--size-xl,
+.input-number--shape-square.input-number--size-large,
+.input-number--shape-square.input-number--size-medium,
+.input-number--shape-square.input-number--size-small,
+.input-number--shape-square.input-number--size-mini {
+	border-radius: 0;
+}
+.input-number--shape-circle.input-number--size-xl,
+.input-number--shape-circle.input-number--size-large,
+.input-number--shape-circle.input-number--size-medium,
+.input-number--shape-circle.input-number--size-small,
+.input-number--shape-circle.input-number--size-mini {
+	border-radius: var(--rad-pill);
+}

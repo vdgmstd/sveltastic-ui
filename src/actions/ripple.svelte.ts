@@ -1,56 +1,45 @@
 import type { Action } from 'svelte/action';
 import { Tween } from 'svelte/motion';
 import { cubicOut, quintOut } from 'svelte/easing';
-import { rgbTriplet, cssColor } from '../utils/color';
+import { rgbTriplet } from '../utils/color';
 import type { Color } from '../types';
 
-/**
- * GPU-composited ripple. The kit ripple is a soft accent "bloom" — bright
- * glowing core, accent body, transparent halo at the rim — that inks in
- * fast and unfolds slowly on cubic-out easing, with partial peak opacity
- * so the button's label/icon stays legible through it.
- *
- * The ripple's `transform: scale()` and `opacity` are driven by `Tween`
- * instances from `svelte/motion`; nothing animates via CSS @keyframes or
- * setTimeout-driven class swaps. The action owns the Tweens, the effect
- * scope and the DOM nodes; everything is released on `destroy`.
- */
+// Soft accent "bloom" ripple driven by svelte/motion Tweens; the action owns the Tweens + nodes and releases them on destroy.
 
 export type RippleOptions = {
 	/** Accent colour for this ripple. */
 	color?: Color;
 	/** Skip ripple emission entirely. */
 	disabled?: boolean;
-	/** Host surface IS the accent colour (filled buttons). Lifts the disc body so the wave doesn't blend into the bg. Flat / border / line: leave `false`. */
+	/** Host surface IS the accent (filled buttons); lifts the disc so the wave stays visible. Flat/border/line: leave `false`. */
 	solidBg?: boolean;
-	/** Soft semi-transparent variant — gradient uses `rgb(--c / 0.18)` instead of full saturation. Pair with surfaces that themselves use a translucent accent (Switch, fieldState inputs). Customize alpha per-host via `--ripple-soft-alpha`. */
+	/** Soft translucent variant (`rgb(--c / 0.18)`); tune alpha per-host via `--ripple-soft-alpha`. */
 	soft?: boolean;
-	/** Override the ink-in / fade duration (ms). Default scales with host width: `>150px → 750ms`, otherwise `550ms`. Components that want a more dramatic, deliberate splash (Switch) override this. */
+	/** Ink-in / fade duration (ms). Default scales with host width (`>150px → 750ms`, else `550ms`). */
 	duration?: number;
-	/** Override the spawn origin (relative to host top-left). Function form is evaluated at spawn time. Use to anchor the ripple to a state-driven position instead of the click point (e.g. Switch — anchor at the knob's destination side). */
+	/** Spawn origin relative to host top-left; function form is evaluated at spawn time. */
 	origin?: { x: number; y: number } | ((host: HTMLElement) => { x: number; y: number });
-	/** Override the layer's clip radius. Use when the host's `border-radius` changes mid-ripple (e.g. range-start cells) and the bloom must stay in the resting shape. */
+	/** Layer clip radius, for hosts whose `border-radius` changes mid-ripple (e.g. range-start cells). */
 	radius?: string;
-	/** CSS selector — ripple only spawns when `mousedown.target.closest(trigger)` matches inside the host. Lets the ripple visual span the entire host while the click trigger is restricted to a sub-region (e.g. only the header of a Collapse). */
+	/** Only spawn when `mousedown.target.closest(trigger)` matches inside the host. */
 	trigger?: string;
-	/** Mount the ripple layer here instead of the host. Click capture stays on the host; this only re-parents the visual layer so transforms / clipping on an inner element (e.g. a background slot) carry the bloom along. */
+	/** Mount the visual layer here instead of the host; click capture stays on the host. */
 	mountTo?: HTMLElement;
-	/** Colour the host text animates to during the bloom (and back on settle). Defaults to `rgb(var(--on-accent))` — the kit token for text on an accent fill (matches `.button--default`'s text colour). Use a palette name or any CSS colour to override; pass `'currentColor'` to disable the shift entirely. */
+	/** Host text colour during the bloom. Defaults to `rgb(var(--on-accent))`; `'currentColor'` disables the shift. */
 	textColor?: Color | 'currentColor';
 };
 
 const HOST_CLASS = 'ripple-host';
-const ACTIVE_CLASS = 'is-ripple-active';
 const SHEET_ID = 'sveltastic-ui-ripple-styles';
 const STYLES = `
 .${HOST_CLASS} { position: relative; isolation: isolate; }
 
-:where(.${HOST_CLASS}) > :where(*:not(.vs-ripple__layer)) {
+:where(.${HOST_CLASS}) > :where(*:not(.ripple__layer)) {
 	position: relative;
 	z-index: 2;
 }
 
-.vs-ripple__layer {
+.ripple__layer {
 	position: absolute;
 	inset: 0;
 	overflow: hidden;
@@ -59,11 +48,11 @@ const STYLES = `
 	border-radius: inherit;
 }
 
-.vs-ripple__effect {
+.ripple__effect {
 	position: absolute;
 	width: var(--ripple-size);
 	height: var(--ripple-size);
-	border-radius: 50%;
+	border-radius: var(--rad-circle);
 	pointer-events: none;
 	background: radial-gradient(circle,
 		rgb(var(--sa-color, 25 91 255)) 0%,
@@ -76,7 +65,7 @@ const STYLES = `
 	transform-origin: center;
 }
 
-[data-theme='dark'] .vs-ripple__effect {
+[data-theme='dark'] .ripple__effect {
 	background: radial-gradient(circle,
 		rgb(var(--sa-color, 25 91 255)) 0%,
 		rgb(var(--sa-color, 25 91 255)) 78%,
@@ -84,7 +73,7 @@ const STYLES = `
 		rgb(var(--sa-color, 25 91 255)) 100%);
 }
 
-.vs-ripple__effect--on-fill {
+.ripple__effect--on-fill {
 	background: radial-gradient(circle,
 		color-mix(in oklab, rgb(var(--sa-color, 25 91 255)), white 6%) 0%,
 		color-mix(in oklab, rgb(var(--sa-color, 25 91 255)), white 14%) 35%,
@@ -93,7 +82,7 @@ const STYLES = `
 		color-mix(in oklab, rgb(var(--sa-color, 25 91 255)), white 14%) 100%);
 }
 
-[data-theme='dark'] .vs-ripple__effect--on-fill {
+[data-theme='dark'] .ripple__effect--on-fill {
 	background: radial-gradient(circle,
 		color-mix(in oklab, rgb(var(--sa-color, 25 91 255)), white 18%) 0%,
 		color-mix(in oklab, rgb(var(--sa-color, 25 91 255)), white 26%) 35%,
@@ -102,7 +91,7 @@ const STYLES = `
 		color-mix(in oklab, rgb(var(--sa-color, 25 91 255)), white 26%) 100%);
 }
 
-.vs-ripple__effect--soft {
+.ripple__effect--soft {
 	background: radial-gradient(circle,
 		rgb(var(--sa-color, 25 91 255) / var(--ripple-soft-alpha, 0.18)) 0%,
 		rgb(var(--sa-color, 25 91 255) / var(--ripple-soft-alpha, 0.18)) 78%,
@@ -110,7 +99,7 @@ const STYLES = `
 		rgb(var(--sa-color, 25 91 255) / var(--ripple-soft-alpha, 0.18)) 100%);
 }
 
-[data-theme='dark'] .vs-ripple__effect--soft {
+[data-theme='dark'] .ripple__effect--soft {
 	background: radial-gradient(circle,
 		rgb(var(--sa-color, 25 91 255) / var(--ripple-soft-alpha, 0.24)) 0%,
 		rgb(var(--sa-color, 25 91 255) / var(--ripple-soft-alpha, 0.24)) 78%,
@@ -141,15 +130,18 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 	let restActive = false;
 
 	const fill = new Tween(0, { duration: 200, easing: cubicOut });
-	let restColor: string | null = null;
-	let targetColor: string | null = null;
+	let restRGB: [number, number, number] | null = null;
+	let targetRGB: [number, number, number] | null = null;
 	const fillStop = $effect.root(() => {
 		$effect(() => {
 			const rp = fill.current;
 			host.style.setProperty('--rp', String(rp));
-			if (restColor && targetColor) {
-				const mix = `color-mix(in oklab, ${restColor}, ${targetColor} ${rp * 100}%)`;
-				host.style.setProperty('color', mix, 'important');
+			// JS lerp (not color-mix/oklab) so the text-color shift also applies in Safari/WebKit.
+			if (restRGB && targetRGB) {
+				const r = Math.round(restRGB[0] + (targetRGB[0] - restRGB[0]) * rp);
+				const g = Math.round(restRGB[1] + (targetRGB[1] - restRGB[1]) * rp);
+				const b = Math.round(restRGB[2] + (targetRGB[2] - restRGB[2]) * rp);
+				host.style.setProperty('color', `rgb(${r} ${g} ${b})`);
 			}
 		});
 	});
@@ -167,29 +159,44 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 		return fromC || '25 91 255';
 	}
 
-	function resolveTextTarget(): string | null {
+	function parseRgb(s: string): [number, number, number] | null {
+		const m = s.match(/-?\d*\.?\d+/g);
+		return m && m.length >= 3 ? [Number(m[0]), Number(m[1]), Number(m[2])] : null;
+	}
+
+	function resolveTargetRGB(cs: CSSStyleDeclaration): [number, number, number] | null {
 		if (opts.textColor === 'currentColor') return null;
-		if (opts.textColor) return cssColor(opts.textColor);
-		return 'rgb(var(--on-accent))';
+		let triplet: string;
+		if (opts.textColor) {
+			triplet = rgbTriplet(opts.textColor);
+			if (triplet.startsWith('var('))
+				triplet = cs.getPropertyValue(triplet.slice(4, -1).trim()).trim();
+		} else {
+			triplet = cs.getPropertyValue('--on-accent').trim() || '255 255 255';
+		}
+		return parseRgb(triplet);
 	}
 
 	function activateRest(): void {
 		if (restActive) return;
-		const target = resolveTextTarget();
+		const cs = getComputedStyle(host);
+		const target = resolveTargetRGB(cs);
 		if (target === null) return;
-		restColor = getComputedStyle(host).color;
-		targetColor = target;
-		host.classList.add(ACTIVE_CLASS);
+		const rest = parseRgb(cs.color);
+		if (rest === null) return;
+		// Solid hosts already wear the target text colour — skip the per-frame shift (perf).
+		if (rest[0] === target[0] && rest[1] === target[1] && rest[2] === target[2]) return;
+		restRGB = rest;
+		targetRGB = target;
 		restActive = true;
 	}
 
 	function deactivateRest(): void {
 		if (!restActive) return;
-		host.classList.remove(ACTIVE_CLASS);
 		host.style.removeProperty('color');
 		host.style.removeProperty('--rp');
-		restColor = null;
-		targetColor = null;
+		restRGB = null;
+		targetRGB = null;
 		restActive = false;
 	}
 
@@ -225,13 +232,13 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 		const inkDuration = opts.duration ?? (w > 150 ? 750 : 550);
 
 		const layer = document.createElement('span');
-		layer.className = 'vs-ripple__layer';
+		layer.className = 'ripple__layer';
 		if (opts.radius) layer.style.borderRadius = opts.radius;
 		const node = document.createElement('span');
-		node.className = 'vs-ripple__effect';
+		node.className = 'ripple__effect';
 		if (opts.color) node.style.setProperty('--sa-color', rgbTriplet(opts.color));
-		if (opts.solidBg) node.classList.add('vs-ripple__effect--on-fill');
-		if (opts.soft) node.classList.add('vs-ripple__effect--soft');
+		if (opts.solidBg) node.classList.add('ripple__effect--on-fill');
+		if (opts.soft) node.classList.add('ripple__effect--soft');
 		node.style.setProperty('--ripple-size', `${size}px`);
 		node.style.left = `${x}px`;
 		node.style.top = `${y}px`;
@@ -301,7 +308,7 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 			host.classList.remove(HOST_CLASS);
 			for (const s of liveStops) s();
 			liveStops.clear();
-			host.querySelectorAll('.vs-ripple__layer').forEach((n) => n.remove());
+			host.querySelectorAll('.ripple__layer').forEach((n) => n.remove());
 		}
 	};
 };

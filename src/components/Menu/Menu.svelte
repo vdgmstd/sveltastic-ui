@@ -1,144 +1,167 @@
 <script lang="ts" module>
-	import type { Component, Snippet } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import type {
-		PopoverPlacement,
-		PopoverTriggerOn,
-		PopoverOpenAnim,
-		PopoverRole
-	} from '../../primitives/Popover.svelte';
+		MenuPlacement,
+		MenuTriggerOn,
+		MenuOpenAnim,
+		MenuPopupRole
+	} from './menu.svelte';
 
-	export type MenuPlacement = PopoverPlacement;
-	export type MenuTriggerOn = PopoverTriggerOn;
-	export type MenuOpenAnim = PopoverOpenAnim;
-	export type MenuPopupRole = PopoverRole;
+	export type { MenuPlacement, MenuTriggerOn, MenuOpenAnim, MenuPopupRole };
 
-	export type MenuIconComponent = Component<Record<string, unknown>>;
-
-	export type MenuItemEntry = {
-		type: 'item';
-		/** Row text. */
-		label: string;
-		/** Leading icon (any phosphor-svelte component or matching API). */
-		icon?: MenuIconComponent;
-		/** Right-aligned trailing text — shortcut hint, count, etc. */
-		trailing?: string;
-		/** Destructive action — colours and hover state shift to the danger palette. */
-		danger?: boolean;
-		/** Inert row, cannot be picked. */
-		disabled?: boolean;
-		/** Renders a checkmark on the right and tints the row. */
-		selected?: boolean;
-		/** Click handler. Receives the menu's `close` callback. */
-		onclick?: (close: () => void) => void;
-	};
-
-	export type MenuLabelEntry = {
-		type: 'label';
-		/** Section heading text. */
-		text: string;
-	};
-
-	export type MenuDividerEntry = {
-		type: 'divider';
-	};
-
-	export type MenuEntry = MenuItemEntry | MenuLabelEntry | MenuDividerEntry;
-
-	export type MenuProps = {
+	export type MenuRootProps = {
+		/** Open state. Two-way bindable. */
 		open?: boolean;
+		/** Popup placement relative to the trigger. */
 		placement?: MenuPlacement;
+		/** How the menu opens. `'manual'` means the consumer drives `open` directly. */
 		triggerOn?: MenuTriggerOn;
+		/** Px gap between trigger and popup. */
 		offset?: number;
+		/** Close when pointer lands outside. Defaults to `triggerOn !== 'manual'`. */
 		closeOnClickOutside?: boolean;
+		/** Close on Esc key. */
 		closeOnEsc?: boolean;
+		/** Close when a row is chosen. */
 		closeOnSelect?: boolean;
+		/** Disable interaction. */
 		disabled?: boolean;
+		/** Stretch the trigger anchor to its parent's width. */
 		block?: boolean;
+		/** Match the trigger's width on the popup. */
 		matchWidth?: boolean;
+		/** Open / close animation preset. */
 		openAnim?: MenuOpenAnim;
+		/** Override animation duration (ms). */
 		openDuration?: number;
+		/** Override JS easing function (from `svelte/easing` or custom). */
 		openEasing?: (t: number) => number;
+		/** Popup ARIA role. */
 		popupRole?: MenuPopupRole;
+		/** Focus the first row on keyboard-initiated open. */
 		autoFocus?: boolean;
-		/** Default rendering — array of items, labels and dividers. Takes priority over `children`. */
-		items?: MenuEntry[];
-		/** Anchor / trigger content. Receives `open` for visual state sync. */
-		trigger?: Snippet<[boolean]>;
-		/** Sticky popup header. Receives a `close` callback. */
-		header?: Snippet<[() => void]>;
-		/** Advanced custom body — used when `items` is not provided. Receives `close` so rows can dismiss the menu. */
-		children?: Snippet<[() => void]>;
-		/** Sticky popup footer. Receives a `close` callback. */
-		footer?: Snippet<[() => void]>;
-		onopenchange?: (open: boolean) => void;
-		/** Class merged onto the trigger wrapper. */
+		/** Accessible name for the popup when it has no visible heading. */
+		ariaLabel?: string;
+		/** Fires whenever `open` changes (open or close). */
+		onOpenChange?: (open: boolean) => void;
+		/** Fires after the close transition finishes (popup fully removed). */
+		onOpenChangeComplete?: (open: boolean) => void;
+		/** Class merged onto the trigger anchor. */
 		class?: string;
-		/** Inline style merged onto the trigger wrapper. */
+		/** Inline style merged onto the trigger anchor. */
 		style?: string;
+		children?: Snippet;
 	};
 </script>
 
 <script lang="ts">
+	import '../../styles/menuItem.css';
 	import Popover from '../../primitives/Popover.svelte';
-	import MenuItem from '../../primitives/MenuItem.svelte';
-	import MenuLabel from '../../primitives/MenuLabel.svelte';
-	import Divider from '../Divider/Divider.svelte';
+	import { attachRef } from '../../utils/ref';
+	import { setMenuCtx } from './context';
+	import { MenuRootState } from './menu.svelte';
 
 	let {
 		open = $bindable(false),
-		items,
-		trigger,
-		header,
-		children,
-		footer,
-		...rest
-	}: MenuProps = $props();
+		placement = 'bottom-start',
+		triggerOn = 'click',
+		offset = 4,
+		closeOnClickOutside,
+		closeOnEsc = true,
+		closeOnSelect = true,
+		disabled = false,
+		block = false,
+		matchWidth = false,
+		openAnim = 'pop',
+		openDuration,
+		openEasing,
+		popupRole = 'menu',
+		autoFocus = true,
+		ariaLabel,
+		onOpenChange,
+		onOpenChangeComplete,
+		class: className,
+		style: userStyle,
+		children
+	}: MenuRootProps = $props();
+
+	const uid = $props.id();
+	const root = setMenuCtx(
+		new MenuRootState(
+			{
+				getOpen: () => open,
+				setOpenProp: (v) => { open = v; },
+				get closeOnSelect() { return closeOnSelect; },
+				get disabled() { return disabled; },
+				get onOpenChange() { return onOpenChange; },
+				get onOpenChangeComplete() { return onOpenChangeComplete; }
+			},
+			uid
+		)
+	);
+
+	let listEl = $state<HTMLDivElement | null>(null);
+
+	$effect(() => () => root.destroy());
+
+	function handleListKeydown(event: KeyboardEvent): void {
+		const handled = root.handleKeydown(event, listEl);
+		if (handled || root.ownsNavKey(event.key)) event.stopPropagation();
+	}
 </script>
 
+{@render children?.()}
+
 <Popover
-	bind:open
-	{trigger}
-	{header}
-	{footer}
-	{...rest}
+	bind:open={() => root.open, (v) => root.setOpen(v)}
+	{placement}
+	{triggerOn}
+	{offset}
+	{closeOnClickOutside}
+	{closeOnEsc}
+	{closeOnSelect}
+	{disabled}
+	{block}
+	{matchWidth}
+	{openAnim}
+	{openDuration}
+	{openEasing}
+	{popupRole}
+	{autoFocus}
+	{ariaLabel}
+	class={className}
+	style={userStyle}
+	header={root.headerSnippet ? headerBody : undefined}
+	footer={root.footerSnippet ? footerBody : undefined}
+	onopenchangecomplete={() => root.completeOpenChange(false)}
 >
+	{#snippet trigger(isOpen)}
+		{#if root.triggerSnippet}{@render root.triggerSnippet(isOpen)}{/if}
+	{/snippet}
+
 	{#snippet children(close)}
-		{#if items}
-			{#each items as entry, i (i)}
-				{#if entry.type === 'divider'}
-					<Divider />
-				{:else if entry.type === 'label'}
-					<MenuLabel>{entry.text}</MenuLabel>
-				{:else}
-					<MenuItem
-						selected={entry.selected}
-						disabled={entry.disabled}
-						danger={entry.danger}
-						onclick={() => entry.onclick?.(close)}
-					>
-						{#if entry.icon}
-							{@const Icon = entry.icon}
-							{#snippet icon()}<Icon size={14} />{/snippet}
-						{/if}
-						{#if entry.trailing}
-							{#snippet trailing()}<span class="menu-item__shortcut">{entry.trailing}</span>{/snippet}
-						{/if}
-						{entry.label}
-					</MenuItem>
-				{/if}
-			{/each}
-		{:else if children}
-			{@render children(close)}
-		{/if}
+		<div
+			{@attach attachRef((node) => (listEl = node))}
+			class="menu__list"
+			onkeydown={handleListKeydown}
+			role="none"
+		>
+			{#if root.contentSnippet}{@render root.contentSnippet(close)}{/if}
+		</div>
 	{/snippet}
 </Popover>
 
+{#snippet headerBody(close: () => void)}
+	{#if root.headerSnippet}{@render root.headerSnippet(close)}{/if}
+{/snippet}
+
+{#snippet footerBody(close: () => void)}
+	{#if root.footerSnippet}{@render root.footerSnippet(close)}{/if}
+{/snippet}
+
 <style>
-	/* Trailing shortcut hint inside items-driven rows. */
-	:global(.popover .menu-item__shortcut) {
-		font-size: 0.72rem;
-		opacity: 0.55;
-		font-variant-numeric: tabular-nums;
-		letter-spacing: 0.02em;
+	/* Structural only — dissolves so rows stay direct flex children of the popover body. */
+	.menu__list {
+		display: contents;
 	}
 </style>

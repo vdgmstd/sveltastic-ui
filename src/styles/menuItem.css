@@ -1,0 +1,62 @@
+/* Single source of truth for the .menu-item row BEM rules, consumed by the MenuItem primitive (Select / Menu); wired kit-wide via tokens.css. */
+
+.menu-item {
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	width: 100%;
+	padding: var(--space-4) var(--space-5);
+	background: transparent;
+	border: 0;
+	-webkit-user-select: none;
+	user-select: none;
+	border-radius: var(--rad-sm);
+	font: inherit;
+	font-size: var(--fs-md);
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.menu-item:hover:not(:disabled):not([aria-disabled='true']),
+.menu-item:focus-visible:not(:disabled):not([aria-disabled='true']) {
+	background: rgb(var(--c, var(--primary)) / 0.1);
+	outline: none;
+}
+.menu-item:disabled,
+.menu-item[aria-disabled='true'] {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.menu-item[data-selected] {
+	color: rgb(var(--c, var(--primary)));
+	font-weight: 500;
+}
+.menu-item[data-danger] { color: rgb(var(--danger)); }
+.menu-item[data-danger]:hover:not(:disabled):not([aria-disabled='true']),
+.menu-item[data-danger]:focus-visible:not(:disabled):not([aria-disabled='true']) {
+	background: rgb(var(--danger) / 0.1);
+}
+.menu-item__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+.menu-item__label {
+	flex: 1 1 auto;
+	min-width: 0;
+	text-align: left;
+}
+.menu-item__trailing,
+.menu-item__check {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	opacity: 0.7;
+}
+.menu-item__check {
+	color: rgb(var(--c, var(--primary)));
+	opacity: 1;
+}

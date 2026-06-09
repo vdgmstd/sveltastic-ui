@@ -1,0 +1,612 @@
+/* Single source of truth for the field-shell BEM rules.
+   Consumed by Input's compound parts and the InputShell primitive (Select / DateTimePicker).
+   Wired kit-wide via tokens.css; no part re-declares these. */
+
+.input {
+	--c: var(--primary);
+	--icon-c: var(--c);
+	--lh: 0;
+	--fp: 0;
+	--ifs: 0;
+	--vp: 0;
+	--ifp: 0;
+	--pp: 0%;
+	display: inline-flex;
+	flex-direction: column;
+	position: relative;
+	max-width: 100%;
+}
+.input--block {
+	display: flex;
+	width: 100%;
+}
+.input--label-placeholder {
+	margin-top: var(--space-8);
+}
+
+.input__progress {
+	position: relative;
+	margin-top: var(--space-3);
+	height: 2px;
+	margin-left: var(--space-6);
+	margin-right: var(--space-6);
+	background: rgb(var(--gray-2));
+	border-radius: var(--rad-xs);
+	overflow: hidden;
+}
+.input__progress-bar {
+	height: 100%;
+	max-width: 100%;
+	border-radius: inherit;
+	padding: 0 var(--space-6);
+	transition: width var(--dur) var(--ease-standard);
+	background: rgb(var(--c));
+}
+.input__progress--danger .input__progress-bar { background: rgb(var(--danger)); }
+.input__progress--warn .input__progress-bar { background: rgb(var(--warn)); }
+.input__progress--success .input__progress-bar { background: rgb(var(--success)); }
+
+.input__field {
+	position: relative;
+	display: flex;
+	align-items: center;
+	border-radius: var(--rad-md);
+	max-width: 100%;
+	isolation: isolate;
+}
+.input__focus-bloom {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	overflow: hidden;
+	border-radius: inherit;
+	pointer-events: none;
+}
+.input__focus-bloom-fx {
+	position: absolute;
+	left: var(--bx, 0);
+	top: var(--by, 0);
+	width: var(--bsize, 0);
+	height: var(--bsize, 0);
+	border-radius: var(--rad-circle);
+	background: radial-gradient(
+		circle,
+		rgb(var(--c, 25 91 255) / 0.18) 0%,
+		rgb(var(--c, 25 91 255) / 0.18) 78%,
+		color-mix(in oklab, rgb(var(--c, 25 91 255) / 0.18), white 24%) 92%,
+		rgb(var(--c, 25 91 255) / 0.18) 100%
+	);
+	will-change: transform, opacity;
+	contain: layout paint style;
+	backface-visibility: hidden;
+	transform-origin: center;
+	opacity: 0;
+}
+[data-theme='dark'] .input__focus-bloom-fx {
+	background: radial-gradient(
+		circle,
+		rgb(var(--c, 25 91 255) / 0.24) 0%,
+		rgb(var(--c, 25 91 255) / 0.24) 78%,
+		color-mix(in oklab, rgb(var(--c, 25 91 255) / 0.24), white 30%) 92%,
+		rgb(var(--c, 25 91 255) / 0.24) 100%
+	);
+}
+.input__field:has(.input__label--label),
+.input__field:has(.input__label-block) {
+	margin-top: var(--space-8);
+}
+.input--shape-square .input__field { border-radius: 0; }
+.input--variant-border .input__field { border-radius: 0; }
+.input--variant-shadow .input__field { background: transparent; }
+
+.input__field:has(.input__icon) .input__el,
+.input__field:has(.input__icon) .input__mask { min-width: calc(var(--mask-len, 0) * 1ch + 64px); }
+.input__field:has(.input__icon:not(.input__icon--after)) .input__el,
+.input__field:has(.input__icon:not(.input__icon--after)) .input__mask { padding-left: calc(38px + 2px * var(--fp)); }
+.input__field:has(.input__icon--after) .input__el,
+.input__field:has(.input__icon--after) .input__mask { padding-right: calc(38px + 2px * var(--fp)); }
+
+.input__underline {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	height: 2px;
+	background: rgb(var(--text) / 0.25);
+	pointer-events: none;
+}
+.input__underline::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	bottom: 0;
+	width: calc(100% * var(--fp));
+	height: 100%;
+	background: rgb(var(--c));
+	transform: translateX(-50%);
+}
+
+.input__loading {
+	position: absolute;
+	right: 7px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	pointer-events: none;
+}
+
+.input__shadow {
+	position: absolute;
+	inset: 0;
+	border: 2px solid rgb(var(--c) / calc(0.45 * var(--fp)));
+	border-radius: inherit;
+	box-shadow:
+		0 calc(14px + 14px * var(--fp)) calc(32px + 28px * var(--fp)) -6px rgb(0 0 0 / calc(0.22 + 0.06 * var(--fp))),
+		0 calc(5px + 13px * var(--fp)) calc(12px + 28px * var(--fp)) -2px rgb(var(--c) / calc(0.32 * var(--fp))),
+		0 0 0 calc(6px * var(--fp)) rgb(var(--c) / calc(0.1 * var(--fp)));
+	pointer-events: none;
+	z-index: 0;
+}
+
+.input__el {
+	width: 200px;
+	min-width: calc(var(--mask-len, 0) * 1ch + 32px);
+	min-height: 38px;
+	padding: var(--space-4) calc(13px + 5px * var(--fp));
+	border: 2px solid transparent;
+	border-radius: inherit;
+	background: rgb(var(--gray-2));
+	color: rgb(var(--text));
+	font-family: inherit;
+	font-size: var(--fs-md);
+	line-height: 1.2;
+	font-variant-numeric: tabular-nums;
+	outline: none;
+	box-sizing: border-box;
+	text-overflow: ellipsis;
+}
+.input--block .input__el { width: 100%; min-width: 0; }
+.input__el:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (pointer: coarse) {
+	.input__el,
+	.input__mask { font-size: max(16px, 1em); }
+}
+
+/* Autofill: keep the field's own bg (stall the UA's yellow transition) + token text/caret. Firefox can't override its tint. */
+.input__el:-webkit-autofill,
+.input__el:-webkit-autofill:hover,
+.input__el:-webkit-autofill:focus,
+.input__el:-webkit-autofill:active {
+	-webkit-text-fill-color: rgb(var(--text));
+	caret-color: rgb(var(--text));
+	transition: background-color 100000s ease 0s;
+}
+.input__el:autofill {
+	-webkit-text-fill-color: rgb(var(--text));
+	caret-color: rgb(var(--text));
+}
+
+/* Safari garbles the password mask glyph when an OpenType numeric feature applies — reset it while masked. */
+.input__el[type='password'] {
+	font-variant-numeric: normal;
+}
+
+/* slotted control (Select multi-chips / custom value via InputShell `control`) — sizes to content */
+.input__el.input__el--slot {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	width: auto;
+	min-width: 200px;
+	max-width: 100%;
+	min-height: 38px;
+	padding-top: 0;
+	padding-bottom: 0;
+}
+.input--block .input__el.input__el--slot { width: 100%; min-width: 0; }
+
+.input__mask {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	padding: var(--space-4) calc(13px + 5px * var(--fp));
+	border: 2px solid transparent;
+	box-sizing: border-box;
+	font: inherit;
+	font-size: var(--fs-md);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+	color: rgb(var(--text) / 0.4);
+	z-index: 1;
+}
+.input__mask-typed { color: transparent; }
+.input__mask-rest { color: inherit; }
+
+.input__reveal {
+	position: absolute;
+	right: 4px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	border: 0;
+	border-radius: var(--rad-sm);
+	cursor: pointer;
+	color: inherit;
+	opacity: 0.7;
+	transition: opacity var(--dur) var(--ease-standard);
+}
+.input__reveal:hover { opacity: 1; }
+
+.input--variant-border .input__el { background: transparent; border-radius: 0; }
+.input--variant-shadow .input__el {
+	background: transparent;
+	border: 2px solid transparent;
+	border-radius: 0;
+}
+.input--transparent .input__el { background: transparent !important; }
+
+.input--state-primary .input__el,
+.input--state-success .input__el,
+.input--state-danger .input__el,
+.input--state-warn .input__el,
+.input--state-dark .input__el {
+	background: rgb(var(--c) / calc(0.1 + 0.04 * var(--fp)));
+	color: rgb(var(--c));
+}
+
+.input__icon {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	margin: auto 0;
+	-webkit-user-select: none;
+	user-select: none;
+	width: 36px;
+	height: 38px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgb(var(--gray-2));
+	border: 0;
+	border-radius: inherit;
+	color: color-mix(in oklab, rgb(var(--text) / 0.4), rgb(var(--icon-c)) calc(var(--fp) * 100%));
+	pointer-events: none;
+	overflow: hidden;
+	z-index: 2;
+}
+.input__icon--after {
+	left: auto;
+	right: 0;
+}
+.input__icon--clickable { pointer-events: auto; cursor: pointer; }
+.input__icon--clickable:hover {
+	transform: translate(-6px, -6px);
+	color: rgb(var(--icon-c));
+	box-shadow:
+		12px 14px 24px -4px rgb(0 0 0 / 0.22),
+		6px 6px 12px -2px rgb(0 0 0 / 0.1);
+}
+.input__icon--clickable.input__icon--after:hover {
+	transform: translate(6px, -6px);
+	box-shadow:
+		-12px 14px 24px -4px rgb(0 0 0 / 0.22),
+		-6px 6px 12px -2px rgb(0 0 0 / 0.1);
+}
+.input__icon:not(.input__icon--after) {
+	transform: translate(calc(-6px * var(--fp)), calc(-6px * var(--fp))) scale(calc(1 + 0.18 * var(--ifs)));
+	transform-origin: center;
+	box-shadow:
+		calc(8px + 4px * var(--fp)) calc(4px + 10px * var(--fp)) calc(16px + 8px * var(--fp)) -4px rgb(0 0 0 / calc(0.16 + 0.06 * var(--fp))),
+		calc(3px + 3px * var(--fp)) calc(2px + 4px * var(--fp)) calc(6px + 6px * var(--fp)) -2px rgb(0 0 0 / calc(0.08 + 0.02 * var(--fp)));
+}
+.input__icon--after {
+	transform: translate(calc(6px * var(--fp)), calc(-6px * var(--fp))) scale(calc(1 + 0.18 * var(--ifs)));
+	transform-origin: center;
+	box-shadow:
+		calc(-8px - 4px * var(--fp)) calc(4px + 10px * var(--fp)) calc(16px + 8px * var(--fp)) -4px rgb(0 0 0 / calc(0.16 + 0.06 * var(--fp))),
+		calc(-3px - 3px * var(--fp)) calc(2px + 4px * var(--fp)) calc(6px + 6px * var(--fp)) -2px rgb(0 0 0 / calc(0.08 + 0.02 * var(--fp)));
+}
+.input__icon-glyph {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.input__icon-glyph--reveal {
+	position: absolute;
+	inset: 0;
+	color: rgb(var(--icon-c));
+	clip-path: circle(calc(var(--icon-fill-size) / 2 * var(--ifp)) at var(--icon-fill-x) var(--icon-fill-y));
+	pointer-events: none;
+	z-index: 2;
+}
+
+.input__icon-ripple {
+	position: absolute;
+	left: var(--icon-fill-x);
+	top: var(--icon-fill-y);
+	width: var(--icon-fill-size);
+	height: var(--icon-fill-size);
+	border-radius: var(--rad-circle);
+	background: rgb(var(--icon-c));
+	pointer-events: none;
+	opacity: var(--ifp);
+	transform: translate(-50%, -50%) scale(calc(0.05 + 0.95 * var(--ifp)));
+	z-index: 0;
+	will-change: transform, opacity;
+}
+.input--icon-fill-bg.input--focused .input__icon,
+.input--icon-fill-bg .input__icon--clickable:hover { color: rgb(255 255 255); }
+
+.input--variant-border .input__icon,
+.input--variant-border .input__icon--after,
+.input--variant-border .input__icon--clickable:hover {
+	background: transparent;
+	box-shadow: none;
+}
+.input--variant-border .input__icon,
+.input--variant-border .input__icon--after {
+	color: color-mix(in oklab, rgb(var(--text) / 0.25), rgb(var(--c)) calc(var(--fp) * 100%));
+	transform: scale(calc(1 + 0.18 * var(--fp) + 0.15 * var(--ifs)));
+	transform-origin: center center;
+}
+
+.input--variant-shadow .input__icon,
+.input--variant-shadow .input__icon--after {
+	background: transparent;
+	box-shadow: none;
+	z-index: 2;
+	transform-origin: center center;
+	transform: scale(calc(1 + 0.25 * var(--fp) + 0.15 * var(--ifs)));
+	color: color-mix(in oklab, rgb(var(--text) / 0.4), rgb(var(--c) / 0.45) calc(var(--fp) * 100%));
+}
+
+.input--state .input__icon,
+.input--state .input__icon--after {
+	background: transparent;
+	color: rgb(var(--c));
+	box-shadow: none;
+	transform-origin: center center;
+	transform: scale(calc(1 + 0.18 * var(--fp) + 0.15 * var(--ifs)));
+}
+
+.input__label {
+	position: absolute;
+	left: calc(13px + 7px * max(var(--fp), var(--vp)));
+	top: 0;
+	font-size: var(--fs-md);
+	cursor: text;
+	-webkit-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	opacity: calc(0.4 * (1 - max(var(--fp), var(--vp))));
+	color: rgb(var(--text));
+	transform-origin: left center;
+}
+
+.input__label--placeholder {
+	left: calc(13px + (0.8rem - 13px) * var(--lh));
+	transform: translateY(calc(-80% * var(--lh)));
+	font-size: calc(var(--fs-md) - 0.10rem * var(--lh));
+	opacity: calc(0.4 + 0.6 * var(--lh));
+	color: color-mix(in oklab, rgb(var(--text)), rgb(var(--c)) calc(var(--lh) * 100%));
+}
+
+.input__label--label {
+	left: 0.8rem;
+	top: auto;
+	bottom: 100%;
+	height: auto;
+	margin-bottom: var(--space-2);
+	opacity: 1;
+	font-size: var(--fs-sm);
+	color: color-mix(in oklab, rgb(var(--text) / 0.7), rgb(var(--c)) calc(var(--fp) * 100%));
+}
+
+.input__field:has(.input__icon:not(.input__icon--after)) .input__label { left: calc(44px + 0px * var(--fp)); }
+.input__field:has(.input__icon:not(.input__icon--after)) .input__label--placeholder { left: calc(44px + 0px * var(--fp)); }
+.input__field:has(.input__icon:not(.input__icon--after)) .input__label--label { left: 0.8rem; }
+
+.input--state-primary .input__label,
+.input--state-success .input__label,
+.input--state-danger .input__label,
+.input--state-warn .input__label,
+.input--state-dark .input__label { color: rgb(var(--c)); }
+
+/* inline label — static block above the field, height-matched to the active floating label */
+.input__label-block {
+	position: absolute;
+	left: 0.8rem;
+	top: 0;
+	height: 100%;
+	display: flex;
+	-webkit-user-select: none;
+	user-select: none;
+	align-items: center;
+	transform: translateY(-80%);
+	font-size: var(--fs-sm);
+	pointer-events: none;
+	color: color-mix(in oklab, rgb(var(--text) / 0.7), rgb(var(--c)) calc(var(--fp) * 100%));
+}
+.input--state-primary .input__label-block,
+.input--state-success .input__label-block,
+.input--state-danger .input__label-block,
+.input--state-warn .input__label-block,
+.input--state-dark .input__label-block { color: rgb(var(--c)); }
+
+.input__message {
+	font-size: var(--fs-sm);
+	padding: var(--space-1) var(--space-4) 0;
+	color: rgb(var(--c));
+}
+
+/* Textarea field-shell — multiline variant of the field rules above. */
+:where(.textarea) {
+	--c: var(--primary);
+	--lh: 0;
+	--fp: 0;
+	--vp: 0;
+	display: inline-flex;
+	flex-direction: column;
+	gap: 0;
+	position: relative;
+}
+:where(.textarea--block) { display: flex; width: 100%; }
+.textarea:has(.textarea__label-block),
+.textarea:has(.textarea__label--label),
+.textarea:has(.textarea__label--placeholder) { padding-top: var(--space-8); }
+
+.textarea__label-block {
+	position: absolute;
+	left: 0.8rem;
+	top: 0;
+	font-size: var(--fs-sm);
+	line-height: 1.4;
+	-webkit-user-select: none;
+	user-select: none;
+	color: color-mix(in oklab, rgb(var(--text) / 0.7), rgb(var(--c)) calc(var(--fp) * 100%));
+}
+.textarea--state .textarea__label-block { color: rgb(var(--c)); }
+
+.textarea__field-wrap {
+	position: relative;
+	display: flex;
+	border-radius: var(--rad-md);
+	background: rgb(var(--gray-2));
+}
+.textarea--block .textarea__field-wrap { width: 100%; }
+
+.textarea__field {
+	position: relative;
+	z-index: 1;
+	width: 200px;
+	min-height: 80px;
+	padding: var(--space-4) calc(13px + 5px * var(--fp));
+	background: transparent;
+	border: 2px solid transparent;
+	border-radius: inherit;
+	color: rgb(var(--text));
+	font: inherit;
+	font-size: var(--fs-md);
+	line-height: 1.4;
+	resize: vertical;
+	outline: none;
+	box-sizing: border-box;
+}
+.textarea--autogrow .textarea__field { resize: none; overflow: hidden; }
+.textarea--block .textarea__field { width: 100%; }
+@media (pointer: coarse) {
+	.textarea__field { font-size: max(16px, 1em); }
+}
+
+.textarea__label {
+	position: absolute;
+	left: calc(13px + 7px * max(var(--fp), var(--vp)));
+	top: 8px;
+	font-size: var(--fs-md);
+	line-height: 1.4;
+	cursor: text;
+	-webkit-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	opacity: calc(0.4 * (1 - max(var(--fp), var(--vp))));
+	color: rgb(var(--text));
+	transform-origin: left top;
+	z-index: 2;
+}
+.textarea__label--placeholder {
+	left: calc(13px + (0.8rem - 13px) * var(--lh));
+	top: 30px;
+	transform: translateY(calc(-30px * var(--lh)));
+	font-size: calc(var(--fs-md) - 0.10rem * var(--lh));
+	opacity: calc(0.4 + 0.6 * var(--lh));
+	color: color-mix(in oklab, rgb(var(--text)), rgb(var(--c)) calc(var(--lh) * 100%));
+}
+.textarea__label--label {
+	left: 0.8rem;
+	top: 0;
+	font-size: var(--fs-sm);
+	opacity: 1;
+	color: color-mix(in oklab, rgb(var(--text) / 0.7), rgb(var(--c)) calc(var(--fp) * 100%));
+}
+
+.textarea--state .textarea__label,
+.textarea--state .textarea__label--label { color: rgb(var(--c)); }
+
+.textarea--variant-border .textarea__field-wrap { border-radius: 0; background: transparent; }
+.textarea--variant-border .textarea__field {
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+}
+.textarea__underline {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	height: 2px;
+	background: rgb(var(--text) / 0.25);
+	pointer-events: none;
+	z-index: 2;
+}
+.textarea__underline::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	bottom: 0;
+	width: calc(100% * var(--fp));
+	height: 100%;
+	background: rgb(var(--c));
+	transform: translateX(-50%);
+}
+
+.textarea--variant-shadow .textarea__field-wrap { background: transparent; }
+.textarea--variant-shadow .textarea__field {
+	background: transparent;
+	border: 2px solid transparent;
+	border-radius: var(--rad-md);
+}
+.textarea__shadow {
+	position: absolute;
+	inset: 0;
+	border: 2px solid rgb(var(--c) / calc(0.45 * var(--fp)));
+	border-radius: inherit;
+	box-shadow:
+		0 calc(14px + 14px * var(--fp)) calc(32px + 28px * var(--fp)) -6px rgb(0 0 0 / calc(0.22 + 0.06 * var(--fp))),
+		0 calc(5px + 13px * var(--fp)) calc(12px + 28px * var(--fp)) -2px rgb(var(--c) / calc(0.32 * var(--fp))),
+		0 0 0 calc(6px * var(--fp)) rgb(var(--c) / calc(0.1 * var(--fp)));
+	pointer-events: none;
+	z-index: 0;
+}
+
+.textarea--transparent .textarea__field { background: transparent !important; }
+
+.textarea--state .textarea__field {
+	background: rgb(var(--c) / calc(0.1 + 0.06 * var(--fp)));
+	color: rgb(var(--c));
+}
+
+.textarea__field:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.textarea__message {
+	font-size: var(--fs-sm);
+	padding: var(--space-1) var(--space-4) 0;
+	color: rgb(var(--c));
+}

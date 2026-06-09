@@ -109,6 +109,51 @@ export function plainDateTimeToISO(
 	return `${date}T${time}`;
 }
 
+/** Hour / minute / second triple — the parsed time used by the time picker. */
+export type TimeParts = { h: number; m: number; s: number };
+
+/** Zero-pad a number to two digits. */
+export function pad(n: number): string {
+	return String(n).padStart(2, '0');
+}
+
+const TIME_PARTS = /^(\d{1,2})(?:[:.\s](\d{1,2}))?(?:[:.\s](\d{1,2}))?\s*(am|pm)?$/i;
+
+/** Parse loose time text (`HH:MM[:SS]`, dotted, with optional `am`/`pm`) to a 24-hour triple, or `null`. */
+export function parseTimeParts(text: string): TimeParts | null {
+	const trimmed = (text ?? '').trim();
+	if (!trimmed) return null;
+	const m = trimmed.match(TIME_PARTS);
+	if (!m) return null;
+	let h = parseInt(m[1] ?? '0', 10);
+	const min = parseInt(m[2] ?? '0', 10);
+	const sec = parseInt(m[3] ?? '0', 10);
+	const period = m[4]?.toLowerCase();
+	if (period === 'pm' && h < 12) h += 12;
+	if (period === 'am' && h === 12) h = 0;
+	if (h > 23 || min > 59 || sec > 59) return null;
+	return { h, m: min, s: sec };
+}
+
+/** ISO time string (`HH:MM` or `HH:MM:SS`) from a 24-hour triple. */
+export function timePartsToISO(p: TimeParts, withSeconds = false): string {
+	return withSeconds ? `${pad(p.h)}:${pad(p.m)}:${pad(p.s)}` : `${pad(p.h)}:${pad(p.m)}`;
+}
+
+/** Display string for a time triple, honoring 12-hour mode and optional seconds. */
+export function formatTimeParts(
+	p: TimeParts,
+	{ withSeconds = false, hour12 = false }: { withSeconds?: boolean; hour12?: boolean } = {}
+): string {
+	const sec = withSeconds ? `:${pad(p.s)}` : '';
+	if (hour12) {
+		const dh = p.h === 0 ? 12 : p.h > 12 ? p.h - 12 : p.h;
+		const period = p.h >= 12 ? 'PM' : 'AM';
+		return `${pad(dh)}:${pad(p.m)}${sec} ${period}`;
+	}
+	return `${pad(p.h)}:${pad(p.m)}${sec}`;
+}
+
 /** Today as `PlainDate` in the host's timezone (fallback to UTC under SSR). */
 export function today(timeZone?: string): Temporal.PlainDate {
 	try {

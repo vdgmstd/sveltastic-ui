@@ -1,54 +1,88 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { Color, Size } from '../../types';
-	import type { DateRange } from '../../types';
+	import type { DateRange, WithElementRef } from '../../types';
 	import type { DateLike, WeekStart } from '../../utils/date';
-	import type { CalendarMode, DayState } from '../../primitives/CalendarGrid.svelte';
 	import type { Temporal } from '@js-temporal/polyfill';
+	import type {
+		CalendarType,
+		CalendarDayState,
+		CalendarWeekdayFormat
+	} from './calendarState.svelte';
 
 	/** Calendar's chrome accent — limited to two semantic tones. Per-day colors go through `dayColor`. */
 	export type CalendarColor = 'primary' | 'warning';
 
-	export type CalendarProps = {
-		/** Selected day (`YYYY-MM-DD`) in `single` mode. */
-		value?: string;
-		/** Selected range in `range` mode. */
-		range?: DateRange;
-		/** Selection mode. */
-		mode?: CalendarMode;
-		/** Locale for weekday / month labels. Defaults to `'en-US'`. */
-		locale?: string;
-		/** First day of the week. Defaults to the locale's convention. */
-		weekStart?: WeekStart;
-		/** Lower bound (inclusive). */
-		min?: DateLike;
-		/** Upper bound (inclusive). */
-		max?: DateLike;
-		/** Predicate to disable individual days. */
-		disabledDate?: (date: Temporal.PlainDate) => boolean;
-		/** Disable the entire calendar. */
-		disabled?: boolean;
-		/** Visual size — matches the kit's `Size` scale. */
-		size?: Size;
-		/** Drop the calendar's own background, padding, and border-radius — useful when embedded in a surface that already provides chrome (Dialog, Menu, Card). */
-		bare?: boolean;
-		/** Visual variant. `'transparent'` drops the background only (padding and radius are kept) so the calendar inherits the surface it is placed on. */
-		variant?: 'default' | 'transparent';
-		/** Calendar chrome accent. Use `dayColor` for per-day overrides. */
-		color?: CalendarColor;
-		/** Per-day color override. Returning `undefined` keeps the calendar's `color`. */
-		dayColor?: (date: Temporal.PlainDate) => Color | undefined;
-		/** Show "Today" / "Clear" footer. */
-		showFooter?: boolean;
-		/** Custom day renderer. */
-		day?: Snippet<[Temporal.PlainDate, DayState]>;
-		/** Fires when a day is picked. Payload is the ISO string for `single`, `DateRange` for `range`. */
-		onchange?: (value: string | DateRange) => void;
-		/** Class merged onto the root. */
-		class?: string;
-		/** Inline style merged onto the root. */
-		style?: string;
-	};
+	type CalendarRootBaseProps = WithElementRef<
+		{
+			/** Controlled view month (`YYYY-MM-DD`); two-way bindable. Drives which month/year the grid shows. */
+			placeholder?: DateLike;
+			/** Locale for weekday / month labels. Defaults to `'en-US'`. */
+			locale?: string;
+			/** First day of the week. Defaults to the locale's convention. */
+			weekStart?: WeekStart;
+			/** Weekday header label width. */
+			weekdayFormat?: CalendarWeekdayFormat;
+			/** Lower bound (inclusive). */
+			min?: DateLike;
+			/** Upper bound (inclusive). */
+			max?: DateLike;
+			/** Predicate to disable individual days. */
+			disabledDate?: (date: Temporal.PlainDate) => boolean;
+			/** Disable the entire calendar. */
+			disabled?: boolean;
+			/** Block selection while keeping the calendar interactive for navigation. */
+			readonly?: boolean;
+			/** Visual size — matches the kit's `Size` scale. */
+			size?: Size;
+			/** Drop the calendar's own background, padding, and border-radius — useful when embedded in a surface that already provides chrome (Dialog, Menu, Card). */
+			bare?: boolean;
+			/** Visual variant. `'transparent'` drops the background only (padding and radius are kept) so the calendar inherits the surface it is placed on. */
+			variant?: 'default' | 'transparent';
+			/** Calendar chrome accent. Use `dayColor` for per-day overrides. */
+			color?: CalendarColor;
+			/** Per-day color override. Returning `undefined` keeps the calendar's `color`. */
+			dayColor?: (date: Temporal.PlainDate) => Color | undefined;
+			/** Show "Today" / "Clear" footer. */
+			showFooter?: boolean;
+			/** Footer "Today" button label. */
+			todayLabel?: string;
+			/** Footer "Clear" button label. */
+			clearLabel?: string;
+			/** Accessible label for the calendar group. */
+			ariaLabel?: string;
+			/** Custom day renderer. */
+			day?: Snippet<[Temporal.PlainDate, CalendarDayState]>;
+			/** Fires when the view month changes. */
+			onPlaceholderChange?: (value: string) => void;
+			/** Compound parts (`Calendar.Header`/`Calendar.Grid`/…). When omitted, the default month view renders. */
+			children?: Snippet;
+			/** Class merged onto the root. */
+			class?: string;
+			/** Inline style merged onto the root. */
+			style?: string;
+		},
+		HTMLDivElement
+	>;
+
+	/** Compound Calendar root, discriminated on `type` (single day vs date range). */
+	export type CalendarRootProps =
+		| (CalendarRootBaseProps & {
+				type?: 'single';
+				/** Bound day (`YYYY-MM-DD`). */
+				value?: string;
+				onValueChange?: (value: string) => void;
+				/** Fires after the selection pill / slide settles. */
+				onValueChangeComplete?: (value: string) => void;
+		  })
+		| (CalendarRootBaseProps & {
+				type: 'range';
+				/** Bound range. */
+				value?: DateRange;
+				onValueChange?: (value: DateRange) => void;
+				/** Fires after the selection pill / slide settles. */
+				onValueChangeComplete?: (value: DateRange) => void;
+		  });
 
 	type CalendarSizeKey = 'xl' | 'large' | 'medium' | 'small' | 'mini';
 
@@ -60,6 +94,8 @@
 		caretPx: number;
 	};
 
+	type CalendarVars = Record<string, string>;
+
 	const SIZE_METRICS: Record<CalendarSizeKey, CalendarMetrics> = {
 		xl:     { cellH: 40, pill: 36, gap: 3, iconPx: 18, caretPx: 13 },
 		large:  { cellH: 36, pill: 32, gap: 2, iconPx: 16, caretPx: 12 },
@@ -68,224 +104,150 @@
 		mini:   { cellH: 24, pill: 20, gap: 2, iconPx: 10, caretPx: 9 }
 	};
 
-	function resolveMetrics(s: Size | undefined): CalendarMetrics & { key: CalendarSizeKey } {
-		const key = (s && Object.prototype.hasOwnProperty.call(SIZE_METRICS, s)
+	const SIZE_VARS: Record<CalendarSizeKey, CalendarVars> = {
+		xl: {
+			'--cal-w': '360px', '--cal-pad': 'var(--space-7)', '--cal-radius': 'var(--rad-2xl)', '--cal-root-gap': 'var(--space-3)',
+			'--cal-header-pad-b': 'var(--space-6)', '--cal-static-font': 'var(--fs-lg)', '--cal-weekday-font': 'var(--fs-sm)',
+			'--cal-option-gap': 'var(--space-4)', '--cal-action-font': 'var(--fs-lg)', '--cal-action-pad-y': 'var(--space-4)',
+			'--cal-action-pad-x': 'var(--space-7)', '--cal-action-radius': 'var(--rad-md)', '--cal-footer-margin': 'var(--space-6)',
+			'--cal-focus-ring': '2px', '--pb-cell-h': '40px', '--pb-cell-r': '10px', '--pb-cell-font': 'var(--fs-lg)',
+			'--pb-option-h': '44px', '--pb-option-font': 'var(--fs-lg)', '--pb-option-pad-x': 'var(--space-4)',
+			'--pb-icon-h': '32px', '--pb-icon-r': '10px', '--pb-chip-h': '32px', '--pb-chip-pad-x': 'var(--space-5)',
+			'--pb-chip-font': 'var(--fs-lg)'
+		},
+		large: {
+			'--cal-w': '320px', '--cal-pad': '14px', '--cal-radius': '22px', '--cal-root-gap': '5px',
+			'--cal-header-pad-b': 'var(--space-5)', '--cal-static-font': '0.92rem', '--cal-weekday-font': '0.72rem',
+			'--cal-option-gap': '7px', '--cal-action-font': 'var(--fs-md)', '--cal-action-pad-y': '7px',
+			'--cal-action-pad-x': 'var(--space-6)', '--cal-action-radius': '10px', '--cal-footer-margin': 'var(--space-5)',
+			'--cal-focus-ring': '2px', '--pb-cell-h': '36px', '--pb-cell-r': '9px', '--pb-cell-font': 'var(--fs-md)',
+			'--pb-option-h': '40px', '--pb-option-font': 'var(--fs-md)', '--pb-option-pad-x': '7px',
+			'--pb-icon-h': '30px', '--pb-icon-r': '9px', '--pb-chip-h': '30px', '--pb-chip-pad-x': '9px',
+			'--pb-chip-font': 'var(--fs-md)'
+		},
+		medium: {
+			'--cal-w': '280px', '--cal-pad': 'var(--space-6)', '--cal-radius': 'var(--rad-xl)', '--cal-root-gap': 'var(--space-2)',
+			'--cal-header-pad-b': 'var(--space-4)', '--cal-static-font': 'var(--fs-md)', '--cal-weekday-font': 'var(--fs-xs)',
+			'--cal-option-gap': 'var(--space-3)', '--cal-action-font': 'var(--fs-sm)', '--cal-action-pad-y': 'var(--space-3)',
+			'--cal-action-pad-x': 'var(--space-5)', '--cal-action-radius': 'var(--rad-sm)', '--cal-footer-margin': 'var(--space-4)',
+			'--cal-focus-ring': '2px', '--pb-cell-h': '32px', '--pb-cell-r': 'var(--rad-sm)', '--pb-cell-font': '0.82rem',
+			'--pb-option-h': '36px', '--pb-option-font': 'var(--fs-sm)', '--pb-option-pad-x': 'var(--space-3)',
+			'--pb-icon-h': '28px', '--pb-icon-r': 'var(--rad-sm)', '--pb-chip-h': '28px', '--pb-chip-pad-x': 'var(--space-4)',
+			'--pb-chip-font': 'var(--fs-sm)'
+		},
+		small: {
+			'--cal-w': '244px', '--cal-pad': 'var(--space-5)', '--cal-radius': 'var(--rad-lg)', '--cal-root-gap': '3px',
+			'--cal-header-pad-b': 'var(--space-3)', '--cal-static-font': 'var(--fs-sm)', '--cal-weekday-font': '0.6rem',
+			'--cal-option-gap': '5px', '--cal-action-font': 'var(--fs-xs)', '--cal-action-pad-y': '5px',
+			'--cal-action-pad-x': 'var(--space-4)', '--cal-action-radius': '7px', '--cal-footer-margin': 'var(--space-3)',
+			'--cal-focus-ring': '2px', '--pb-cell-h': '28px', '--pb-cell-r': '7px', '--pb-cell-font': 'var(--fs-sm)',
+			'--pb-option-h': '32px', '--pb-option-font': '0.74rem', '--pb-option-pad-x': '5px',
+			'--pb-icon-h': '24px', '--pb-icon-r': '7px', '--pb-chip-h': '24px', '--pb-chip-pad-x': '7px',
+			'--pb-chip-font': '0.72rem'
+		},
+		mini: {
+			'--cal-w': '212px', '--cal-pad': 'var(--space-4)', '--cal-radius': 'var(--rad-md)', '--cal-root-gap': 'var(--space-1)',
+			'--cal-header-pad-b': '5px', '--cal-static-font': 'var(--fs-xs)', '--cal-weekday-font': '0.55rem',
+			'--cal-option-gap': 'var(--space-2)', '--cal-action-font': '0.62rem', '--cal-action-pad-y': 'var(--space-2)',
+			'--cal-action-pad-x': 'var(--space-3)', '--cal-action-radius': 'var(--rad-xs)', '--cal-footer-margin': 'var(--space-2)',
+			'--cal-focus-ring': '2px', '--pb-cell-h': '24px', '--pb-cell-r': 'var(--rad-xs)', '--pb-cell-font': 'var(--fs-xs)',
+			'--pb-option-h': '28px', '--pb-option-font': 'var(--fs-xs)', '--pb-option-pad-x': 'var(--space-2)',
+			'--pb-icon-h': '22px', '--pb-icon-r': 'var(--rad-xs)', '--pb-chip-h': '22px', '--pb-chip-pad-x': 'var(--space-3)',
+			'--pb-chip-font': 'var(--fs-xs)'
+		}
+	};
+
+	function resolveSizeKey(s: Size | undefined): CalendarSizeKey {
+		return s && Object.prototype.hasOwnProperty.call(SIZE_METRICS, s)
 			? (s as CalendarSizeKey)
-			: 'medium');
-		return { ...SIZE_METRICS[key], key };
+			: 'medium';
 	}
 </script>
 
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import { Tween } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		toPlainDate,
-		plainDateToISO,
-		resolveLocale,
-		localeWeekStart,
-		orderRange,
-		today as todayFn
-	} from '../../utils/date';
-	import { rgbTriplet } from '../../utils/color';
 	import { cn } from '../../utils/cn';
-	import CalendarGrid from '../../primitives/CalendarGrid.svelte';
-	import CalendarHeader from '../../primitives/CalendarHeader.svelte';
-	import OptionGrid from '../../primitives/OptionGrid.svelte';
-	import type { OptionItem } from '../../primitives/OptionGrid.svelte';
+	import { boolAttr } from '../../utils/attrs';
+	import { attachRef } from '../../utils/ref';
+	import { setCalendarCtx } from './context';
+	import { CalendarRootState } from './calendarState.svelte';
+	import Header from './CalendarHeader.svelte';
+	import Grid from './CalendarGrid.svelte';
+	import OptionGrid from './CalendarOptionGrid.svelte';
 
 	let {
+		type = 'single',
 		value = $bindable(),
-		range = $bindable(),
-		mode = 'single',
+		placeholder = $bindable(),
 		locale,
 		weekStart,
+		weekdayFormat = 'short',
 		min,
 		max,
 		disabledDate,
 		disabled = false,
+		readonly = false,
 		size = 'medium',
 		bare = false,
 		variant = 'default',
 		color = 'primary',
 		dayColor,
 		showFooter = false,
+		todayLabel = 'Today',
+		clearLabel = 'Clear',
+		ariaLabel = 'Calendar',
 		day,
-		onchange,
+		onValueChange,
+		onValueChangeComplete,
+		onPlaceholderChange,
+		ref = $bindable(null),
 		class: className,
-		style: userStyle
-	}: CalendarProps = $props();
+		style: userStyle,
+		children,
+		...rest
+	}: CalendarRootProps = $props();
 
-	let metrics = $derived(resolveMetrics(size));
+	let sizeKey = $derived(resolveSizeKey(size));
+	let metrics = $derived(SIZE_METRICS[sizeKey]);
+	let sizeVars = $derived(SIZE_VARS[sizeKey]);
+	let sizeStyle = $derived(Object.entries(sizeVars).map(([k, v]) => `${k}:${v}`).join(';'));
 
-	let resolvedLocale = $derived(resolveLocale(locale));
-	let resolvedWeekStart = $derived<WeekStart>(weekStart ?? localeWeekStart(resolvedLocale));
-	let triplet = $derived(rgbTriplet(color));
-
-	let minDate = $derived(toPlainDate(min));
-	let maxDate = $derived(toPlainDate(max));
-
-	let selectedDate = $derived(toPlainDate(value));
-	let rangeFrom = $derived(toPlainDate(range?.from));
-	let rangeTo = $derived(toPlainDate(range?.to));
-
-	let viewMonth = $state<Temporal.PlainDate>(
-		toPlainDate(value) ?? toPlainDate(range?.from) ?? todayFn()
-	);
-	let preview = $state<Temporal.PlainDate | null>(null);
-	let focusedDate = $state<Temporal.PlainDate | null>(null);
-	let view = $state<'days' | 'months' | 'years'>('days');
-	let monthDirection = $state<1 | -1>(1);
-	const YEARS_PER_PAGE = 12;
-	let yearPageStart = $state<number>(untrack(() => viewMonth.year - ((viewMonth.year - 1) % YEARS_PER_PAGE)));
-
-	$effect(() => {
-		if (mode === 'single' && selectedDate) viewMonth = selectedDate;
-	});
-
-	function shiftMonth(delta: number): void {
-		monthDirection = delta > 0 ? 1 : -1;
-		viewMonth = viewMonth.add({ months: delta });
-	}
-
-	function shiftYear(delta: number): void {
-		monthDirection = delta > 0 ? 1 : -1;
-		viewMonth = viewMonth.add({ years: delta });
-	}
-
-	function shiftYearPage(delta: number): void {
-		monthDirection = delta > 0 ? 1 : -1;
-		yearPageStart += delta * YEARS_PER_PAGE;
-	}
-
-	function goToday(): void {
-		viewMonth = todayFn();
-		view = 'days';
-	}
-
-	function openMonths(): void {
-		view = 'months';
-	}
-
-	function openYears(): void {
-		yearPageStart = viewMonth.year - ((viewMonth.year - 1) % YEARS_PER_PAGE);
-		view = 'years';
-	}
-
-	function pickMonth(month: number): void {
-		viewMonth = viewMonth.with({ month });
-		view = 'days';
-	}
-
-	function pickYear(year: number): void {
-		viewMonth = viewMonth.with({ year });
-		view = 'months';
-	}
-
-	let monthItems = $derived.by<OptionItem[]>(() => {
-		const fmt = new Intl.DateTimeFormat(resolvedLocale, { month: 'short' });
-		const todayP = todayFn();
-		const items: OptionItem[] = [];
-		for (let m = 1; m <= 12; m += 1) {
-			const stub = new Date(viewMonth.year, m - 1, 1);
-			items.push({
-				key: m,
-				label: fmt.format(stub),
-				selected: m === viewMonth.month,
-				current: m === todayP.month && viewMonth.year === todayP.year
-			});
-		}
-		return items;
-	});
-
-	let yearItems = $derived.by<OptionItem[]>(() => {
-		const todayP = todayFn();
-		const items: OptionItem[] = [];
-		for (let i = 0; i < YEARS_PER_PAGE; i += 1) {
-			const y = yearPageStart + i;
-			items.push({
-				key: y,
-				label: String(y),
-				selected: y === viewMonth.year,
-				current: y === todayP.year
-			});
-		}
-		return items;
-	});
-
-	let monthLabel = $derived(
-		new Intl.DateTimeFormat(resolvedLocale, { month: 'long' }).format(
-			new Date(viewMonth.year, viewMonth.month - 1, 1)
+	const root = setCalendarCtx(
+		new CalendarRootState(
+			{
+				getType: () => type,
+				getValue: () => value,
+				setValueProp: (v) => { value = v as typeof value; },
+				getPlaceholder: () => placeholder,
+				setPlaceholderProp: (v) => { placeholder = v; },
+				onValueChange: () =>
+					onValueChange as ((value: string | DateRange) => void) | undefined,
+				onValueChangeComplete: () =>
+					onValueChangeComplete as ((value: string | DateRange) => void) | undefined,
+				onPlaceholderChange: () => onPlaceholderChange,
+				locale: () => locale,
+				weekStart: () => weekStart,
+				weekdayFormat: () => weekdayFormat,
+				min: () => min,
+				max: () => max,
+				disabledDate: () => disabledDate,
+				disabled: () => disabled,
+				readonly: () => readonly,
+				color: () => color,
+				dayColor: () => dayColor
+			}
 		)
 	);
 
-	let leftTitle = $derived.by<string | undefined>(() => {
-		if (view === 'days') return monthLabel;
-		if (view === 'months') return undefined;
-		return undefined;
+	$effect(() => {
+		root.pillSize = metrics.pill;
+		root.iconPx = metrics.iconPx;
+		root.caretPx = metrics.caretPx;
 	});
 
-	let rightTitle = $derived.by<string | undefined>(() => {
-		if (view === 'days') return String(viewMonth.year);
-		if (view === 'months') return String(viewMonth.year);
-		return `${yearPageStart} – ${yearPageStart + YEARS_PER_PAGE - 1}`;
-	});
-
-	function handlePrev(): void {
-		if (view === 'days') shiftMonth(-1);
-		else if (view === 'months') shiftYear(-1);
-		else shiftYearPage(-1);
-	}
-
-	function handleNext(): void {
-		if (view === 'days') shiftMonth(1);
-		else if (view === 'months') shiftYear(1);
-		else shiftYearPage(1);
-	}
-
-	function handleLeft(): void {
-		if (view === 'days') openMonths();
-	}
-
-	function handleRight(): void {
-		if (view === 'days' || view === 'months') openYears();
-	}
-
-	function clearValue(): void {
-		if (mode === 'single') {
-			value = '';
-			onchange?.('');
-		} else {
-			range = {};
-			onchange?.({});
-		}
-	}
-
-	function pick(d: Temporal.PlainDate): void {
-		if (mode === 'single') {
-			value = plainDateToISO(d);
-			onchange?.(value);
-			return;
-		}
-		if (!rangeFrom || (rangeFrom && rangeTo)) {
-			range = { from: plainDateToISO(d) };
-			preview = null;
-			onchange?.(range);
-			return;
-		}
-		const ordered = orderRange(rangeFrom, d);
-		range = { from: plainDateToISO(ordered.from), to: plainDateToISO(ordered.to) };
-		preview = null;
-		onchange?.(range);
-	}
-
-	function handleFocusChange(d: Temporal.PlainDate): void {
-		focusedDate = d;
-		if (d.year !== viewMonth.year || d.month !== viewMonth.month) viewMonth = d;
-		if (mode === 'range' && rangeFrom && !rangeTo) preview = d;
-	}
+	$effect(() => root.subscribeMotion());
 
 	let bodyEl = $state<HTMLDivElement | null>(null);
 	const bodyHeight = new Tween(0, { duration: 280, easing: cubicOut });
@@ -323,145 +285,65 @@
 </script>
 
 <div
-	class={cn(
-		'calendar',
-		`calendar--size-${metrics.key}`,
-		`calendar--variant-${variant}`,
-		bare && 'calendar--bare',
-		disabled && 'calendar--disabled',
-		className
-	)}
-	style:--c={triplet}
-	style={userStyle}
+	class={cn('calendar', `calendar--variant-${variant}`, bare && 'calendar--bare', className)}
+	data-disabled={boolAttr(disabled)}
+	data-readonly={boolAttr(readonly)}
+	data-view={root.view}
+	data-type={type}
+	style:--c={root.triplet}
+	style={`${sizeStyle};${userStyle ?? ''}`}
 	role="group"
-	aria-label="Calendar"
+	aria-label={ariaLabel}
 	data-testid="calendar"
+	{@attach attachRef<HTMLDivElement>((n) => (ref = n))}
+	{...rest}
 >
-	<CalendarHeader
-		{leftTitle}
-		{rightTitle}
-		{disabled}
-		{color}
-		iconPx={metrics.iconPx}
-		caretPx={metrics.caretPx}
-		onprev={handlePrev}
-		onnext={handleNext}
-		onleft={handleLeft}
-		onright={handleRight}
-	/>
-	<div
-		class="calendar__viewport"
-		style:height={measured ? `${bodyHeight.current}px` : 'auto'}
-	>
-		{#key view}
-			<div
-				class="calendar__view"
-				bind:this={bodyEl}
-				in:scale={{ duration: 200, start: 0.96, opacity: 0 }}
-				out:fade={{ duration: 120 }}
-			>
-				{#if view === 'days'}
-					{#key `${viewMonth.year}-${viewMonth.month}`}
-						<div
-							class="calendar__slide"
-							in:slideIn={monthDirection}
-							out:slideOut={monthDirection}
-						>
-							<CalendarGrid
-								{viewMonth}
-								{mode}
-								value={mode === 'single' ? selectedDate : null}
-								from={mode === 'range' ? rangeFrom : null}
-								to={mode === 'range' ? rangeTo : null}
-								{preview}
-								locale={resolvedLocale}
-								weekStart={resolvedWeekStart}
-								{disabled}
-								min={minDate}
-								max={maxDate}
-								{disabledDate}
-								focusedDate={focusedDate}
-								{color}
-								{dayColor}
-								cellH={metrics.cellH}
-								pill={metrics.pill}
-								gap={metrics.gap}
-								{day}
-								onselect={pick}
-								onpreview={(d) => {
-									if (mode === 'range' && rangeFrom && !rangeTo) preview = d;
-								}}
-								onfocuschange={handleFocusChange}
-							/>
-						</div>
-					{/key}
-				{:else if view === 'months'}
-					{#key viewMonth.year}
-						<div
-							class="calendar__slide"
-							in:slideIn={monthDirection}
-							out:slideOut={monthDirection}
-						>
-							<OptionGrid items={monthItems} {disabled} {color} columns={3} onselect={pickMonth} />
-						</div>
-					{/key}
-				{:else}
-					{#key yearPageStart}
-						<div
-							class="calendar__slide"
-							in:slideIn={monthDirection}
-							out:slideOut={monthDirection}
-						>
-							<OptionGrid items={yearItems} {disabled} {color} columns={3} onselect={pickYear} />
-						</div>
-					{/key}
-				{/if}
-			</div>
-		{/key}
-	</div>
-	{#if showFooter}
-		<div class="calendar__footer">
-			<button type="button" class="calendar__action" onclick={goToday}>Today</button>
-			<button type="button" class="calendar__action" onclick={clearValue}>Clear</button>
+	{#if children}
+		{@render children()}
+	{:else}
+		<Header />
+		<div class="calendar__viewport" style:height={measured ? `${bodyHeight.current}px` : 'auto'}>
+			{#key root.view}
+				<div
+					class="calendar__view"
+					bind:this={bodyEl}
+					in:scale={{ duration: 200, start: 0.96, opacity: 0 }}
+					out:fade={{ duration: 120 }}
+				>
+					{#if root.view === 'days'}
+						{#key `${root.viewMonth.year}-${root.viewMonth.month}`}
+							<div class="calendar__slide" in:slideIn={root.monthDirection} out:slideOut={root.monthDirection}>
+								<Grid gap={metrics.gap} cellH={metrics.cellH} pill={metrics.pill} {day} />
+							</div>
+						{/key}
+					{:else if root.view === 'months'}
+						{#key root.viewMonth.year}
+							<div class="calendar__slide" in:slideIn={root.monthDirection} out:slideOut={root.monthDirection}>
+								<OptionGrid items={root.monthItems} {disabled} {color} columns={3} onselect={(m) => root.pickMonth(m)} />
+							</div>
+						{/key}
+					{:else}
+						{#key root.yearPageStart}
+							<div class="calendar__slide" in:slideIn={root.monthDirection} out:slideOut={root.monthDirection}>
+								<OptionGrid items={root.yearItems} {disabled} {color} columns={3} onselect={(y) => root.pickYear(y)} />
+							</div>
+						{/key}
+					{/if}
+				</div>
+			{/key}
 		</div>
+		{#if showFooter}
+			<div class="calendar__footer">
+				<button type="button" class="calendar__action" onclick={() => root.goToday()}>{todayLabel}</button>
+				<button type="button" class="calendar__action" onclick={() => root.clear()}>{clearLabel}</button>
+			</div>
+		{/if}
 	{/if}
 </div>
 
 <style>
 	:where(.calendar) {
-		/* size — overridable per modifier below */
-		--cal-w: 280px;
-		--cal-pad: 12px;
-		--cal-radius: 20px;
-		--cal-root-gap: 4px;
-		--cal-header-pad-b: 8px;
-		--cal-static-font: 0.85rem;
-		--cal-weekday-font: 0.66rem;
-		--cal-option-gap: 6px;
-		--cal-action-font: 0.78rem;
-		--cal-action-pad-y: 6px;
-		--cal-action-pad-x: 10px;
-		--cal-action-radius: 8px;
-		--cal-footer-margin: 8px;
-		--cal-focus-ring: 2px;
-		/* PickerButton vars (cascaded into primitives) */
-		--pb-cell-h: 28px;
-		--pb-cell-r: 7px;
-		--pb-cell-font: 0.78rem;
-		--pb-option-h: 36px;
-		--pb-option-font: 0.8rem;
-		--pb-option-pad-x: 6px;
-		--pb-icon-h: 28px;
-		--pb-icon-r: 8px;
-		--pb-chip-h: 28px;
-		--pb-chip-pad-x: 8px;
-		--pb-chip-font: 0.78rem;
-
 		--c: var(--primary);
-		/* medium baseline — JS metrics for medium are { cellH: 32, pill: 28, gap: 2 }; keep CSS in sync. */
-		--pb-cell-h: 32px;
-		--pb-cell-r: 8px;
-		--pb-cell-font: 0.82rem;
 		display: inline-flex;
 		flex-direction: column;
 		width: var(--cal-w);
@@ -475,7 +357,7 @@
 	.calendar:focus-visible {
 		box-shadow: 0 0 0 var(--cal-focus-ring) rgb(var(--c) / 0.4);
 	}
-	:where(.calendar--disabled) { opacity: 0.5; pointer-events: none; }
+	:where(.calendar[data-disabled]) { opacity: 0.5; pointer-events: none; }
 
 	:where(.calendar--bare) {
 		background: transparent;
@@ -488,111 +370,6 @@
 		background: transparent;
 	}
 
-	:where(.calendar--size-xl) {
-		--cal-w: 360px;
-		--cal-pad: 18px;
-		--cal-radius: 24px;
-		--cal-root-gap: 6px;
-		--cal-header-pad-b: 12px;
-		--cal-static-font: 1rem;
-		--cal-weekday-font: 0.78rem;
-		--cal-option-gap: 8px;
-		--cal-action-font: 0.92rem;
-		--cal-action-pad-y: 8px;
-		--cal-action-pad-x: 14px;
-		--cal-action-radius: 11px;
-		--cal-footer-margin: 12px;
-		--pb-cell-h: 40px;
-		--pb-cell-r: 10px;
-		--pb-cell-font: 0.95rem;
-		--pb-option-h: 44px;
-		--pb-option-font: 0.95rem;
-		--pb-option-pad-x: 8px;
-		--pb-icon-h: 32px;
-		--pb-icon-r: 10px;
-		--pb-chip-h: 32px;
-		--pb-chip-pad-x: 10px;
-		--pb-chip-font: 0.95rem;
-	}
-	:where(.calendar--size-large) {
-		--cal-w: 320px;
-		--cal-pad: 14px;
-		--cal-radius: 22px;
-		--cal-root-gap: 5px;
-		--cal-header-pad-b: 10px;
-		--cal-static-font: 0.92rem;
-		--cal-weekday-font: 0.72rem;
-		--cal-option-gap: 7px;
-		--cal-action-font: 0.85rem;
-		--cal-action-pad-y: 7px;
-		--cal-action-pad-x: 12px;
-		--cal-action-radius: 10px;
-		--cal-footer-margin: 10px;
-		--pb-cell-h: 36px;
-		--pb-cell-r: 9px;
-		--pb-cell-font: 0.88rem;
-		--pb-option-h: 40px;
-		--pb-option-font: 0.88rem;
-		--pb-option-pad-x: 7px;
-		--pb-icon-h: 30px;
-		--pb-icon-r: 9px;
-		--pb-chip-h: 30px;
-		--pb-chip-pad-x: 9px;
-		--pb-chip-font: 0.88rem;
-	}
-	/* medium = base values (set on .calendar root) */
-	:where(.calendar--size-small) {
-		--cal-w: 244px;
-		--cal-pad: 10px;
-		--cal-radius: 16px;
-		--cal-root-gap: 3px;
-		--cal-header-pad-b: 6px;
-		--cal-static-font: 0.78rem;
-		--cal-weekday-font: 0.6rem;
-		--cal-option-gap: 5px;
-		--cal-action-font: 0.7rem;
-		--cal-action-pad-y: 5px;
-		--cal-action-pad-x: 9px;
-		--cal-action-radius: 7px;
-		--cal-footer-margin: 6px;
-		--pb-cell-h: 28px;
-		--pb-cell-r: 7px;
-		--pb-cell-font: 0.74rem;
-		--pb-option-h: 32px;
-		--pb-option-font: 0.74rem;
-		--pb-option-pad-x: 5px;
-		--pb-icon-h: 24px;
-		--pb-icon-r: 7px;
-		--pb-chip-h: 24px;
-		--pb-chip-pad-x: 7px;
-		--pb-chip-font: 0.72rem;
-	}
-	:where(.calendar--size-mini) {
-		--cal-w: 212px;
-		--cal-pad: 8px;
-		--cal-radius: 12px;
-		--cal-root-gap: 2px;
-		--cal-header-pad-b: 5px;
-		--cal-static-font: 0.7rem;
-		--cal-weekday-font: 0.55rem;
-		--cal-option-gap: 4px;
-		--cal-action-font: 0.62rem;
-		--cal-action-pad-y: 4px;
-		--cal-action-pad-x: 7px;
-		--cal-action-radius: 6px;
-		--cal-footer-margin: 5px;
-		--pb-cell-h: 24px;
-		--pb-cell-r: 6px;
-		--pb-cell-font: 0.66rem;
-		--pb-option-h: 28px;
-		--pb-option-font: 0.66rem;
-		--pb-option-pad-x: 4px;
-		--pb-icon-h: 22px;
-		--pb-icon-r: 6px;
-		--pb-chip-h: 22px;
-		--pb-chip-pad-x: 6px;
-		--pb-chip-font: 0.66rem;
-	}
 	.calendar__viewport {
 		position: relative;
 		overflow: hidden;
@@ -615,7 +392,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 8px;
+		gap: var(--space-4);
 		margin-top: var(--cal-footer-margin);
 		padding-top: var(--cal-footer-margin);
 		border-top: 1px solid rgb(var(--text) / 0.08);
@@ -629,7 +406,7 @@
 		font: inherit;
 		font-size: var(--cal-action-font);
 		cursor: pointer;
-		transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+		transition: background-color var(--dur-fast) var(--ease-standard);
 	}
 	.calendar__action:hover { background: rgb(var(--c) / 0.12); }
 </style>

@@ -1,137 +1,123 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
-	import type { Color, Shape, Size } from '../../types';
-	import type { CollapseVariant } from './Collapse.svelte';
+	import type { Color, Shape, Size, WithElementRef } from '../../types';
+	import type { CollapseGroupLayout, CollapseGroupType, CollapseVariant } from './context';
 
-	export type CollapseGroupLayout = 'stack' | 'fused' | 'card';
+	export type { CollapseGroupLayout } from './context';
 
-	export type CollapseGroupProps = {
-		/** Selection mode. `single` collapses siblings on open; `multiple` allows any combination. */
-		mode?: 'single' | 'multiple';
-		/** Bonded item keys (or single key when `mode='single'`). Two-way bindable. */
-		value?: string | string[] | null;
-		/** Visual layout. `stack` — separate cards with gap. `fused` — items joined as one block. `card` — wrapped in a shared card surface. */
-		layout?: CollapseGroupLayout;
-		/** Default `variant` cascaded to children. */
-		variant?: CollapseVariant;
-		/** Default `color` cascaded to children. */
-		color?: Color;
-		/** Default `size` cascaded to children. */
-		size?: Size;
-		/** Default `shape` cascaded to children. */
-		shape?: Shape;
-		/** Vertical gap between items (px). Ignored for `fused` and `card` layouts. */
-		gap?: number;
-		/** Title row above the items (visible in all layouts). */
-		title?: string;
-		/** Header snippet — overrides `title`. */
-		header?: Snippet;
-		/** Footer row below the items. */
-		footer?: Snippet;
-		/** Group children. */
-		children?: Snippet;
-	} & Omit<HTMLAttributes<HTMLDivElement>, 'color' | 'title'>;
-
-	type CollapseGroupContext = {
-		readonly mode: 'single' | 'multiple';
-		readonly variant: CollapseVariant | undefined;
-		readonly color: Color | undefined;
-		readonly size: Size | undefined;
-		readonly shape: Shape | undefined;
-		readonly layout: CollapseGroupLayout;
-		isOpen(key: string): boolean;
-		toggle(key: string, next: boolean): void;
-		register(): string;
-	};
-
-	const CONTEXT_KEY = Symbol('collapse-group');
-
-	export function getCollapseGroupContext(): CollapseGroupContext | undefined {
-		return getContext(CONTEXT_KEY);
-	}
-
-	import { getContext, setContext } from 'svelte';
+	export type CollapseGroupProps = WithElementRef<
+		{
+			/** Selection type. `single` collapses siblings on open; `multiple` allows any combination. */
+			type?: CollapseGroupType;
+			/** Bonded item keys (or single key when `type='single'`). Two-way bindable. */
+			value?: string | string[] | null;
+			/** Visual layout. `stack` — separate cards with gap. `fused` — items joined as one block. `card` — wrapped in a shared card surface. */
+			layout?: CollapseGroupLayout;
+			/** Default `variant` cascaded to children. */
+			variant?: CollapseVariant;
+			/** Default `color` cascaded to children. */
+			color?: Color;
+			/** Default `size` cascaded to children. */
+			size?: Size;
+			/** Default `shape` cascaded to children. */
+			shape?: Shape;
+			/** Vertical gap between items (px). Ignored for `fused` and `card` layouts. */
+			gap?: number;
+			/** Arrow-key axis. Default `vertical`. */
+			orientation?: 'vertical' | 'horizontal';
+			/** Wrap arrow navigation past the ends. Default `true`. */
+			loop?: boolean;
+			/** Title row above the items (visible in all layouts). Use the `child` snippet for richer content. */
+			title?: string;
+			/** Footer row below the items. Use the `child` snippet for richer content. */
+			footer?: string;
+			/** Group children. */
+			children?: Snippet;
+			/** Fired when the open set changes. */
+			onValueChange?: (value: string | string[] | null) => void;
+			/** Render-delegation: receive the merged props and render your own root element. */
+			child?: Snippet<[{ props: Record<string, unknown> }]>;
+		} & Omit<HTMLAttributes<HTMLDivElement>, 'color' | 'title'>,
+		HTMLDivElement
+	>;
 </script>
 
 <script lang="ts">
+	import { createAttachmentKey } from 'svelte/attachments';
 	import { rgbTriplet } from '../../utils/color';
 	import { cn } from '../../utils/cn';
-	import { nextId } from '../../state/ids.svelte';
+	import { mergeProps } from '../../utils/mergeProps';
+	import { attachRef } from '../../utils/ref';
+	import { setCollapseGroupContext } from './context';
+	import { CollapseGroupState } from './collapseState.svelte';
 
 	let {
-		mode = 'single',
-		value = $bindable(mode === 'multiple' ? [] : null),
+		ref = $bindable(null),
+		type = 'single',
+		value = $bindable(type === 'multiple' ? [] : null),
 		layout = 'stack',
 		variant,
 		color,
 		size,
 		shape,
 		gap = 8,
+		orientation = 'vertical',
+		loop = true,
 		title = '',
-		header,
-		footer,
+		footer = '',
 		children,
+		onValueChange,
+		child,
 		class: className,
 		style: userStyle,
 		...rest
 	}: CollapseGroupProps = $props();
 
+	const baseId = $props.id();
 	let triplet = $derived(color ? rgbTriplet(color) : undefined);
 	let autoCounter = 0;
 
-	const ctx: CollapseGroupContext = {
-		get mode() {
-			return mode;
+	const group = new CollapseGroupState({
+		type: () => type,
+		value: () => value,
+		setValue: (next) => {
+			value = next;
+			onValueChange?.(next);
 		},
-		get variant() {
-			return variant;
-		},
-		get color() {
-			return color;
-		},
-		get size() {
-			return size;
-		},
-		get shape() {
-			return shape;
-		},
-		get layout() {
-			return layout;
-		},
-		isOpen(key) {
-			if (mode === 'single') return value === key;
-			return Array.isArray(value) && value.includes(key);
-		},
-		toggle(key, next) {
-			if (mode === 'single') {
-				value = next ? key : null;
-				return;
-			}
-			const arr = Array.isArray(value) ? value : [];
-			value = next ? [...arr.filter((k) => k !== key), key] : arr.filter((k) => k !== key);
-		},
-		register() {
+		layout: () => layout,
+		variant: () => variant,
+		color: () => color,
+		size: () => size,
+		shape: () => shape,
+		orientation: () => orientation,
+		loop: () => loop,
+		nextKey: () => {
 			autoCounter += 1;
-			return nextId(`collapse-item-${autoCounter}`);
+			return `${baseId}-item-${autoCounter}`;
 		}
-	};
+	});
 
-	setContext(CONTEXT_KEY, ctx);
+	setCollapseGroupContext(group);
+
+	$effect(() => {
+		group.roving.orientation = orientation;
+		group.roving.loop = loop;
+	});
+
+	const refKey = createAttachmentKey();
+	const attrs = $derived({
+		class: cn('collapse-group', `collapse-group--${layout}`, className),
+		'data-orientation': orientation,
+		'data-testid': 'collapse-group',
+		[refKey]: attachRef<HTMLDivElement>((n) => (ref = n))
+	});
+	const merged = $derived(mergeProps(rest, attrs));
 </script>
 
-<div
-	class={cn('collapse-group', `collapse-group--${layout}`, className)}
-	style:--collapse-group-gap="{gap}px"
-	style:--cg-c={triplet}
-	style={userStyle}
-	data-testid="collapse-group"
-	{...rest}
->
-	{#if header || title}
-		<div class="collapse-group__header">
-			{#if header}{@render header()}{:else}{title}{/if}
-		</div>
+{#snippet body()}
+	{#if title}
+		<div class="collapse-group__header">{title}</div>
 	{/if}
 
 	<div class="collapse-group__body">
@@ -139,9 +125,27 @@
 	</div>
 
 	{#if footer}
-		<div class="collapse-group__footer">{@render footer()}</div>
+		<div class="collapse-group__footer">{footer}</div>
 	{/if}
-</div>
+{/snippet}
+
+{#if child}
+	{@render child({
+		props: {
+			...merged,
+			style: `--collapse-group-gap:${gap}px;${triplet ? `--cg-c:${triplet};` : ''}${userStyle ?? ''}`
+		}
+	})}
+{:else}
+	<div
+		{...merged}
+		style:--collapse-group-gap="{gap}px"
+		style:--cg-c={triplet}
+		style={userStyle}
+	>
+		{@render body()}
+	</div>
+{/if}
 
 <style>
 	:where(.collapse-group) {
@@ -164,33 +168,33 @@
 	}
 
 	.collapse-group--stack > .collapse-group__header {
-		font-size: 0.75rem;
+		font-size: var(--fs-sm);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		opacity: 0.6;
-		margin-bottom: 8px;
+		margin-bottom: var(--space-4);
 	}
 	.collapse-group--stack > .collapse-group__footer {
-		font-size: 0.8rem;
+		font-size: var(--fs-sm);
 		opacity: 0.6;
-		margin-top: 8px;
+		margin-top: var(--space-4);
 	}
 
 	.collapse-group--stack > .collapse-group__body {
-		gap: var(--collapse-group-gap, 8px);
+		gap: var(--collapse-group-gap, var(--space-4));
 	}
 
 	.collapse-group--fused > .collapse-group__header {
-		font-size: 0.75rem;
+		font-size: var(--fs-sm);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		opacity: 0.6;
-		margin-bottom: 8px;
+		margin-bottom: var(--space-4);
 	}
 	.collapse-group--fused > .collapse-group__footer {
-		font-size: 0.8rem;
+		font-size: var(--fs-sm);
 		opacity: 0.6;
-		margin-top: 8px;
+		margin-top: var(--space-4);
 	}
 
 	.collapse-group--fused > .collapse-group__body {
@@ -223,17 +227,17 @@
 	}
 
 	.collapse-group--card > .collapse-group__header {
-		padding: 16px 20px;
+		padding: var(--space-7) var(--space-8);
 		font-weight: 600;
-		font-size: 0.95rem;
+		font-size: var(--fs-lg);
 		color: rgb(var(--cg-c, var(--text)));
 		border-bottom: 1px solid rgb(var(--gray-4));
 		background: rgb(var(--background) / 0.5);
 	}
 
 	.collapse-group--card > .collapse-group__footer {
-		padding: 12px 20px;
-		font-size: 0.85rem;
+		padding: var(--space-6) var(--space-8);
+		font-size: var(--fs-md);
 		opacity: 0.75;
 		border-top: 1px solid rgb(var(--gray-4));
 		background: rgb(var(--background) / 0.5);

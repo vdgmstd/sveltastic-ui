@@ -1,21 +1,50 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
+	import type { WithElementRef } from '../../types';
 
-	export type ButtonGroupProps = {
-		children?: Snippet;
-	} & HTMLAttributes<HTMLDivElement>;
+	export type ButtonGroupProps = WithElementRef<
+		{
+			/** Render-delegation: receive the merged prop bag and render your own element. */
+			child?: Snippet<[{ props: Record<string, unknown> }]>;
+			/** Grouped buttons. */
+			children?: Snippet;
+		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>
+	>;
 </script>
 
 <script lang="ts">
+	import { createAttachmentKey } from 'svelte/attachments';
 	import { cn } from '../../utils/cn';
+	import { attachRef } from '../../utils/ref';
+	import { mergeProps } from '../../utils/mergeProps';
 
-	let { children, class: className, style: userStyle, ...rest }: ButtonGroupProps = $props();
+	let {
+		children,
+		child,
+		ref = $bindable(null),
+		class: className,
+		...rest
+	}: ButtonGroupProps = $props();
+
+	const refKey = createAttachmentKey();
+	let groupProps = $derived(
+		mergeProps(rest, {
+			class: cn('button-group', className),
+			role: 'group' as const,
+			'data-testid': 'button-group',
+			[refKey]: attachRef<HTMLElement>((n) => (ref = n))
+		})
+	);
 </script>
 
-<div class={cn('button-group', className)} style={userStyle} data-testid="button-group" {...rest}>
-	{@render children?.()}
-</div>
+{#if child}
+	{@render child({ props: groupProps })}
+{:else}
+	<div {...groupProps}>
+		{@render children?.()}
+	</div>
+{/if}
 
 <style>
 	:where(.button-group) {
@@ -23,7 +52,9 @@
 		align-items: center;
 		justify-content: center;
 	}
-	.button-group :global(.button) { margin: 0; }
+	.button-group :global(.button) {
+		margin: 0;
+	}
 	.button-group :global(.button:not(:first-of-type):not(:last-of-type)) {
 		border-radius: 0;
 	}
@@ -37,5 +68,9 @@
 	.button-group :global(.button:last-of-type) {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
+	}
+	/* No per-button press dip in a group — the shrinking fill would open gaps at shared edges. */
+	.button-group :global(.button[data-pressing] .button__bg) {
+		transform: none !important;
 	}
 </style>

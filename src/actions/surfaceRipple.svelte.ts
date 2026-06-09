@@ -56,7 +56,7 @@ const STYLES = `
 	height: var(--sr-size);
 	left: var(--sr-x);
 	top: var(--sr-y);
-	border-radius: 50%;
+	border-radius: var(--rad-circle);
 	background: radial-gradient(circle,
 		rgb(var(--c, 25 91 255) / 0.18) 0%,
 		rgb(var(--c, 25 91 255) / 0.18) 78%,
@@ -91,16 +91,20 @@ function installStyles(): void {
 	stylesInstalled = true;
 }
 
-function makeEffect(host: HTMLElement, x: number, y: number, sizeMultiplier: number): HTMLSpanElement {
-	const r = host.getBoundingClientRect();
-	const size = Math.ceil(
+function coverSize(width: number, height: number, x: number, y: number, sizeMultiplier: number): number {
+	return Math.ceil(
 		Math.max(
 			Math.hypot(x, y),
-			Math.hypot(r.width - x, y),
-			Math.hypot(x, r.height - y),
-			Math.hypot(r.width - x, r.height - y)
+			Math.hypot(width - x, y),
+			Math.hypot(x, height - y),
+			Math.hypot(width - x, height - y)
 		) * sizeMultiplier
 	);
+}
+
+function makeEffect(host: HTMLElement, x: number, y: number, sizeMultiplier: number): HTMLSpanElement {
+	const r = host.getBoundingClientRect();
+	const size = coverSize(r.width, r.height, x, y, sizeMultiplier);
 	const node = document.createElement('span');
 	node.className = EFFECT_CLASS;
 	node.style.setProperty('--sr-x', `${x}px`);
@@ -109,14 +113,27 @@ function makeEffect(host: HTMLElement, x: number, y: number, sizeMultiplier: num
 	return node;
 }
 
+const FOCUS_COVER = 2.2;
+
 function focusController(host: HTMLElement, mountHost: HTMLElement, signal: AbortSignal) {
 	let pendingPoint: { x: number; y: number } | null = null;
 	let layer: HTMLSpanElement | null = null;
 	let stopFx: (() => void) | null = null;
+	let liveEffect: HTMLElement | null = null;
+	let liveOrigin = { x: 0, y: 0 };
+
+	// Keep the bloom covering the host after a user resize (textarea drag-resize).
+	const ro = new ResizeObserver(() => {
+		if (!liveEffect) return;
+		const r = host.getBoundingClientRect();
+		liveEffect.style.setProperty('--sr-size', `${coverSize(r.width, r.height, liveOrigin.x, liveOrigin.y, FOCUS_COVER)}px`);
+	});
+	ro.observe(host);
 
 	function dispose(): void {
 		stopFx?.();
 		stopFx = null;
+		liveEffect = null;
 		if (layer && layer.parentNode === mountHost) mountHost.removeChild(layer);
 		layer = null;
 	}
@@ -130,10 +147,12 @@ function focusController(host: HTMLElement, mountHost: HTMLElement, signal: Abor
 		const wrap = document.createElement('span');
 		wrap.className = LAYER_CLASS;
 		wrap.setAttribute('aria-hidden', 'true');
-		const eff = makeEffect(host, p.x, p.y, 2.2);
+		const eff = makeEffect(host, p.x, p.y, FOCUS_COVER);
 		wrap.appendChild(eff);
 		mountHost.prepend(wrap);
 		layer = wrap;
+		liveEffect = eff;
+		liveOrigin = p;
 
 		const scale = new Tween(0.05, { duration: 500, easing: cubicOut });
 		const opacity = new Tween(0, { duration: 200, easing: cubicOut });
@@ -170,6 +189,7 @@ function focusController(host: HTMLElement, mountHost: HTMLElement, signal: Abor
 
 		layer = null;
 		stopFx = null;
+		liveEffect = null;
 
 		opacity.set(0, { duration: 280, easing: cubicOut }).then(() => {
 			fx();
@@ -185,7 +205,12 @@ function focusController(host: HTMLElement, mountHost: HTMLElement, signal: Abor
 	host.addEventListener('focusin', spawn, { signal });
 	host.addEventListener('focusout', fadeOut, { signal });
 
-	return { dispose, fadeOut };
+	function destroy(): void {
+		ro.disconnect();
+		dispose();
+	}
+
+	return { dispose, fadeOut, destroy };
 }
 
 function autorippleController(host: HTMLElement, mountHost: HTMLElement) {
@@ -308,7 +333,7 @@ export const surfaceRipple: Action<HTMLElement, SurfaceRippleOptions> = (host, i
 		},
 		destroy() {
 			ac.abort();
-			focusCtl?.dispose();
+			focusCtl?.destroy();
 			autoCtl?.dispose();
 			host.classList.remove(HOST_CLASS);
 		}

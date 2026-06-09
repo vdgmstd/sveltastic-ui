@@ -1,42 +1,28 @@
-<script lang="ts" module>
-	import type { Color } from '../../../types';
-	import type { TimeParts } from './types';
-
-	export type TimePanelProps = {
-		value: TimeParts;
-		color?: Color;
-		hour12?: boolean;
-		showSeconds?: boolean;
-		disabled?: boolean;
-		onchange: (next: TimeParts) => void;
-	};
-</script>
-
 <script lang="ts">
-	import { rgbTriplet } from '../../../utils/color';
+	import { pad } from '../../../utils/date';
 	import TimeWheel from '../../../primitives/TimeWheel.svelte';
 	import type { TimeWheelItem } from '../../../primitives/TimeWheel.svelte';
-	import Segmented from '../../Segmented/Segmented.svelte';
+	import { Segmented } from '../../Segmented';
+	import type { TimeParts } from '../../../utils/date';
+	import { getDtpCtx } from '../context';
 
-	let {
-		value,
-		color = 'primary',
-		hour12 = false,
-		showSeconds = false,
-		disabled = false,
-		onchange
-	}: TimePanelProps = $props();
+	let { onTimeChange }: { onTimeChange?: (next: TimeParts) => void } = $props();
 
-	let triplet = $derived(rgbTriplet(color));
+	const root = getDtpCtx();
 
-	function pad(n: number): string {
-		return String(n).padStart(2, '0');
-	}
+	let value = $derived<TimeParts>(root.parsedTime);
+	let hour12 = $derived(root.hour12);
+	let showSeconds = $derived(root.showSeconds);
 
 	let displayHour = $derived(
 		hour12 ? (value.h === 0 ? 12 : value.h > 12 ? value.h - 12 : value.h) : value.h
 	);
 	let isPM = $derived(value.h >= 12);
+
+	function emit(next: TimeParts): void {
+		if (onTimeChange) onTimeChange(next);
+		else root.emitTime(next);
+	}
 
 	function setHour(h: number): void {
 		let actual = h;
@@ -44,15 +30,15 @@
 			const base = h === 12 ? 0 : h;
 			actual = isPM ? base + 12 : base;
 		}
-		onchange({ h: actual, m: value.m, s: value.s });
+		emit({ h: actual, m: value.m, s: value.s });
 	}
 
 	function setMinute(m: number): void {
-		onchange({ h: value.h, m, s: value.s });
+		emit({ h: value.h, m, s: value.s });
 	}
 
 	function setSecond(s: number): void {
-		onchange({ h: value.h, m: value.m, s });
+		emit({ h: value.h, m: value.m, s });
 	}
 
 	function setPeriod(p: 'am' | 'pm'): void {
@@ -61,7 +47,7 @@
 		let h = value.h;
 		if (wantPM && h < 12) h += 12;
 		else if (!wantPM && h >= 12) h -= 12;
-		onchange({ h, m: value.m, s: value.s });
+		emit({ h, m: value.m, s: value.s });
 	}
 
 	let hourItems = $derived.by<TimeWheelItem[]>(() => {
@@ -80,13 +66,13 @@
 	] as const;
 </script>
 
-<div class="time-panel" style:--c={triplet}>
+<div class="time-panel" style:--c={root.triplet}>
 	<div class="time-panel__wheels">
 		<TimeWheel
 			value={displayHour}
 			items={hourItems}
-			{color}
-			{disabled}
+			color={root.color}
+			disabled={root.disabled}
 			ariaLabel="Hours"
 			onchange={setHour}
 		/>
@@ -94,8 +80,8 @@
 		<TimeWheel
 			value={value.m}
 			items={minuteItems}
-			{color}
-			{disabled}
+			color={root.color}
+			disabled={root.disabled}
 			ariaLabel="Minutes"
 			onchange={setMinute}
 		/>
@@ -104,8 +90,8 @@
 			<TimeWheel
 				value={value.s}
 				items={secondItems}
-				{color}
-				{disabled}
+				color={root.color}
+				disabled={root.disabled}
 				ariaLabel="Seconds"
 				onchange={setSecond}
 			/>
@@ -113,7 +99,16 @@
 	</div>
 	{#if hour12}
 		<div class="time-panel__period">
-			<Segmented value={isPM ? 'pm' : 'am'} items={periodItems} {color} {disabled} onchange={setPeriod} />
+			<Segmented.Root
+				value={isPM ? 'pm' : 'am'}
+				color={root.color}
+				disabled={root.disabled}
+				onValueChange={setPeriod}
+			>
+				{#each periodItems as item (item.value)}
+					<Segmented.Item value={item.value}>{item.label}</Segmented.Item>
+				{/each}
+			</Segmented.Root>
 		</div>
 	{/if}
 </div>
@@ -122,26 +117,26 @@
 	.time-panel {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		padding: 8px 4px 4px;
+		gap: var(--space-4);
+		padding: var(--space-4) var(--space-2) var(--space-2);
 		color: rgb(var(--text));
 	}
 	.time-panel__wheels {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 4px;
+		gap: var(--space-2);
 	}
 	.time-panel__sep {
-		font-size: 1.05rem;
+		font-size: var(--fs-xl);
 		font-weight: 600;
 		color: rgb(var(--text) / 0.55);
 		font-variant-numeric: tabular-nums;
-		padding-bottom: 2px;
+		padding-bottom: var(--space-1);
 	}
 	.time-panel__period {
 		display: flex;
 		justify-content: center;
-		padding: 4px;
+		padding: var(--space-2);
 	}
 </style>

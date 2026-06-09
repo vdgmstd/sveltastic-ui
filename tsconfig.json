@@ -17,5 +17,5 @@
 		"sourceMap": true,
 		"types": ["svelte"]
 	},
-	"include": ["src/**/*"]
+	"include": ["src/**/*", "ambient.d.ts"]
 }

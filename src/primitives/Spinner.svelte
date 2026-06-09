@@ -61,8 +61,6 @@
 				? 1
 				: elasticEase((1 - frac) / 0.38)
 	);
-	let chasePhase = $derived(phaseEased);
-
 	let sizeCss = $derived(typeof size === 'number' ? `${size}px` : size);
 	let triplet = $derived(rgbTriplet(color));
 	let isHidden = $derived(ariaHidden === true || ariaHidden === 'true');
@@ -77,7 +75,7 @@
 	const DELTA = ARC_MAX - ARC_MIN;
 	const CHASE_MAX = 0.39;
 
-	let chaseOffset = $derived(circumference * CHASE_MAX * (1 - chasePhase));
+	let chaseOffset = $derived(circumference * CHASE_MAX * (1 - phaseEased));
 
 	let headExtension = $derived(frac < 0.5 ? elasticEase(frac * 2) * DELTA : DELTA);
 	let tailExtension = $derived(frac < 0.5 ? 0 : elasticEase((frac - 0.5) * 2) * DELTA);
@@ -107,7 +105,6 @@
 	class="spinner"
 	style:--c={triplet}
 	style:--size={sizeCss}
-	style:--d="{speed}ms"
 	role={isHidden ? undefined : 'status'}
 	aria-hidden={isHidden ? 'true' : undefined}
 	aria-label={isHidden ? undefined : ariaLabel}

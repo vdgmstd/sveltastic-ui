@@ -1,53 +1,27 @@
-<script lang="ts" module>
-	import type { Color } from '../../../types';
-	import type { DateLike, WeekStart } from '../../../utils/date';
-
-	export type DatePanelProps = {
-		/** ISO `YYYY-MM-DD` (or empty for none). */
-		value: string;
-		color?: Color;
-		locale?: string;
-		weekStart?: WeekStart;
-		min?: DateLike;
-		max?: DateLike;
-		disabled?: boolean;
-		onchange: (next: string) => void;
-	};
-</script>
-
 <script lang="ts">
-	import Calendar from '../../Calendar/Calendar.svelte';
+	import { Calendar } from '../../Calendar';
+	import { getDtpCtx } from '../context';
 
-	let {
-		value,
-		color = 'primary',
-		locale,
-		weekStart,
-		min,
-		max,
-		disabled = false,
-		onchange
-	}: DatePanelProps = $props();
+	const root = getDtpCtx();
 
-	let calendarColor = $derived<'primary' | 'warning'>(color === 'warning' ? 'warning' : 'primary');
+	let calendarColor = $derived<'primary' | 'warning'>(root.color === 'warning' ? 'warning' : 'primary');
 
-	function handle(next: string | { from?: string; to?: string }): void {
-		if (typeof next === 'string') onchange(next);
+	function handle(next: string): void {
+		root.emitDateText(next);
 	}
 </script>
 
 <div class="date-panel">
-	<Calendar
+	<Calendar.Root
 		bare
-		mode="single"
-		{value}
+		type="single"
+		bind:value={() => root.calendarValue, handle}
 		color={calendarColor}
-		{locale}
-		{weekStart}
-		{min}
-		{max}
-		{disabled}
-		onchange={handle}
+		locale={root.locale}
+		weekStart={root.weekStart}
+		min={root.min}
+		max={root.max}
+		disabled={root.disabled}
 	/>
 </div>
 

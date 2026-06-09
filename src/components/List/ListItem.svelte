@@ -1,7 +1,7 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
-	import type { Color, Size } from '../../types';
+	import type { Color, Size, WithElementRef } from '../../types';
 
 	export type ListItemVariant = 'default' | 'flat';
 
@@ -20,46 +20,54 @@
 		disabled?: boolean;
 		/** Loading overlay — disables interaction. */
 		loading?: boolean;
-		/** Disable click ripple. */
+		/** Click ripple. Set `false` to opt out. */
 		ripple?: boolean;
-		/** Render as a non-interactive `<div role="listitem">` — no hover, no ripple, not focusable. */
+		/** Render as a non-interactive `<div>` — no hover, no ripple, not focusable. */
 		static?: boolean;
 		/** Selection value for the listbox-mode parent. */
 		value?: V;
-		/** Default content (label). */
+		/** Row content — `<List.ItemLead>` / `<List.ItemContent>` / `<List.ItemTrail>`. */
 		children?: Snippet;
-		/** Leading visual (avatar / icon). */
-		lead?: Snippet;
-		/** Trailing visual (badge / arrow / chip). */
-		trail?: Snippet;
-		/** Secondary text under the label. */
-		description?: Snippet;
+		/** Render-delegation: receive the merged props and render your own row element. */
+		child?: Snippet<[{ props: Record<string, unknown> }]>;
 		/** Click handler. */
 		onclick?: (event: MouseEvent) => void;
 	};
 
-	type LinkProps = CommonProps & {
+	type LinkProps<V = unknown> = CommonProps<V> & {
 		href: string;
 	} & Omit<HTMLAnchorAttributes, keyof CommonProps | 'children'>;
 
-	type ButtonProps = CommonProps & {
+	type ButtonProps<V = unknown> = CommonProps<V> & {
 		href?: undefined;
 	} & Omit<HTMLButtonAttributes, keyof CommonProps | 'children'>;
 
-	type StaticProps = CommonProps & {
+	type StaticProps<V = unknown> = CommonProps<V> & {
 		href?: undefined;
 		onclick?: undefined;
 	} & Omit<HTMLAttributes<HTMLDivElement>, keyof CommonProps | 'children'>;
 
-	export type ListItemProps = LinkProps | ButtonProps | StaticProps;
+	export type ListItemProps<V = unknown> = WithElementRef<
+		LinkProps<V> | ButtonProps<V> | StaticProps<V>,
+		HTMLElement
+	>;
+
+	/** Flattened single-shape Props for the barrel cast — the 3-way union is too large for the d.ts emit. */
+	export type ListItemCastProps<V = unknown> = WithElementRef<
+		CommonProps<V> & { href?: string } & Omit<HTMLAttributes<HTMLElement>, keyof CommonProps | 'children'>,
+		HTMLElement
+	>;
 </script>
 
-<script lang="ts">
+<script lang="ts" generics="V">
+	import { createAttachmentKey } from 'svelte/attachments';
 	import { ripple as rippleAction } from '../../actions/ripple.svelte';
 	import { rgbTriplet } from '../../utils/color';
-	import { cn } from '../../utils/cn';
-	import { nextId } from '../../state/ids.svelte';
+	import { boolAttr } from '../../utils/attrs';
+	import { mergeProps } from '../../utils/mergeProps';
+	import { attachRef } from '../../utils/ref';
 	import { useListContext } from './context';
+	import { ListItemState } from './listState.svelte';
 
 	let {
 		color,
@@ -73,212 +81,129 @@
 		static: isStatic = false,
 		value,
 		children,
-		lead,
-		trail,
-		description,
+		child,
 		onclick,
 		href,
+		ref = $bindable(null),
 		class: className,
-		style: userStyle,
 		...rest
-	}: ListItemProps = $props();
+	}: ListItemProps<V> = $props();
 
 	const ctx = useListContext();
-	const id = nextId('list-item');
+	const id = $props.id();
+	const refKey = createAttachmentKey();
+	const registerKey = createAttachmentKey();
+
+	const item = new ListItemState(
+		ctx,
+		() => value,
+		() => disabled,
+		() => loading,
+		() => selected,
+		() => isStatic
+	);
+
+	// Stable identity — inlining re-ran register/deregister each recompute (loop vs tabindexFor).
+	const registerItem = (node: HTMLElement) => item.register(id, node);
 
 	let resolvedColor = $derived<Color>(color ?? ctx?.color ?? 'primary');
 	let resolvedSize = $derived<Size>(size ?? ctx?.size ?? 'medium');
 	let triplet = $derived(rgbTriplet(resolvedColor));
 
-	let parentRole = $derived(ctx?.role ?? 'list');
-	let parentDisabled = $derived(ctx?.disabled ?? false);
-	let isInert = $derived(disabled || loading || parentDisabled);
+	let isInert = $derived(item.isInert);
+	let isSelected = $derived(item.isSelected);
+	let interactive = $derived(item.interactive);
+	let isRovingItem = $derived(item.isRovingItem);
+	let parentRole = $derived(item.parentRole);
 
-	let listboxSelected = $derived(parentRole === 'listbox' ? ctx?.isSelected(value) ?? false : false);
-	let isSelected = $derived(selected || listboxSelected);
-
-	let itemRole = $derived(
-		parentRole === 'menu' ? (href ? 'menuitem' : 'menuitem')
-		: parentRole === 'listbox' ? 'option'
-		: undefined
-	);
-
-	let interactive = $derived(!isStatic);
-
-	let isHovered = $state(false);
 	let bgEl = $state<HTMLElement>();
-	let rootEl = $state<HTMLElement>();
 
 	let rippleOptions = $derived({
 		disabled: !rippleEnabled || isInert || !interactive,
 		color: resolvedColor,
 		solidBg: variant === 'default' && (active || isSelected),
 		soft: variant === 'flat' || (!active && !isSelected),
-		mountTo: bgEl
+		mountTo: bgEl,
+		// Label colour is owned by CSS + the bg fill; a ripple text shift flashes white-wrong on flat rows.
+		textColor: 'currentColor' as const
 	});
+
+	const Tag = $derived(href !== undefined ? 'a' : isStatic ? 'div' : 'button');
+
+	let tabindex = $derived(isRovingItem && !isInert ? ctx?.tabindexFor(id) : undefined);
+
+	const attrs = $derived({
+		class: ['list-item', `list-item--${variant}`, `list-item--size-${resolvedSize}`]
+			.filter(Boolean)
+			.join(' '),
+		'data-testid': 'list-item',
+		'data-active': boolAttr(active),
+		'data-selected': boolAttr(isSelected),
+		'data-disabled': boolAttr(isInert),
+		'data-loading': boolAttr(loading),
+		'data-interactive': boolAttr(interactive),
+		'data-list-id': isRovingItem ? id : undefined,
+		'aria-current': active ? 'page' : undefined,
+		role: item.itemRole,
+		...(Tag === 'a'
+			? {
+					href: isInert ? undefined : href,
+					'aria-selected': parentRole === 'listbox' ? isSelected : undefined,
+					'aria-disabled': isInert ? ('true' as const) : undefined,
+					tabindex,
+					onclick: (e: MouseEvent) => item.handleClick(e, onclick),
+					onkeydown: (e: KeyboardEvent) => item.handleKeydown(e, id)
+				}
+			: Tag === 'button'
+				? {
+						type: 'button' as const,
+						disabled: isInert || undefined,
+						'aria-selected': parentRole === 'listbox' ? isSelected : undefined,
+						'aria-disabled': isInert ? ('true' as const) : undefined,
+						tabindex,
+						onclick: (e: MouseEvent) => item.handleClick(e, onclick),
+						onkeydown: (e: KeyboardEvent) => item.handleKeydown(e, id)
+					}
+				: {
+						'aria-disabled': isInert ? ('true' as const) : undefined
+					})
+	});
+	const merged = $derived(
+		mergeProps(rest, attrs, {
+			class: className,
+			[refKey]: attachRef<HTMLElement>((n) => (ref = n)),
+			[registerKey]: registerItem
+		})
+	);
 
 	$effect(() => {
-		if (!rootEl) return;
-		const valueGetter = () => value;
-		const disabledGetter = () => isInert;
-		ctx?.register(id, rootEl, valueGetter, disabledGetter);
-		return () => ctx?.unregister(id);
+		item.claimInitial(id, active);
 	});
-
-	function handleClick(event: MouseEvent): void {
-		if (isInert) {
-			event.preventDefault();
-			event.stopPropagation();
-			return;
-		}
-		if (parentRole === 'listbox') {
-			ctx?.select(value);
-		} else if (parentRole === 'menu') {
-			ctx?.select(value);
-		}
-		onclick?.(event);
-	}
-
-	function handleKeydown(event: KeyboardEvent): void {
-		if (isInert) return;
-		if (parentRole === 'listbox' || parentRole === 'menu') {
-			if (event.key === 'ArrowDown') {
-				event.preventDefault();
-				ctx?.focusNext(id, 1);
-				return;
-			}
-			if (event.key === 'ArrowUp') {
-				event.preventDefault();
-				ctx?.focusNext(id, -1);
-				return;
-			}
-			if (event.key === 'Home') {
-				event.preventDefault();
-				ctx?.focusEdge('first');
-				return;
-			}
-			if (event.key === 'End') {
-				event.preventDefault();
-				ctx?.focusEdge('last');
-				return;
-			}
-		}
-	}
-
-	function handleEnter(): void { isHovered = true; }
-	function handleLeave(): void { isHovered = false; }
 </script>
 
 {#snippet body()}
-	<span class="list-item__bg" aria-hidden="true" bind:this={bgEl}></span>
-	{#if lead}<span class="list-item__lead">{@render lead()}</span>{/if}
-	<span class="list-item__main">
-		<span class="list-item__label">{@render children?.()}</span>
-		{#if description}<span class="list-item__desc">{@render description()}</span>{/if}
-	</span>
-	{#if trail}<span class="list-item__trail">{@render trail()}</span>{/if}
+	<span class="list-item__bg" aria-hidden="true" {@attach attachRef((n) => (bgEl = n))}></span>
+	{@render children?.()}
 	{#if loading}
 		<span class="list-item__loading" aria-hidden="true"></span>
 	{/if}
 {/snippet}
 
-{#if href !== undefined}
-	<a
-		bind:this={rootEl}
-		class={cn(
-			'list-item',
-			`list-item--${variant}`,
-			`list-item--size-${resolvedSize}`,
-			active && 'list-item--active',
-			isSelected && 'list-item--selected',
-			isInert && 'list-item--disabled',
-			loading && 'list-item--loading',
-			interactive && 'list-item--interactive',
-			isHovered && !isInert && 'list-item--hover',
-			className
-		)}
-		style:--c={triplet}
-		style={userStyle}
-		href={isInert ? undefined : href}
-		role={itemRole}
-		aria-current={active ? 'page' : undefined}
-		aria-selected={parentRole === 'listbox' ? isSelected : undefined}
-		aria-disabled={isInert ? 'true' : undefined}
-		data-testid="list-item"
-		onclick={handleClick}
-		onkeydown={handleKeydown}
-		onmouseenter={handleEnter}
-		onmouseleave={handleLeave}
-		use:rippleAction={rippleOptions}
-		{...rest as HTMLAnchorAttributes}
-	>
-		{@render body()}
-	</a>
-{:else if !isStatic}
-	<button
-		bind:this={rootEl}
-		type="button"
-		class={cn(
-			'list-item',
-			`list-item--${variant}`,
-			`list-item--size-${resolvedSize}`,
-			active && 'list-item--active',
-			isSelected && 'list-item--selected',
-			isInert && 'list-item--disabled',
-			loading && 'list-item--loading',
-			interactive && 'list-item--interactive',
-			isHovered && !isInert && 'list-item--hover',
-			className
-		)}
-		style:--c={triplet}
-		style={userStyle}
-		disabled={isInert || undefined}
-		role={itemRole}
-		aria-current={active ? 'page' : undefined}
-		aria-selected={parentRole === 'listbox' ? isSelected : undefined}
-		aria-disabled={isInert ? 'true' : undefined}
-		data-testid="list-item"
-		onclick={handleClick}
-		onkeydown={handleKeydown}
-		onmouseenter={handleEnter}
-		onmouseleave={handleLeave}
-		use:rippleAction={rippleOptions}
-		{...rest as HTMLButtonAttributes}
-	>
-		{@render body()}
-	</button>
+{#if child}
+	{@render child({ props: { ...merged, style: `--c:${triplet};${(merged.style as string | undefined) ?? ''}` } })}
 {:else}
-	<div
-		bind:this={rootEl}
-		class={cn(
-			'list-item',
-			`list-item--${variant}`,
-			`list-item--size-${resolvedSize}`,
-			active && 'list-item--active',
-			isSelected && 'list-item--selected',
-			isInert && 'list-item--disabled',
-			loading && 'list-item--loading',
-			className
-		)}
-		style:--c={triplet}
-		style={userStyle}
-		role={itemRole}
-		aria-current={active ? 'page' : undefined}
-		aria-disabled={isInert ? 'true' : undefined}
-		data-testid="list-item"
-		{...rest as HTMLAttributes<HTMLDivElement>}
-	>
+	<svelte:element this={Tag} {...merged} style:--c={triplet} use:rippleAction={rippleOptions}>
 		{@render body()}
-	</div>
+	</svelte:element>
 {/if}
 
 <style>
 	:where(.list-item) {
 		--c: var(--primary);
-		--item-radius: 12px;
-		--item-pad-y: 9px;
-		--item-pad-x: 12px;
-		--item-gap: 12px;
+		--item-radius: var(--rad-md);
+		--item-pad-y: var(--space-4);
+		--item-pad-x: var(--space-6);
+		--item-gap: var(--space-6);
 		--item-font: inherit;
 		position: relative;
 		z-index: 1;
@@ -298,8 +223,11 @@
 		text-decoration: none;
 		outline: none;
 		cursor: default;
+		-webkit-user-select: none;
+		user-select: none;
+		transition: color 200ms var(--ease-standard);
 	}
-	:where(.list-item.list-item--interactive) { cursor: pointer; }
+	:where(.list-item[data-interactive]) { cursor: pointer; }
 
 	.list-item__bg {
 		position: absolute;
@@ -313,20 +241,20 @@
 		transform: scale(1);
 		transform-origin: center;
 		transition:
-			transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
-			background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+			transform 220ms var(--ease-standard),
+			background-color 200ms var(--ease-standard);
 	}
 
-	.list-item.list-item--interactive:hover:not(.list-item--active):not(.list-item--selected):not(.list-item--disabled) .list-item__bg {
+	.list-item[data-interactive]:hover:not([data-active]):not([data-selected]):not([data-disabled]) .list-item__bg {
 		background: rgb(var(--text) / 0.05);
 	}
 
-	.list-item.list-item--interactive:active:not(.list-item--active):not(.list-item--selected):not(.list-item--disabled) .list-item__bg {
+	.list-item[data-interactive]:active:not([data-active]):not([data-selected]):not([data-disabled]) .list-item__bg {
 		transform: scale(0.985);
 		background: rgb(var(--c) / 0.1);
 		transition:
-			transform 80ms cubic-bezier(0.4, 0, 0.2, 1),
-			background-color 80ms cubic-bezier(0.4, 0, 0.2, 1);
+			transform 80ms var(--ease-standard),
+			background-color 80ms var(--ease-standard);
 	}
 	:where(.list-item:focus-visible) {
 		outline: none;
@@ -336,99 +264,86 @@
 		outline-offset: -2px;
 	}
 
-	.list-item__lead,
-	.list-item__trail {
-		position: relative;
-		z-index: 1;
-		display: inline-flex;
-		flex: 0 0 auto;
-		align-items: center;
-		justify-content: center;
-		transition:
-			transform 220ms cubic-bezier(0.5, 1.45, 0.35, 1),
-			color 220ms cubic-bezier(0.4, 0, 0.2, 1);
-		transform-origin: center;
-	}
-	.list-item__trail { opacity: 0.65; }
-
-	.list-item.list-item--interactive:hover:not(.list-item--active):not(.list-item--selected):not(.list-item--disabled) .list-item__lead {
+	:global(
+		.list-item[data-interactive]:hover:not([data-active]):not([data-selected]):not([data-disabled])
+			.list-item__lead
+	) {
 		transform: scale(1.18);
 		color: rgb(var(--c));
 	}
 
-	.list-item__main {
-		position: relative;
-		z-index: 1;
-		display: flex;
-		flex-direction: column;
-		flex: 1 1 auto;
-		min-width: 0;
-		gap: 2px;
-		padding: var(--item-pad-y) 0;
-	}
-	.list-item__main:first-child { padding-left: var(--item-pad-x); }
-	.list-item__lead + .list-item__main,
-	.list-item__main { padding-left: 0; }
-	.list-item:not(:has(.list-item__lead)) .list-item__main { padding-left: var(--item-pad-x); }
-	.list-item:not(:has(.list-item__trail)) .list-item__main { padding-right: var(--item-pad-x); }
-	.list-item:has(.list-item__lead) .list-item__lead { padding-left: var(--item-pad-x); }
-	.list-item:has(.list-item__trail) .list-item__trail { padding-right: var(--item-pad-x); }
+	:global(.list-item__main:first-child) { padding-left: var(--item-pad-x); }
+	:global(.list-item__lead + .list-item__main),
+	:global(.list-item__main) { padding-left: 0; }
+	:global(.list-item:not(:has(.list-item__lead)) .list-item__main) { padding-left: var(--item-pad-x); }
+	:global(.list-item:not(:has(.list-item__trail)) .list-item__main) { padding-right: var(--item-pad-x); }
+	:global(.list-item:has(.list-item__lead) .list-item__lead) { padding-left: var(--item-pad-x); }
+	:global(.list-item:has(.list-item__trail) .list-item__trail) { padding-right: var(--item-pad-x); }
 
-	.list-item__label {
-		display: block;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		line-height: 1.3;
-	}
-	.list-item__desc {
-		display: block;
-		min-width: 0;
-		font-size: 0.78em;
-		opacity: 0.6;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		line-height: 1.3;
-	}
-
-	.list-item--active .list-item__bg,
-	.list-item--selected .list-item__bg {
+	.list-item[data-active] .list-item__bg,
+	.list-item[data-selected] .list-item__bg {
 		background: rgb(var(--c));
 	}
-	:where(.list-item--active),
-	:where(.list-item--selected) {
+	:where(.list-item[data-active]),
+	:where(.list-item[data-selected]) {
 		color: rgb(var(--on-accent));
 	}
-	.list-item--active .list-item__trail,
-	.list-item--selected .list-item__trail { opacity: 0.85; }
+	:global(.list-item[data-active] .list-item__trail),
+	:global(.list-item[data-selected] .list-item__trail) { opacity: 0.85; }
 
-	.list-item--flat.list-item--active .list-item__bg,
-	.list-item--flat.list-item--selected .list-item__bg {
+	.list-item--flat[data-active] .list-item__bg,
+	.list-item--flat[data-selected] .list-item__bg {
 		background: rgb(var(--c) / 0.18);
 	}
-	:where(.list-item--flat.list-item--active),
-	:where(.list-item--flat.list-item--selected) {
+	:where(.list-item--flat[data-active]),
+	:where(.list-item--flat[data-selected]) {
 		color: rgb(var(--c));
 	}
 
-	:where(.list-item--disabled) { opacity: 0.45; cursor: not-allowed; }
-	.list-item--disabled .list-item__bg { background: transparent !important; transform: none !important; }
+	:where(.list-item[data-disabled]) { opacity: 0.45; cursor: not-allowed; }
+	.list-item[data-disabled] .list-item__bg { background: transparent !important; transform: none !important; }
 
-	.list-item--loading .list-item__loading {
+	.list-item[data-loading] .list-item__loading {
 		position: absolute;
 		inset: 0;
 		z-index: 2;
 		border-radius: var(--item-radius);
 		background: rgb(var(--c) / 0.18);
+		-webkit-backdrop-filter: blur(2px);
 		backdrop-filter: blur(2px);
 		pointer-events: none;
 	}
 
-	:where(.list-item--size-xl)     { --item-radius: 16px; --item-pad-y: 14px; --item-pad-x: 18px; --item-gap: 14px; }
-	:where(.list-item--size-large)  { --item-radius: 14px; --item-pad-y: 12px; --item-pad-x: 16px; --item-gap: 13px; }
-	:where(.list-item--size-medium) { --item-radius: 12px; --item-pad-y: 9px;  --item-pad-x: 12px; --item-gap: 12px; }
-	:where(.list-item--size-small)  { --item-radius: 10px; --item-pad-y: 6px;  --item-pad-x: 10px; --item-gap: 10px; }
-	:where(.list-item--size-mini)   { --item-radius: 8px;  --item-pad-y: 4px;  --item-pad-x: 8px;  --item-gap: 8px; }
+	:global(.list__body[data-divided] .list-item) {
+		border-radius: 0;
+	}
+	:global(.list__body[data-divided] .list-item .list-item__bg) {
+		inset: 0;
+		border-radius: 0;
+	}
+	:global(.list__body[data-divided] .list-item:first-child .list-item__bg) {
+		border-top-left-radius: var(--list-radius);
+		border-top-right-radius: var(--list-radius);
+	}
+	:global(.list__body[data-divided] .list-item:last-child .list-item__bg) {
+		border-bottom-left-radius: var(--list-radius);
+		border-bottom-right-radius: var(--list-radius);
+	}
+	:global(.list__body[data-divided] .list-item + .list-item)::before {
+		content: '';
+		position: absolute;
+		left: 12px;
+		right: 12px;
+		top: 0;
+		height: 1px;
+		background: rgb(var(--text) / 0.08);
+		z-index: 1;
+		pointer-events: none;
+	}
+
+	:where(.list-item--size-xl)     { --item-radius: var(--rad-lg); --item-pad-y: var(--space-7); --item-pad-x: var(--space-8); --item-gap: 14px; }
+	:where(.list-item--size-large)  { --item-radius: 14px; --item-pad-y: var(--space-6); --item-pad-x: var(--space-7); --item-gap: 13px; }
+	:where(.list-item--size-medium) { --item-radius: var(--rad-md); --item-pad-y: var(--space-4);  --item-pad-x: var(--space-6); --item-gap: var(--space-6); }
+	:where(.list-item--size-small)  { --item-radius: 10px; --item-pad-y: var(--space-3);  --item-pad-x: var(--space-5); --item-gap: var(--space-5); }
+	:where(.list-item--size-mini)   { --item-radius: var(--rad-sm);  --item-pad-y: var(--space-2);  --item-pad-x: var(--space-4);  --item-gap: var(--space-4); }
 </style>

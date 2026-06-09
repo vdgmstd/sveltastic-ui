@@ -72,3 +72,6 @@ export type TimeRange = { from?: string; to?: string };
 
 /** Inclusive date+time range — both ends are `YYYY-MM-DDTHH:MM[:SS]` ISO strings. */
 export type DateTimeRange = { from?: string; to?: string };
+
+/** Adds a bindable `ref` to a props type so a consumer can capture the root element. */
+export type WithElementRef<T, El extends HTMLElement = HTMLElement> = T & { ref?: El | null };

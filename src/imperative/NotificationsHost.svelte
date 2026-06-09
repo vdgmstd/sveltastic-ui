@@ -30,13 +30,13 @@
 	}
 
 	const timers = new Map<number, number>();
-	const DEFAULT_DURATION = 4000;
+	const DEFAULT_DURATION = 5000;
 
 	$effect(() => {
 		const liveIds = new Set<number>();
 		for (const entry of notifications.entries) {
 			liveIds.add(entry.id);
-			if (entry.sticky || timers.has(entry.id)) continue;
+			if (entry.sticky || entry.loading || timers.has(entry.id)) continue;
 			const t = window.setTimeout(
 				() => notifications.close(entry.id),
 				entry.duration ?? DEFAULT_DURATION
@@ -190,6 +190,8 @@
 		text-align: start;
 		cursor: pointer;
 		border-radius: inherit;
+		-webkit-user-select: none;
+		user-select: none;
 	}
 	.notif__action:focus-visible {
 		outline: 2px solid rgb(var(--c));
@@ -227,6 +229,8 @@
 		cursor: pointer;
 		opacity: 0.7;
 		transition: opacity 150ms ease, background-color 150ms ease;
+		-webkit-user-select: none;
+		user-select: none;
 	}
 	.notif__close:hover {
 		opacity: 1;

@@ -20,7 +20,8 @@
 </script>
 
 <script lang="ts">
-	import Calendar from '../../Calendar/Calendar.svelte';
+	import { formatTimeParts } from '../../../utils/date';
+	import { Calendar } from '../../Calendar';
 	import TimePanel from './TimePanel.svelte';
 
 	let {
@@ -39,22 +40,10 @@
 
 	let calendarColor = $derived<'primary' | 'warning'>(color === 'warning' ? 'warning' : 'primary');
 
-	function pad(n: number): string {
-		return String(n).padStart(2, '0');
-	}
+	let timeLabel = $derived(formatTimeParts(time, { withSeconds: showSeconds, hour12 }));
 
-	let timeLabel = $derived.by(() => {
-		const sec = showSeconds ? `:${pad(time.s)}` : '';
-		if (hour12) {
-			const dh = time.h === 0 ? 12 : time.h > 12 ? time.h - 12 : time.h;
-			const period = time.h >= 12 ? 'PM' : 'AM';
-			return `${pad(dh)}:${pad(time.m)}${sec} ${period}`;
-		}
-		return `${pad(time.h)}:${pad(time.m)}${sec}`;
-	});
-
-	function handleDate(next: string | { from?: string; to?: string }): void {
-		if (typeof next === 'string') onchange(next, time);
+	function handleDate(next: string): void {
+		onchange(next, time);
 	}
 
 	function handleTime(next: TimeParts): void {
@@ -64,22 +53,21 @@
 
 <div class="datetime-panel">
 	<div class="datetime-panel__cal">
-		<Calendar
+		<Calendar.Root
 			bare
-			mode="single"
-			{value}
+			type="single"
+			bind:value={() => value, handleDate}
 			color={calendarColor}
 			{locale}
 			{weekStart}
 			{min}
 			{max}
 			{disabled}
-			onchange={handleDate}
 		/>
 	</div>
 	<div class="datetime-panel__time">
 		<div class="datetime-panel__time-chip" aria-live="polite">{timeLabel}</div>
-		<TimePanel value={time} {color} {hour12} {showSeconds} {disabled} onchange={handleTime} />
+		<TimePanel onTimeChange={handleTime} />
 	</div>
 </div>
 
@@ -88,7 +76,7 @@
 		display: grid;
 		grid-template-columns: auto auto;
 		align-items: stretch;
-		gap: 12px;
+		gap: var(--space-6);
 		color: rgb(var(--text));
 	}
 	.datetime-panel__time {
@@ -96,8 +84,8 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 10px;
-		padding-left: 12px;
+		gap: var(--space-5);
+		padding-left: var(--space-6);
 		border-left: 1px solid rgb(var(--text) / 0.08);
 	}
 	.datetime-panel__time-chip {
@@ -105,11 +93,11 @@
 		align-items: center;
 		justify-content: center;
 		min-height: 28px;
-		padding: 0 10px;
-		border-radius: 7px;
+		padding: 0 var(--space-5);
+		border-radius: var(--rad-sm);
 		background: rgb(var(--text) / 0.05);
 		color: rgb(var(--text));
-		font-size: 0.78rem;
+		font-size: var(--fs-sm);
 		font-weight: 500;
 		font-variant-numeric: tabular-nums;
 		letter-spacing: 0.02em;
@@ -118,11 +106,11 @@
 	@media (max-width: 480px) {
 		.datetime-panel {
 			grid-template-columns: 1fr;
-			gap: 10px;
+			gap: var(--space-5);
 		}
 		.datetime-panel__time {
 			padding-left: 0;
-			padding-top: 10px;
+			padding-top: var(--space-5);
 			border-left: 0;
 			border-top: 1px solid rgb(var(--text) / 0.08);
 			min-width: 0;

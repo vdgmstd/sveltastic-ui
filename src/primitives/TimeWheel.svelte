@@ -27,6 +27,8 @@
 	import { Tween } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 	import { rgbTriplet } from '../utils/color';
+	import { boolAttr } from '../utils/attrs';
+	import { reducedMotion } from '../state/reducedMotion.svelte';
 
 	let {
 		value,
@@ -40,6 +42,8 @@
 	}: TimeWheelProps = $props();
 
 	const COPIES = 3;
+	const uid = $props.id();
+	const activeId = `tw-${uid}-active`;
 
 	let triplet = $derived(rgbTriplet(color));
 	let resolvedHeight = $derived(height ?? itemHeight * 5);
@@ -57,11 +61,15 @@
 	let scrollTop = $state(0);
 	let settleTimer: number | undefined;
 	let userScrolling = $state(false);
+	let centered = false;
+	let initRaf = 0;
 
 	const programmaticScroll = new Tween(0, { duration: 320, easing: cubicOut });
 	let driveProgrammatic = $state(false);
 
 	const indicatorPulse = new Tween(0.12, { duration: 280, easing: cubicOut });
+
+	$effect(() => reducedMotion.subscribe());
 
 	function indexOf(v: number): number {
 		return items.findIndex((it) => it.key === v);
@@ -82,20 +90,43 @@
 		const target = virtIdx * itemHeight;
 		driveProgrammatic = true;
 		programmaticScroll.set(scrollEl.scrollTop, { duration: 0 });
-		void programmaticScroll.set(target, { duration: 320, easing: cubicOut }).then(() => {
+		const dur = reducedMotion.current ? 0 : 320;
+		void programmaticScroll.set(target, { duration: dur, easing: cubicOut }).then(() => {
 			driveProgrammatic = false;
 		});
+	}
+
+	function initialTop(): number {
+		const idx = indexOf(value);
+		return (items.length + (idx < 0 ? 0 : idx)) * itemHeight;
 	}
 
 	$effect(() => {
 		if (!scrollEl || userScrolling || driveProgrammatic) return;
 		if (items.length === 0) return;
-		const idx = indexOf(value);
-		if (idx < 0) return;
-		const target = (items.length + idx) * itemHeight;
-		if (Math.abs(scrollEl.scrollTop - target) > 0.5) {
-			scrollEl.scrollTop = target;
-			scrollTop = target;
+		const target = initialTop();
+		if (Math.abs(scrollEl.scrollTop - target) <= 0.5) {
+			centered = true;
+			return;
+		}
+		scrollEl.scrollTop = target;
+		scrollTop = target;
+		// Firefox drops a scrollTop set while the popover is still hidden/transitioning — re-assert until it sticks.
+		if (!centered && initRaf === 0) {
+			let tries = 0;
+			const reassert = (): void => {
+				initRaf = 0;
+				if (!scrollEl || userScrolling || driveProgrammatic || centered) return;
+				const t = initialTop();
+				if (Math.abs(scrollEl.scrollTop - t) <= 0.5) {
+					centered = true;
+					return;
+				}
+				scrollEl.scrollTop = t;
+				scrollTop = t;
+				if (++tries < 30) initRaf = requestAnimationFrame(reassert);
+			};
+			initRaf = requestAnimationFrame(reassert);
 		}
 	});
 
@@ -243,9 +274,7 @@
 		activePointerId = e.pointerId;
 		try { scrollEl.setPointerCapture(e.pointerId); } catch {  }
 
-		// Backstop: if pointer is released far outside the browser viewport or focus
-		// leaves the window, the element-level pointerup may never fire and the wheel
-		// would stay stuck mid-value.
+		// Backstop: a release far outside the viewport may skip the element pointerup.
 		dragAc?.abort();
 		dragAc = new AbortController();
 		const { signal } = dragAc;
@@ -293,22 +322,23 @@
 		pickVirt(idx);
 	}
 
+	// Destroy releases timers/raf/AC and flushes a pending drag write only; it never emits onchange or starts a tween.
 	$effect(() => () => {
 		if (settleTimer !== undefined) {
 			window.clearTimeout(settleTimer);
 			settleTimer = undefined;
-			snapToCurrent();
 		}
-		if (dragRaf !== 0) cancelAnimationFrame(dragRaf);
-		if (dragging) {
-			if (dragPendingScroll !== null && scrollEl) {
-				scrollEl.scrollTop = dragPendingScroll;
-				dragPendingScroll = null;
-			}
-			if (dragMoved) {
-				recenter();
-				snapToCurrent();
-			}
+		if (dragRaf !== 0) {
+			cancelAnimationFrame(dragRaf);
+			dragRaf = 0;
+		}
+		if (initRaf !== 0) {
+			cancelAnimationFrame(initRaf);
+			initRaf = 0;
+		}
+		if (dragPendingScroll !== null && scrollEl) {
+			scrollEl.scrollTop = dragPendingScroll;
+			dragPendingScroll = null;
 		}
 		dragAc?.abort();
 		dragAc = null;
@@ -332,8 +362,8 @@
 
 <div
 	class="time-wheel"
-	class:time-wheel--disabled={disabled}
-	class:time-wheel--dragging={dragging}
+	data-disabled={boolAttr(disabled)}
+	data-dragging={boolAttr(dragging)}
 	style:--c={triplet}
 	style:--h="{resolvedHeight}px"
 	style:--ih="{itemHeight}px"
@@ -341,7 +371,7 @@
 	role="listbox"
 	tabindex={disabled ? -1 : 0}
 	aria-label={ariaLabel}
-	aria-activedescendant={`tw-${value}`}
+	aria-activedescendant={activeId}
 	onkeydown={onKeydown}
 	data-testid="time-wheel"
 >
@@ -362,9 +392,9 @@
 			{@const s = itemStyle(idx)}
 			<button
 				type="button"
-				id={isActive(idx) ? `tw-${item.key}` : undefined}
+				id={isActive(idx) ? activeId : undefined}
 				class="time-wheel__item"
-				class:time-wheel__item--active={isActive(idx)}
+				data-active={boolAttr(isActive(idx))}
 				role="option"
 				aria-selected={isActive(idx)}
 				tabindex="-1"
@@ -385,24 +415,25 @@
 		display: inline-block;
 		width: 56px;
 		height: var(--h);
-		border-radius: 12px;
+		border-radius: var(--rad-md);
 		outline: none;
 		font-variant-numeric: tabular-nums;
 		touch-action: pan-y;
+		-webkit-user-select: none;
 		user-select: none;
 	}
 	.time-wheel:focus-visible {
 		box-shadow: 0 0 0 2px rgb(var(--c) / 0.4);
 	}
-	.time-wheel--disabled {
+	.time-wheel[data-disabled] {
 		opacity: 0.5;
 		pointer-events: none;
 	}
-	.time-wheel--dragging .time-wheel__scroll {
+	.time-wheel[data-dragging] .time-wheel__scroll {
 		scroll-snap-type: none;
 		cursor: grabbing;
 	}
-	.time-wheel--dragging .time-wheel__item { scroll-snap-align: none; }
+	.time-wheel[data-dragging] .time-wheel__item { scroll-snap-align: none; }
 
 	.time-wheel__indicator {
 		position: absolute;
@@ -412,9 +443,9 @@
 		height: var(--ih);
 		transform: translateY(-50%);
 		background: rgb(var(--c) / var(--ind-op, 0.12));
-		border-radius: 9px;
+		border-radius: var(--rad-sm);
 		pointer-events: none;
-		transition: background 200ms cubic-bezier(0.215, 0.61, 0.355, 1);
+		transition: background 200ms var(--ease-soft);
 	}
 
 	.time-wheel__scroll {
@@ -458,15 +489,14 @@
 		background: transparent;
 		color: rgb(var(--text));
 		font: inherit;
-		font-size: 0.9rem;
+		font-size: var(--fs-md);
 		cursor: grab;
 		scroll-snap-align: center;
 		scroll-snap-stop: always;
-		will-change: opacity, transform;
-		transition: color 200ms cubic-bezier(0.215, 0.61, 0.355, 1);
+		transition: color 200ms var(--ease-soft);
 	}
 	.time-wheel__item:active { cursor: grabbing; }
-	.time-wheel__item--active {
+	.time-wheel__item[data-active] {
 		color: rgb(var(--c));
 		font-weight: 600;
 	}

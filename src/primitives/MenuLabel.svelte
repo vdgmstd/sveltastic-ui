@@ -14,11 +14,13 @@
 
 <style>
 	.menu-label {
-		padding: 6px 10px 4px;
-		font-size: 0.65rem;
+		padding: var(--space-3) var(--space-5) var(--space-2);
+		font-size: var(--fs-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		font-weight: 600;
 		opacity: 0.5;
+		-webkit-user-select: none;
+		user-select: none;
 	}
 </style>

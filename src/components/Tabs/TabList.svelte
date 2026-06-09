@@ -1,153 +1,160 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { WithElementRef } from '../../types';
 	import type { HTMLAttributes } from 'svelte/elements';
 
-	export type TabListProps = {
-		/** Trigger row label for screen readers. */
-		ariaLabel?: string;
-		/** Stretch the row to fill its container; tabs distribute evenly. */
-		block?: boolean;
-		/** `<Tab>` children. */
-		children?: Snippet;
-	} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>;
+	export type TabsListProps = WithElementRef<
+		{
+			/** Trigger row label for screen readers. */
+			ariaLabel?: string;
+			/** Stretch the row to fill its container; tabs distribute evenly. */
+			block?: boolean;
+			/** `<Tabs.Trigger>` children. */
+			children?: Snippet;
+			/** Render-delegation: receive the merged props and render your own tablist element. */
+			child?: Snippet<[{ props: Record<string, unknown> }]>;
+		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
+		HTMLDivElement
+	>;
 </script>
 
 <script lang="ts">
-	import { Spring, Tween } from 'svelte/motion';
-	import { cubicOut, backOut } from 'svelte/easing';
-	import { cn } from '../../utils/cn';
+	import { boolAttr } from '../../utils/attrs';
+	import { mergeProps } from '../../utils/mergeProps';
+	import { attachRef } from '../../utils/ref';
+	import { createAttachmentKey } from 'svelte/attachments';
+	import { pressBounce } from '../../actions/pressBounce.svelte';
+	import { createSlidingIndicator } from '../../state/slidingIndicator.svelte';
 	import { useTabsContext } from './context';
 
 	let {
+		ref = $bindable(null),
 		ariaLabel,
 		block = false,
 		children,
+		child,
 		class: className,
-		style: userStyle,
 		...rest
-	}: TabListProps = $props();
+	}: TabsListProps = $props();
 	const ctx = useTabsContext();
 
 	let variant = $derived(ctx?.variant ?? 'underline');
 	let size = $derived(ctx?.size ?? 'medium');
+	let orientation = $derived(ctx?.orientation ?? 'horizontal');
 	let disabled = $derived(ctx?.disabled ?? false);
 	let isUnderline = $derived(variant === 'underline');
+	let isVertical = $derived(orientation === 'vertical');
 
-	let container = $state<HTMLDivElement>();
+	let container: HTMLDivElement | null = $state(null);
 	let thumbLayer = $state<HTMLSpanElement>();
 
-	const thumbX = new Spring(0, { stiffness: 0.18, damping: 0.78 });
-	const thumbW = new Spring(0, { stiffness: 0.18, damping: 0.78 });
-	const pressScale = new Tween(1, { duration: 110, easing: cubicOut });
-	let pressToken = 0;
-	let ready = $state(false);
+	const thumb = createSlidingIndicator({ spring: { stiffness: 0.18, damping: 0.78 } });
+	const press = pressBounce({ disabled: () => disabled || isUnderline });
 
 	$effect(() => {
-		const stiffness = isUnderline ? 0.14 : 0.18;
-		const damping = isUnderline ? 0.55 : 0.78;
-		thumbX.stiffness = stiffness;
-		thumbX.damping = damping;
-		thumbW.stiffness = stiffness;
-		thumbW.damping = damping;
+		thumb.setSpring(
+			isUnderline ? { stiffness: 0.14, damping: 0.55 } : { stiffness: 0.18, damping: 0.78 }
+		);
 	});
 
 	function measure(): void {
-		if (!ctx) return;
-		const v = ctx.value;
-		if (v === undefined) {
-			thumbW.set(0, ready ? undefined : { instant: true });
-			return;
-		}
-		const el = ctx.getEl(v);
-		if (!el || !container) return;
-		const opts = ready ? undefined : { instant: true };
-		thumbX.set(el.offsetLeft, opts);
-		thumbW.set(el.offsetWidth, opts);
+		const active = container?.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
+		thumb.measure(active ?? null, container);
 	}
 
 	$effect(() => {
-		if (!ctx) return;
-		void ctx.value;
-		void ctx.order.length;
+		void ctx?.value;
+		void orientation;
 		measure();
-		if (!ready && thumbW.current > 0) {
-			const id = requestAnimationFrame(() => (ready = true));
-			return () => cancelAnimationFrame(id);
-		}
 	});
 
 	$effect(() => {
 		if (!container) return;
-		const ro = new ResizeObserver(() => measure());
-		ro.observe(container);
-		return () => ro.disconnect();
+		return thumb.observe(container, measure);
 	});
+
+	$effect(() => () => thumb.destroy());
 
 	$effect(() => {
 		ctx?.setThumbLayer(thumbLayer);
 		return () => ctx?.setThumbLayer(undefined);
 	});
 
-	async function runPress(): Promise<void> {
-		if (disabled || isUnderline) return;
-		const token = ++pressToken;
-		pressScale.set(1, { duration: 0 });
-		await pressScale.set(0.85, { duration: 110, easing: cubicOut });
-		if (token !== pressToken) return;
-		await pressScale.set(1, { duration: 460, easing: backOut });
-	}
-
 	function handlePointerDown(e: PointerEvent): void {
 		const tab = (e.target as HTMLElement | null)?.closest<HTMLElement>('[role="tab"]');
 		if (!tab || tab.hasAttribute('disabled')) return;
-		void runPress();
+		press.onpointerdown(e);
 	}
+
+	const attrs = $derived({
+		class: [
+			'tab-list',
+			`tab-list--${variant}`,
+			`tab-list--size-${size}`,
+			block ? 'tab-list--block' : undefined
+		]
+			.filter(Boolean)
+			.join(' '),
+		role: 'tablist' as const,
+		'aria-label': ariaLabel,
+		'aria-orientation': orientation,
+		'aria-disabled': disabled || undefined,
+		'data-orientation': orientation,
+		'data-disabled': boolAttr(disabled),
+		'data-ready': boolAttr(thumb.ready),
+		'data-testid': 'tab-list',
+		onpointerdown: handlePointerDown
+	});
+	const refKey = createAttachmentKey();
+	const merged = $derived(
+		mergeProps(rest, attrs, {
+			class: className,
+			[refKey]: attachRef<HTMLDivElement>((n) => {
+				ref = n;
+				container = n;
+			})
+		})
+	);
 </script>
 
-<div
-	bind:this={container}
-	class={cn(
-		'tab-list',
-		`tab-list--${variant}`,
-		`tab-list--size-${size}`,
-		block && 'tab-list--block',
-		disabled && 'tab-list--disabled',
-		ready && 'tab-list--ready',
-		className
-	)}
-	style={userStyle}
-	role="tablist"
-	aria-label={ariaLabel}
-	aria-disabled={disabled || undefined}
-	data-testid="tab-list"
-	onpointerdown={handlePointerDown}
-	{...rest}
->
+{#snippet thumbSpan()}
 	<span
 		class="tab-list__thumb"
-		class:tab-list__thumb--hidden={thumbW.current === 0}
+		data-hidden={boolAttr((isVertical ? thumb.h : thumb.w) === 0)}
 		aria-hidden="true"
-		style:--x={`${thumbX.current}px`}
-		style:--w={`${thumbW.current}px`}
-		style:--ps={pressScale.current}
+		style:--x={`${thumb.x}px`}
+		style:--y={`${thumb.y}px`}
+		style:--w={`${thumb.w}px`}
+		style:--h={`${thumb.h}px`}
+		style:--ps={press.scale}
 	>
 		{#if !isUnderline}
 			<span bind:this={thumbLayer} class="tab-list__thumb-ripples" aria-hidden="true"></span>
 		{/if}
 	</span>
-	{@render children?.()}
-</div>
+{/snippet}
+
+{#if child}
+	{@render child({ props: merged })}
+{:else}
+	<div {...merged}>
+		{@render thumbSpan()}
+		{@render children?.()}
+	</div>
+{/if}
 
 <style>
 	:where(.tab-list) {
 		--x: 0px;
+		--y: 0px;
 		--w: 0px;
+		--h: 0px;
 		--pad: 3px;
-		--radius: 13px;
+		--radius: var(--rad-md);
 		--inner-radius: 10px;
 		--item-py: 5px;
-		--item-px: 12px;
-		--font-size: 0.8rem;
+		--item-px: var(--space-6);
+		--font-size: var(--fs-md);
 		--ripple-soft-alpha: 0.2;
 		--underline-h: 2px;
 
@@ -157,44 +164,50 @@
 		padding: var(--pad);
 		background: rgb(var(--gray-2));
 		border-radius: var(--radius);
+		-webkit-user-select: none;
 		user-select: none;
 		isolation: isolate;
 	}
 
+	:where(.tab-list[data-orientation='vertical']) {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
 	:where(.tab-list--size-xl) {
-		--pad: 5px;
-		--item-py: 10px;
-		--item-px: 20px;
-		--font-size: 1.1rem;
-		--radius: 22px;
-		--inner-radius: 17px;
+		--pad: var(--space-3);
+		--item-py: var(--space-5);
+		--item-px: var(--space-8);
+		--font-size: var(--fs-xl);
+		--radius: var(--rad-2xl);
+		--inner-radius: var(--rad-lg);
 	}
 
 	:where(.tab-list--size-large) {
-		--pad: 4px;
-		--item-py: 6px;
-		--item-px: 15px;
-		--font-size: 1rem;
-		--radius: 17px;
-		--inner-radius: 13px;
+		--pad: var(--space-2);
+		--item-py: var(--space-3);
+		--item-px: var(--space-7);
+		--font-size: var(--fs-lg);
+		--radius: var(--rad-lg);
+		--inner-radius: var(--rad-md);
 	}
 
 	:where(.tab-list--size-small) {
-		--pad: 2px;
-		--item-py: 3px;
-		--item-px: 10px;
-		--font-size: 0.75rem;
-		--radius: 10px;
-		--inner-radius: 8px;
+		--pad: var(--space-1);
+		--item-py: var(--space-2);
+		--item-px: var(--space-5);
+		--font-size: var(--fs-sm);
+		--radius: var(--rad-sm);
+		--inner-radius: var(--rad-sm);
 	}
 
 	:where(.tab-list--size-mini) {
 		--pad: 1px;
-		--item-py: 2px;
-		--item-px: 8px;
-		--font-size: 0.6rem;
-		--radius: 7px;
-		--inner-radius: 6px;
+		--item-py: var(--space-1);
+		--item-px: var(--space-4);
+		--font-size: var(--fs-xs);
+		--radius: var(--rad-xs);
+		--inner-radius: var(--rad-xs);
 	}
 
 	:where(.tab-list--block) {
@@ -205,7 +218,7 @@
 		justify-content: center;
 	}
 
-	:where(.tab-list--disabled) {
+	:where(.tab-list[data-disabled]) {
 		opacity: 0.55;
 	}
 
@@ -221,7 +234,17 @@
 		border-radius: var(--inner-radius);
 		pointer-events: none;
 		z-index: 1;
-		transition: background-color 220ms cubic-bezier(0.4, 0, 0.2, 1);
+		transition: background-color 220ms var(--ease-standard);
+	}
+
+	:where(.tab-list[data-orientation='vertical']) .tab-list__thumb {
+		top: 0;
+		bottom: auto;
+		left: var(--pad);
+		right: var(--pad);
+		width: auto;
+		height: var(--h);
+		transform: translateY(var(--y)) scale(var(--ps, 1));
 	}
 
 	.tab-list__thumb-ripples {
@@ -232,7 +255,7 @@
 		border-radius: inherit;
 	}
 
-	.tab-list__thumb--hidden {
+	.tab-list__thumb[data-hidden] {
 		opacity: 0;
 	}
 
@@ -246,14 +269,27 @@
 		top: auto;
 		bottom: -1px;
 		height: var(--underline-h);
-		border-radius: 999px;
+		border-radius: var(--rad-pill);
+	}
+	:where(.tab-list--underline[data-orientation='vertical']) {
+		border-bottom: 0;
+		border-inline-start: 1px solid rgb(var(--text) / 0.08);
+	}
+	.tab-list--underline[data-orientation='vertical'] .tab-list__thumb {
+		top: 0;
+		bottom: auto;
+		left: -1px;
+		right: auto;
+		width: var(--underline-h);
+		height: var(--h);
+		transform: translateY(var(--y));
 	}
 
-	/* tonal — soft accent track, slightly accent-tinted thumb */
-	:where(.tab-list--tonal) {
+	/* flat — soft accent track, slightly accent-tinted thumb */
+	:where(.tab-list--flat) {
 		background: rgb(var(--c) / 0.08);
 	}
-	.tab-list--tonal .tab-list__thumb {
+	.tab-list--flat .tab-list__thumb {
 		background: rgb(var(--c) / 0.15);
 	}
 

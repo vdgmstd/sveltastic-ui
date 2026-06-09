@@ -1,5 +1,7 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
+	import type { WithElementRef } from '../types';
 
 	export type PopoverPlacement =
 		| 'bottom'
@@ -19,7 +21,9 @@
 	/** ARIA role applied to the anchor element (the wrapper around the trigger snippet). */
 	export type PopoverTriggerRole = 'button' | 'combobox';
 
-	export type PopoverProps = {
+	export type PopoverProps = WithElementRef<
+		Omit<HTMLAttributes<HTMLDivElement>, 'children'>
+	> & {
 		/** Open state (bindable). */
 		open?: boolean;
 		/** Popup placement relative to the trigger. */
@@ -52,6 +56,10 @@
 		triggerRole?: PopoverTriggerRole;
 		/** Focus the first focusable on keyboard-initiated open (Enter / Space / ArrowDown). */
 		autoFocus?: boolean;
+		/** Trap focus + emit aria-modal. Defaults to `popupRole === 'dialog'`; pass `false` for a non-modal popup (e.g. editable date field) where focus stays in the trigger. */
+		modal?: boolean;
+		/** Accessible label for the popup when it has no visible heading. */
+		ariaLabel?: string;
 		/** Anchor / trigger content. Receives `open` for visual state sync. */
 		trigger?: Snippet<[boolean]>;
 		/** Sticky popup header. Receives a `close` callback. */
@@ -62,6 +70,8 @@
 		footer?: Snippet<[() => void]>;
 		/** Fires when `open` changes. */
 		onopenchange?: (open: boolean) => void;
+		/** Fires after the close transition finishes (popup fully removed). */
+		onopenchangecomplete?: (open: boolean) => void;
 		/** Class merged onto the anchor (trigger wrapper). */
 		class?: string;
 		/** Inline style merged onto the anchor (trigger wrapper). */
@@ -74,10 +84,13 @@
 	import type { TransitionConfig } from 'svelte/transition';
 	import { backOut, cubicOut } from 'svelte/easing';
 	import { portal } from '../actions/portal';
-	import { clickOutside } from '../actions/clickOutside';
-	import { watchAnchor } from '../utils/anchor';
-	import { nextId } from '../state/ids.svelte';
+	import { escapeLayer } from '../actions/escapeLayer';
+	import { dismissibleLayer } from '../actions/dismissibleLayer';
+	import { focusTrap } from '../actions/focusTrap';
+	import { isUsingKeyboard } from '../state/isUsingKeyboard.svelte';
+	import { computeAnchorPosition, watchAnchor, type AnchorFlipState } from '../utils/anchor';
 	import { cn } from '../utils/cn';
+	import { boolAttr, dataState } from '../utils/attrs';
 
 	let {
 		open = $bindable(false),
@@ -96,29 +109,37 @@
 		popupRole = 'menu',
 		triggerRole = 'button',
 		autoFocus = true,
+		modal,
+		ariaLabel,
+		ref = $bindable(null),
 		trigger,
 		header,
 		children,
 		footer,
 		onopenchange,
+		onopenchangecomplete,
 		class: className,
-		style: userStyle
+		style: userStyle,
+		...rest
 	}: PopoverProps = $props();
 
-	const popupId = nextId('popover');
-	const anchorName = `--popover-anchor-${nextId('a')}`;
+	const uid = $props.id();
+	const popupId = `popover-${uid}`;
+	const anchorName = `--popover-anchor-${uid}`;
 
-	let triggerEl = $state<HTMLDivElement>();
-	let popupEl = $state<HTMLDivElement>();
+	let triggerEl = $state<HTMLDivElement | null>(null);
+	let popupEl = $state<HTMLDivElement | null>(null);
 	let coords = $state({ x: 0, y: 0 });
 	let triggerWidth = $state(0);
 	let resolvedPlacement = $state<PopoverPlacement>(untrack(() => placement));
 	let visible = $state(false);
 	let returnFocusEl: HTMLElement | null = null;
+	let everHeldFocus = false;
 	let pendingFocus = false;
+	let focusFrame = 0;
+	let openedWithKeyboard = $state(false);
 	let hoverCloseTimer: number | undefined;
-	let currentSide: 'top' | 'bottom' | null = null;
-	let currentAlign: 'start' | 'center' | 'end' | null = null;
+	const flip: AnchorFlipState = { side: null, align: null };
 
 	let supportsAnchor = $state(false);
 	let supportsPopover = $state(false);
@@ -129,26 +150,47 @@
 			typeof CSS !== 'undefined' &&
 			CSS.supports('position-anchor: --x') &&
 			CSS.supports('top: anchor(bottom)');
-		supportsPopover =
-			typeof HTMLElement !== 'undefined' && 'popover' in HTMLElement.prototype;
+		supportsPopover = typeof HTMLElement !== 'undefined' && 'popover' in HTMLElement.prototype;
 	});
 
 	let closeOnOutside = $derived(closeOnClickOutside ?? triggerOn !== 'manual');
+	let popupAriaRole = $derived(popupRole === 'none' ? undefined : popupRole);
+	$effect(() => isUsingKeyboard.subscribe());
+	let isModal = $derived(modal ?? popupRole === 'dialog');
+	let trapsFocus = $derived(open && visible && isModal);
+	let side = $derived<'top' | 'bottom'>(resolvedPlacement.startsWith('top') ? 'top' : 'bottom');
+	let align = $derived<'start' | 'center' | 'end'>(
+		resolvedPlacement.endsWith('-end')
+			? 'end'
+			: resolvedPlacement.endsWith('-start')
+				? 'start'
+				: 'center'
+	);
 
 	function setOpen(next: boolean): void {
 		if (disabled) return;
 		if (open === next) return;
-		if (next) returnFocusEl = (document.activeElement as HTMLElement | null) ?? null;
+		if (next) {
+			returnFocusEl = (document.activeElement as HTMLElement | null) ?? null;
+			everHeldFocus = false;
+			openedWithKeyboard = isUsingKeyboard.current;
+		}
 		open = next;
 		onopenchange?.(next);
 		if (!next) restoreFocusOnClose();
 	}
 
 	function restoreFocusOnClose(): void {
-		const focusInside = popupEl?.contains(document.activeElement);
-		if (focusInside && returnFocusEl?.isConnected) returnFocusEl.focus();
+		const active = document.activeElement;
+		const focusOrphaned = active === document.body || active === null;
+		const focusInside = popupEl?.contains(active) ?? false;
+		if ((everHeldFocus || focusInside || focusOrphaned) && returnFocusEl?.isConnected) {
+			returnFocusEl.focus({ preventScroll: true });
+		}
 		returnFocusEl = null;
 		pendingFocus = false;
+		everHeldFocus = false;
+		openedWithKeyboard = false;
 	}
 
 	const close = () => setOpen(false);
@@ -172,8 +214,6 @@
 			e.preventDefault();
 			pendingFocus = true;
 			openPopup();
-		} else if (e.key === 'Escape' && closeOnEsc) {
-			close();
 		}
 	}
 	function handleEnter(): void {
@@ -193,66 +233,16 @@
 
 	function reposition(): void {
 		if (!triggerEl || !popupEl) return;
-		const t = triggerEl.getBoundingClientRect();
-		const pw = popupEl.offsetWidth;
-		const ph = popupEl.offsetHeight;
-		const vh = window.innerHeight;
-		const vw = window.innerWidth;
-		const margin = 8;
-
-		triggerWidth = t.width;
-
-		const wantsTop = placement.startsWith('top');
-		const wantsAlign: 'start' | 'center' | 'end' = placement.endsWith('-end')
-			? 'end'
-			: placement === 'top' || placement === 'bottom'
-				? 'center'
-				: 'start';
-
-		const spaceBelow = vh - t.bottom - margin;
-		const spaceAbove = t.top - margin;
-
-		if (currentSide === null) {
-			currentSide = wantsTop !== (spaceAbove < ph && spaceBelow > spaceAbove) ? 'top' : 'bottom';
-		} else {
-			const cur = currentSide === 'top' ? spaceAbove : spaceBelow;
-			const opp = currentSide === 'top' ? spaceBelow : spaceAbove;
-			if (cur < ph && opp > cur) currentSide = currentSide === 'top' ? 'bottom' : 'top';
-		}
-
-		const startFits = t.left + pw <= vw - margin;
-		const endFits = t.right - pw >= margin;
-		if (currentAlign === null) {
-			let initial = wantsAlign;
-			if (initial === 'start' && !startFits && endFits) initial = 'end';
-			else if (initial === 'end' && !endFits && startFits) initial = 'start';
-			currentAlign = initial;
-		} else if (currentAlign === 'start' && !startFits && endFits) {
-			currentAlign = 'end';
-		} else if (currentAlign === 'end' && !endFits && startFits) {
-			currentAlign = 'start';
-		}
-
-		const sideTop = currentSide === 'top';
-		const align = currentAlign;
-
-		const y = sideTop ? t.top - ph - offset : t.bottom + offset;
-		const x =
-			align === 'end'
-				? t.right - pw
-				: align === 'center'
-					? t.left + (t.width - pw) / 2
-					: t.left;
-
-		coords = { x, y };
-		const alignKey = align === 'center' ? '' : `-${align}`;
-		resolvedPlacement = `${sideTop ? 'top' : 'bottom'}${alignKey}` as PopoverPlacement;
+		const result = computeAnchorPosition(triggerEl, popupEl, placement, offset, flip);
+		coords = { x: result.x, y: result.y };
+		triggerWidth = result.triggerWidth;
+		resolvedPlacement = result.placement;
 	}
 
 	$effect(() => {
 		if (!open) {
-			currentSide = null;
-			currentAlign = null;
+			flip.side = null;
+			flip.align = null;
 			return;
 		}
 		visible = false;
@@ -283,21 +273,21 @@
 		visible = true;
 		if (autoFocus && pendingFocus) {
 			pendingFocus = false;
-			requestAnimationFrame(() => focusFirstItem());
+			focusFrame = requestAnimationFrame(() => {
+				focusFrame = 0;
+				if (open && visible) focusFirstItem();
+			});
 		}
-		return stop;
+		return () => {
+			if (focusFrame) {
+				cancelAnimationFrame(focusFrame);
+				focusFrame = 0;
+			}
+			stop?.();
+		};
 	});
 
 	$effect(() => () => clearHoverClose());
-
-	function handleEsc(e: KeyboardEvent): void {
-		if (e.key === 'Escape' && open && closeOnEsc) close();
-	}
-	$effect(() => {
-		if (!open || !closeOnEsc) return;
-		document.addEventListener('keydown', handleEsc);
-		return () => document.removeEventListener('keydown', handleEsc);
-	});
 
 	function getMenuItems(): HTMLElement[] {
 		if (!popupEl) return [];
@@ -309,6 +299,7 @@
 	}
 
 	function focusFirstItem(): void {
+		everHeldFocus = true;
 		getMenuItems()[0]?.focus();
 	}
 
@@ -329,8 +320,11 @@
 		} else if (e.key === 'End') {
 			e.preventDefault();
 			items[items.length - 1].focus();
-		} else if (e.key === 'Tab') {
+		} else if (e.key === 'Tab' && !trapsFocus) {
+			e.preventDefault();
+			const back = returnFocusEl?.isConnected ? returnFocusEl : triggerEl;
 			close();
+			back?.focus({ preventScroll: true });
 		}
 	}
 
@@ -339,6 +333,10 @@
 		const t = e.target as HTMLElement | null;
 		if (!t) return;
 		if (t.closest('button, a, [role="menuitem"], [role="option"], [data-popover-close]')) close();
+	}
+
+	function handlePopupFocusin(): void {
+		everHeldFocus = true;
 	}
 
 	const variantConfig = {
@@ -364,19 +362,24 @@
 				if (params.variant === 'fade') return op;
 				if (params.variant === 'slide')
 					return `${op}transform:translateY(${fromTop ? 8 * u : -8 * u}px);`;
-				if (params.variant === 'spring')
-					return `${op}transform:scale(${0.4 + 0.6 * t});`;
+				if (params.variant === 'spring') return `${op}transform:scale(${0.4 + 0.6 * t});`;
 				return `${op}transform:scale(${0.92 + 0.08 * t});`;
 			}
 		};
 	}
-
-	let popupAriaRole = $derived(popupRole === 'none' ? undefined : popupRole);
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex — the anchor takes role="combobox"/"button" and is the keyboard target for the popover; Svelte's static check doesn't follow the dynamic role. -->
+<!-- Anchor takes role="combobox"/"button" and is the popover's keyboard target; the static check can't follow the dynamic role. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
-	bind:this={triggerEl}
+	{@attach (node) => {
+		triggerEl = node;
+		ref = node;
+		return () => {
+			triggerEl = null;
+			ref = null;
+		};
+	}}
 	class={cn('popover-anchor', block && 'popover-anchor--block', className)}
 	style:anchor-name={anchorName}
 	style={userStyle}
@@ -385,10 +388,13 @@
 	aria-haspopup={popupAriaRole}
 	aria-expanded={popupAriaRole ? open : undefined}
 	aria-controls={popupAriaRole && open ? popupId : undefined}
+	data-state={dataState(open ? 'open' : 'closed')}
+	data-disabled={boolAttr(disabled)}
 	onclick={handleTriggerClick}
 	onkeydown={handleTriggerKeydown}
 	onmouseenter={handleEnter}
 	onmouseleave={handleLeave}
+	{...rest}
 >
 	{#if trigger}{@render trigger(open)}{/if}
 </div>
@@ -401,8 +407,14 @@
 		class:popover--anchored={supportsAnchor}
 		popover={supportsPopover ? 'manual' : undefined}
 		role={popupAriaRole ?? 'group'}
+		aria-modal={popupRole === 'dialog' && trapsFocus ? 'true' : undefined}
 		aria-orientation={popupRole === 'menu' ? 'vertical' : undefined}
+		aria-label={ariaLabel}
 		tabindex="-1"
+		data-state={dataState(visible ? 'open' : 'closed')}
+		data-placement={resolvedPlacement}
+		data-side={side}
+		data-align={align}
 		style:--popover-anchor-name={anchorName}
 		style:--popover-offset="{offset}px"
 		style:--popover-coord-x={!supportsAnchor ? `${coords.x}px` : null}
@@ -410,16 +422,27 @@
 		style:width={matchWidth && triggerWidth ? `${triggerWidth}px` : null}
 		style:visibility={visible ? null : 'hidden'}
 		use:portal
-		use:clickOutside={{
-			handler: () => closeOnOutside && close(),
+		use:escapeLayer={{
+			disabled: !closeOnEsc,
+			onEscape: () => close()
+		}}
+		use:dismissibleLayer={{
 			disabled: !closeOnOutside,
-			include: triggerEl ? [triggerEl] : []
+			anchor: triggerEl,
+			onDismiss: () => close()
+		}}
+		use:focusTrap={{
+			disabled: !trapsFocus,
+			noAutoFocus: !openedWithKeyboard,
+			noReturnFocus: true
 		}}
 		onmouseenter={handleEnter}
 		onmouseleave={handleLeave}
 		onkeydown={handlePopupKey}
+		onfocusin={handlePopupFocusin}
 		in:popoverMotion={{ variant: openAnim, placement: resolvedPlacement }}
 		out:popoverMotion={{ variant: openAnim, placement: resolvedPlacement }}
+		onoutroend={() => onopenchangecomplete?.(false)}
 	>
 		{#if header}
 			<div class="popover__header">{@render header(close)}</div>
@@ -449,21 +472,20 @@
 		z-index: 90000;
 		min-width: 180px;
 		margin: 0;
-		padding: 6px;
+		padding: var(--space-3);
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: var(--space-2);
 		background: rgb(var(--gray-2) / 0.52);
 		-webkit-backdrop-filter: var(--frost);
 		backdrop-filter: var(--frost);
 		color: rgb(var(--text));
 		border: 0;
-		border-radius: 20px;
+		border-radius: var(--rad-xl);
 		box-shadow:
 			0 0 0 1px rgb(var(--text) / 0.06),
-			0 14px 32px -6px rgb(0 0 0 / 0.22),
+			var(--shadow-3),
 			0 5px 12px -2px rgb(0 0 0 / 0.1);
-		will-change: transform, opacity;
 		top: var(--popover-coord-y, 0);
 		left: var(--popover-coord-x, 0);
 	}
@@ -493,7 +515,7 @@
 	.popover__body {
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: var(--space-1);
 		min-height: 0;
 	}
 	.popover__header,

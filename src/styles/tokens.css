@@ -1,10 +1,9 @@
 @import 'tailwindcss';
-@import './scrollbar.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 @theme static {
-	/* ── Default accent palette (raw RGB triplets, used via rgb(var(--X))) ── */
+	/* Default accent palette — raw RGB triplets, used via rgb(var(--X)). */
 	--primary: 25 91 255;
 	--success: 70 201 58;
 	--warn: 255 186 0;
@@ -12,18 +11,61 @@
 	--info: 14 165 233;
 	--dark: 45 55 72;
 	--light: 244 247 248;
-	--fg: 17 18 20;
 	--gradient-end: 168 85 247;
 
-	/* ── Surface tokens ────────────────────────────────────────────────── */
+	/* Surface tokens. */
 	--shadow-opacity: 0.05;
 	--background-opacity: 0.2;
-	--radius: 12px;
-	--transition: 0.25s ease;
+	--radius: var(--rad-md);
 	--line-height: 1.2;
 	--frost: blur(12px) saturate(160%);
 
-	/* ── Neutral canvas (light) — shared by every theme ────────────────── */
+	/* Radius scale — kit-internal, not Tailwind's rounded-* namespace. */
+	--rad-xs: 6px;
+	--rad-sm: 8px;
+	--rad-md: 12px;
+	--rad-lg: 16px;
+	--rad-xl: 20px;
+	--rad-2xl: 24px;
+	--rad-pill: 50vmax;
+	--rad-circle: 50%;
+
+	/* Type scale (font-size) — kit-internal. */
+	--fs-xs: 0.65rem;
+	--fs-sm: 0.75rem;
+	--fs-md: 0.85rem;
+	--fs-lg: 1rem;
+	--fs-xl: 1.1rem;
+
+	/* Spacing step (2px base) — kit-internal. */
+	--space-1: 2px;
+	--space-2: 4px;
+	--space-3: 6px;
+	--space-4: 8px;
+	--space-5: 10px;
+	--space-6: 12px;
+	--space-7: 16px;
+	--space-8: 20px;
+	--space-9: 24px;
+
+	/* Motion — durations + signature easings. */
+	--dur-fast: 150ms;
+	--dur: 250ms;
+	--dur-slow: 360ms;
+	--ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+	--ease-spring: cubic-bezier(0.5, 1.45, 0.35, 1);
+	--ease-soft: cubic-bezier(0.215, 0.61, 0.355, 1);
+	--ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+	/* Elevation — ambient steps + accent-tinted; accent resolves --c at use-site. */
+	--shadow-1: 0 2px 8px -2px rgb(0 0 0 / var(--shadow-opacity));
+	--shadow-2: 0 5px 20px 0 rgb(0 0 0 / var(--shadow-opacity));
+	--shadow-3: 0 14px 32px -6px rgb(0 0 0 / 0.22);
+	--shadow-accent: 0 8px 20px -6px rgb(var(--c) / 0.7);
+	--shadow-accent-sm: 0 6px 18px -6px rgb(var(--c) / 0.55);
+	--shadow-ring-inset: inset 0 0 0 1px rgb(var(--text) / 0.12);
+
+	/* Neutral canvas (light) — shared by every theme. */
 	--background: 244 247 248;
 	--text: 44 62 80;
 	--on-accent: 255 255 255;
@@ -45,9 +87,9 @@
 	--color-light: rgb(var(--light));
 }
 
-/* ── Neutral canvas (dark) — shared by every theme ───────────────────── */
+/* Neutral canvas (dark) — shared by every theme. */
 [data-theme='dark'] {
-	--background: 24, 24, 30;
+	--background: 24 24 30;
 	--text: 255 255 255;
 	--on-accent: 255 255 255;
 	--gray-1: 34 34 42;
@@ -59,37 +101,37 @@
 	--dark: 60 65 75;
 }
 
-/* ── Petrol — cyan-petrol → indigo ───────────────────────────────────── */
+/* Petrol — cyan-petrol to indigo. */
 .theme-petrol {
 	--primary: 6 148 178;
 	--gradient-end: 99 102 241;
 }
 
-/* ── Indigo — blue-violet → fuchsia ──────────────────────────────────── */
+/* Indigo — blue-violet to fuchsia. */
 .theme-indigo {
 	--primary: 99 102 241;
 	--gradient-end: 217 70 239;
 }
 
-/* ── Pine — emerald → teal-mint ──────────────────────────────────────── */
+/* Pine — emerald to teal-mint. */
 .theme-pine {
 	--primary: 5 150 105;
 	--gradient-end: 45 212 191;
 }
 
-/* ── Wine — rose-burgundy → sunset orange ────────────────────────────── */
+/* Wine — rose-burgundy to sunset orange. */
 .theme-wine {
 	--primary: 225 29 72;
 	--gradient-end: 249 115 22;
 }
 
-/* ── Bronze — orange-bronze → amber ──────────────────────────────────── */
+/* Bronze — orange-bronze to amber. */
 .theme-bronze {
 	--primary: 234 88 12;
 	--gradient-end: 250 204 21;
 }
 
-/* ── Graphite — slate → indigo ───────────────────────────────────────── */
+/* Graphite — slate to indigo. */
 .theme-graphite {
 	--primary: 100 116 139;
 	--gradient-end: 99 102 241;
@@ -109,11 +151,7 @@ html {
 	color-scheme: dark;
 }
 
-/*
- * Universal optical centering for kit text containers.
- *
- * `:where()` keeps specificity at 0 so any component can opt out.
- */
+/* Universal optical centering for kit text containers; :where() keeps specificity 0 so any component can opt out. */
 @supports (text-box: trim-both cap alphabetic) {
 	:where(
 		.button__content,
