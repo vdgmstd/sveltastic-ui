@@ -55,7 +55,7 @@
 				{@render children()}
 			{:else}
 				<span class="upload__count">
-					<span>{root.files.length} {root.files.length === 1 ? 'file' : 'files'}</span>
+					<span>{root.countText}</span>
 					<span class="upload__dot" aria-hidden="true">·</span>
 					<span class="upload__total">{formatSize(root.totalSize)}</span>
 				</span>
@@ -69,7 +69,7 @@
 						}}
 					>
 						<TrashIcon size={12} weight="bold" />
-						<span class="upload__clear-label">Clear all</span>
+						<span class="upload__clear-label">{root.clearText}</span>
 					</button>
 				{/if}
 			{/if}

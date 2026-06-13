@@ -61,7 +61,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: var(--space-3) var(--space-3) var(--space-3) var(--space-9);
+		padding-block: var(--space-3);
+		padding-inline: var(--space-9) var(--space-3);
 		font-size: var(--fs-sm);
 		color: rgb(var(--text));
 		white-space: nowrap;
@@ -74,9 +75,8 @@
 		transform: translateX(-100%);
 	}
 	:global(.switch[data-checked]) .switch__text {
-		padding-left: var(--space-3);
-		padding-right: var(--space-9);
-		color: rgb(255 255 255);
+		padding-inline: var(--space-3) var(--space-9);
+		color: rgb(var(--on-accent));
 	}
 	:global(.switch[data-checked]) .switch__text--on {
 		position: relative;
@@ -101,5 +101,13 @@
 
 	:global(.switch[data-loading]) .switch__text {
 		opacity: 0 !important;
+	}
+
+	/* RTL: the off/on labels slide horizontally — mirror the hidden-offset direction. */
+	:global([dir='rtl']) .switch__text--on {
+		transform: translateX(100%);
+	}
+	:global([dir='rtl'] .switch[data-checked]) .switch__text--off {
+		transform: translateX(-100%);
 	}
 </style>

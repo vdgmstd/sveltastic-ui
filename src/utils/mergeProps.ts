@@ -26,6 +26,8 @@ export function mergeProps(...bags: Array<Props | undefined | null>): Props {
 					const b = value;
 					out[key] = (...args: unknown[]) => {
 						a(...args);
+						const e = args[0];
+						if (e instanceof Event && e.defaultPrevented) return;
 						return b(...args);
 					};
 				} else {

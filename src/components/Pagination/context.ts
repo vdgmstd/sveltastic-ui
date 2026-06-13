@@ -21,6 +21,8 @@ export function setPaginationContext(value: PaginationRootState): PaginationRoot
 	return setContext(KEY, value);
 }
 
-export function usePaginationContext(): PaginationRootState | undefined {
-	return getContext<PaginationRootState | undefined>(KEY);
+export function usePaginationContext(): PaginationRootState {
+	const ctx = getContext<PaginationRootState | undefined>(KEY);
+	if (!ctx) throw new Error('<Pagination> parts must be used within <Pagination.Root>');
+	return ctx;
 }

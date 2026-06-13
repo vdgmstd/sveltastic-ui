@@ -5,6 +5,7 @@
 	import type { MaskOptions } from '../../actions/mask';
 	import type { InputLabelStyle } from '../../primitives/fieldShell.svelte';
 	import type { PopoverPlacement } from '../../primitives/Popover.svelte';
+	import type { PortalTarget } from '../../actions/portal';
 
 	export type DateTimePickerType = 'time' | 'date' | 'datetime';
 
@@ -49,6 +50,12 @@
 		block?: boolean;
 		/** Dropdown placement relative to the trigger. */
 		placement?: PopoverPlacement;
+		/** Portal target for the panel. CSS selector or element; defaults to `document.body`. */
+		portalTarget?: PortalTarget;
+		/** Render the panel in place instead of portalling it. */
+		portalDisabled?: boolean;
+		/** Keep the panel mounted while closed (presence via `data-state`). */
+		forceMount?: boolean;
 		/** Side of the field where the icon sits. Defaults to `'after'`. */
 		iconPosition?: 'before' | 'after';
 		/** Override the input mask. Defaults are derived from `type`, `showSeconds`, and `hour12`. */
@@ -104,6 +111,9 @@
 		ariaLabel,
 		block = false,
 		placement = 'bottom-start',
+		portalTarget,
+		portalDisabled = false,
+		forceMount = false,
 		iconPosition = 'after',
 		mask,
 		icon,
@@ -160,10 +170,13 @@
 	{closeOnEsc}
 	{closeOnClickOutside}
 	{block}
+	{portalTarget}
+	{portalDisabled}
+	{forceMount}
 	class={className}
 	style={userStyle}
 >
-	{#snippet trigger()}
+	{#snippet trigger({ props })}
 		<InputShell
 			type="text"
 			value={picker.inputValue}
@@ -185,6 +198,7 @@
 			onblur={() => picker.commitInput()}
 			id={picker.fieldId}
 			data-testid="datetime-picker"
+			{...props}
 			{...picker.fieldProps}
 			{...rest}
 		/>
@@ -213,6 +227,7 @@
 				{min}
 				{max}
 				{disabled}
+				{readonly}
 				onchange={picker.emitDateTimeText}
 			/>
 		{/if}

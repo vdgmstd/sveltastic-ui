@@ -3,7 +3,6 @@ import { Tween } from 'svelte/motion';
 import { cubicOut } from 'svelte/easing';
 import { SvelteMap } from 'svelte/reactivity';
 import { createRovingFocus, type RovingFocus } from '../../state/rovingFocus.svelte';
-import { reducedMotion } from '../../state/reducedMotion.svelte';
 import { pressBounce } from '../../actions/pressBounce.svelte';
 import { rgbTriplet } from '../../utils/color';
 import type { Color } from '../../types';
@@ -175,11 +174,11 @@ export class RadioGroupItemState {
 	/** Re-target the disc fill tween, delaying the fill-in slightly when the press cue is active. */
 	syncActive(): void {
 		const next = this.activeTarget;
-		const duration = reducedMotion.current ? 0 : ACTIVE_DURATION;
+		const duration = ACTIVE_DURATION;
 		this.#activeTween.set(next, {
 			duration,
 			easing: cubicOut,
-			delay: next === 1 && this.#pressColor && !reducedMotion.current ? 50 : 0
+			delay: next === 1 && this.#pressColor ? 50 : 0
 		});
 	}
 
@@ -216,7 +215,7 @@ export class RadioGroupItemState {
 
 	/** Register the hidden input with roving focus; returns the deregister attachment teardown. */
 	registerInput(node: HTMLElement): () => void {
-		return this.#root.roving.register(this.id, node);
+		return this.#root.roving.register(this.id, node, () => this.isDisabled);
 	}
 
 	select(): void {

@@ -40,7 +40,7 @@
 	}
 
 	function handleChange(event: Event & { currentTarget: EventTarget & HTMLInputElement }): void {
-		if (state.disabled || state.loading) {
+		if (state.disabled || state.loading || state.readonly) {
 			event.currentTarget.checked = state.isChecked;
 			return;
 		}
@@ -66,6 +66,7 @@
 		class="checkbox__input"
 		id={state.id}
 		name={state.name}
+		value={state.token ?? 'on'}
 		checked={state.isChecked}
 		disabled={state.disabled}
 		required={state.required}
@@ -132,6 +133,10 @@
 	}
 	.checkbox__input:disabled {
 		cursor: not-allowed;
+	}
+	.checkbox__input:focus-visible ~ .checkbox__mask {
+		outline: 2px solid rgb(var(--c) / 0.6);
+		outline-offset: 3px;
 	}
 	.checkbox__mask {
 		position: absolute;

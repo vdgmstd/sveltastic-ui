@@ -52,6 +52,8 @@ export class ListRootState {
 	}
 
 	isSelected(value: unknown): boolean {
+		// A value-less row is presentational; never let it match a cleared/undefined selection.
+		if (value === undefined) return false;
 		const selected = this.#opts.getSelected();
 		if (this.multiple) return Array.isArray(selected) && selected.includes(value);
 		return selected === value;
@@ -78,8 +80,8 @@ export class ListRootState {
 		this.#initialClaimed = true;
 		this.roving.setCurrent(id);
 	}
-	register(id: string, node: HTMLElement): () => void {
-		return this.roving.register(id, node);
+	register(id: string, node: HTMLElement, isDisabled?: () => boolean): () => void {
+		return this.roving.register(id, node, isDisabled);
 	}
 	tabindexFor(id: string): 0 | -1 {
 		return this.roving.tabindexFor(id);
@@ -179,7 +181,7 @@ export class ListItemState {
 	/** Register for roving focus (node/order tracking only). */
 	register(id: string, node: HTMLElement): (() => void) | void {
 		if (!this.isRovingItem) return;
-		return this.#root?.register(id, node);
+		return this.#root?.register(id, node, () => this.isInert);
 	}
 
 	/** One-shot initial tab-stop claim for the first active/selected enabled item. */

@@ -115,7 +115,7 @@ function makeEffect(host: HTMLElement, x: number, y: number, sizeMultiplier: num
 
 const FOCUS_COVER = 2.2;
 
-function focusController(host: HTMLElement, mountHost: HTMLElement, signal: AbortSignal) {
+function focusController(host: HTMLElement, mountHost: HTMLElement, signal: AbortSignal, isDisabled: () => boolean) {
 	let pendingPoint: { x: number; y: number } | null = null;
 	let layer: HTMLSpanElement | null = null;
 	let stopFx: (() => void) | null = null;
@@ -139,6 +139,7 @@ function focusController(host: HTMLElement, mountHost: HTMLElement, signal: Abor
 	}
 
 	function spawn(): void {
+		if (isDisabled()) return;
 		dispose();
 		const r = host.getBoundingClientRect();
 		const p = pendingPoint ?? { x: r.width / 2, y: r.height / 2 };
@@ -315,7 +316,7 @@ export const surfaceRipple: Action<HTMLElement, SurfaceRippleOptions> = (host, i
 	let autoCtl: ReturnType<typeof autorippleController> | null = null;
 
 	if (opts.mode === 'focus') {
-		focusCtl = focusController(host, mountHost, ac.signal);
+		focusCtl = focusController(host, mountHost, ac.signal, () => opts.disabled === true);
 	} else {
 		autoCtl = autorippleController(host, mountHost);
 		if (!opts.disabled) autoCtl.start();

@@ -6,6 +6,7 @@ export type UploadVariant = 'default' | 'flat' | 'border';
 /** Per-row state shared from Upload.Item down to Upload.ItemRemove. */
 export type UploadItemState = {
 	readonly file: File;
+	readonly removeLabel: string;
 	remove: () => void;
 };
 

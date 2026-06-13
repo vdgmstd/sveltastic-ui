@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { Spring } from 'svelte/motion';
 import type { Color, Size } from '../../types';
 import { rgbTriplet } from '../../utils/color';
@@ -44,6 +45,10 @@ export class SliderRootState {
 	private animating2 = $state(false);
 
 	readonly press = pressBounce({ disabled: () => this.disabled });
+
+	// Mount-order registries for auto-indexed thumbs/tooltips (manual composition); explicit `index` overrides.
+	#thumbRegistry = $state<symbol[]>([]);
+	#tooltipRegistry = $state<symbol[]>([]);
 
 	private get spring1(): Spring<number> {
 		return this.springs[0];
@@ -151,6 +156,44 @@ export class SliderRootState {
 		return index === 1 ? (this.ariaLabelMax ?? this.ariaLabel) : (this.ariaLabelMin ?? this.ariaLabel);
 	}
 
+	/**
+	 * Claim a mount-order slot for an auto-indexed thumb; returns the unregister hook. Untracked:
+	 * called from a registering `$effect`; the push/splice must not subscribe that effect (loop).
+	 * `thumbIndex` reads `#thumbRegistry` reactively elsewhere to drive the index `$derived`.
+	 */
+	registerThumb(token: symbol): () => void {
+		untrack(() => this.#thumbRegistry.push(token));
+		return () => {
+			untrack(() => {
+				const i = this.#thumbRegistry.indexOf(token);
+				if (i !== -1) this.#thumbRegistry.splice(i, 1);
+			});
+		};
+	}
+	/** Resolve a thumb's index from mount order; single mode collapses to 0, range to 0/1. */
+	thumbIndex(token: symbol): 0 | 1 {
+		return this.isRange && this.#thumbRegistry.indexOf(token) === 1 ? 1 : 0;
+	}
+
+	/**
+	 * Claim a mount-order slot for an auto-indexed tooltip; returns the unregister hook. Untracked:
+	 * called from a registering `$effect`; the push/splice must not subscribe that effect (loop).
+	 * `tooltipIndex` reads `#tooltipRegistry` reactively elsewhere to drive the index `$derived`.
+	 */
+	registerTooltip(token: symbol): () => void {
+		untrack(() => this.#tooltipRegistry.push(token));
+		return () => {
+			untrack(() => {
+				const i = this.#tooltipRegistry.indexOf(token);
+				if (i !== -1) this.#tooltipRegistry.splice(i, 1);
+			});
+		};
+	}
+	/** Resolve a tooltip's index from mount order; single mode collapses to 0, range to 0/1. */
+	tooltipIndex(token: symbol): 0 | 1 {
+		return this.isRange && this.#tooltipRegistry.indexOf(token) === 1 ? 1 : 0;
+	}
+
 	readonly tickList = $derived.by<number[]>(() => {
 		if (!this.ticks) return [];
 		const list: number[] = [];
@@ -178,10 +221,12 @@ export class SliderRootState {
 		return index === 1 ? [cur[0], Math.max(n, cur[0])] : [Math.min(n, cur[1]), cur[1]];
 	}
 
-	// Native input keyboard/AT path: the browser already snapped to step, clamp + cross-thumb guard then emit + commit.
+	// Native input path: emit live on every input; commit once on change (drag release / each keypress).
 	handleInput(index: 0 | 1, event: Event): void {
 		const raw = Number((event.currentTarget as HTMLInputElement).value);
 		this.emit(this.nextValue(index, raw));
+	}
+	handleChange(): void {
 		this.commit();
 	}
 

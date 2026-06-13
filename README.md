@@ -33,6 +33,19 @@ export default {
 };
 ```
 
+Import the kit's stylesheet once. The recommended form is a CSS `@import` in your
+app's global stylesheet, placed **before** Tailwind so the kit's `@theme` tokens are
+in scope:
+
+```css
+/* src/app.css (or your global stylesheet) */
+@import 'sveltastic-ui/styles';
+@import 'tailwindcss';
+```
+
+The side-effect JS import also works and type-checks in a TypeScript-strict app (the
+package ships a type declaration for this entry):
+
 ```svelte
 <!-- src/routes/+layout.svelte -->
 <script>
@@ -81,24 +94,42 @@ Then call `theme.hydrate()` once in your root layout `onMount` so the kit's reac
 
 <NotificationsHost />
 
-<Button
+<Button.Root
 	color="primary"
 	onclick={() => notify({ title: 'Saved', color: 'success' })}
 >
 	Save
-</Button>
+</Button.Root>
+```
+
+Every component is a compound namespace — its root part is `X.Root`, with styled
+sub-parts hanging off the same import (e.g. `Button.Icon`, `Button.Group`):
+
+```svelte
+<script lang="ts">
+	import { Button } from 'sveltastic-ui';
+	import { FloppyDisk } from 'phosphor-svelte';
+</script>
+
+<Button.Group>
+	<Button.Root color="primary">
+		<Button.Icon><FloppyDisk /></Button.Icon>
+		Save
+	</Button.Root>
+	<Button.Root variant="border">Cancel</Button.Root>
+</Button.Group>
 ```
 
 ## Components
 
 ### Forms (13)
 
-- **Button** (+ `ButtonGroup`)
+- **Button** (`Button.Root` + `Button.Icon` / `Button.Group`)
 - **Input**
 - **InputNumber**
 - **Textarea**
 - **Checkbox**
-- **Radio**
+- **RadioGroup** (`RadioGroup.Root` + `RadioGroup.Item` / `Indicator` / `Label`)
 - **Switch**
 - **Select**
 - **Slider**
@@ -109,17 +140,17 @@ Then call `theme.hydrate()` once in your root layout `onMount` so the kit's reac
 
 ### Layout (5)
 
-- **Card**
-- **Divider**
-- **List** (+ `ListItem`, `ListGroup`, `ListDivider`)
-- **Collapse** (+ `CollapseGroup`)
-- **Tabs** (+ `Tab`, `TabList`, `TabPanel`)
+- **Card** (`Card.Root` + `Card.Header` / `Body` / `Footer` / `Media` / `Image` / `Overlay`)
+- **Divider** (`Divider.Root` + `Divider.Line` / `Label`)
+- **List** (`List.Root` + `List.Item` / `Group` / `Separator` / …)
+- **Collapse** (`Collapse.Root` + `Collapse.Trigger` / `Content` / `Group` / …)
+- **Tabs** (`Tabs.Root` + `Tabs.List` / `Trigger` / `Content`)
 
 ### Status (5)
 
-- **Alert**
-- **Avatar** (+ `AvatarGroup`)
-- **Chip**
+- **Alert** (`Alert.Root` + `Alert.Icon` / `Title` / `Description` / `Action` / `Close` / …)
+- **Avatar** (`Avatar.Root` + `Avatar.Image` / `Fallback` / `Badge` / `Group` / …)
+- **Chip** (`Chip.Root` + `Chip.Icon` / `Close`)
 - **Progress**
 - **Tooltip**
 
@@ -161,7 +192,7 @@ Dark mode: set `data-theme="dark"` on `<html>`. The kit picks it up automaticall
 ## Design principles
 
 - **Same prop name = same meaning everywhere.** `color`, `size`, `variant`, `shape`, `disabled`, `loading` mean the same thing across every component.
-- **One composition shape per component** — named snippet props (`Card { header }`), compound subcomponents (`Tabs.Tab`), or imperative (`notify(...)`). Never mixed.
+- **Compound parts everywhere.** Each component is a namespace — a `X.Root` plus styled sub-parts that share state through context (`Card.Header`, `Tabs.Trigger`, `Select.Item`). The bare `<X>` form was removed in 1.1.0. Imperative helpers (`notify(...)`) are the one exception.
 - **Pure Svelte 5.** No `createEventDispatcher`, no `svelte/store`, no `<svelte:component>`. Runes + callback props + actions.
 - **SSR-safe.** Zero top-level DOM access. Works in SvelteKit / Astro / vanilla Vite + Vinxi.
 - **Tree-shakable.** Named re-exports only — `import { Button }` ships only Button.

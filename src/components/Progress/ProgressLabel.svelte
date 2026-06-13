@@ -25,19 +25,26 @@
 		children,
 		child,
 		ref = $bindable(null),
+		id: idProp,
 		class: className,
 		...rest
 	}: ProgressLabelProps = $props();
 
 	const ctx = useProgressCtx();
+	let labelId = $derived(idProp ?? ctx.defaultLabelId);
 	$effect(() => {
 		ctx.hasLabel = true;
-		return () => (ctx.hasLabel = false);
+		ctx.labelId = labelId;
+		return () => {
+			ctx.hasLabel = false;
+			ctx.labelId = undefined;
+		};
 	});
 
 	const refKey = createAttachmentKey();
 	const merged = $derived(
 		mergeProps(rest, {
+			id: labelId,
 			class: cn('progress__label', className),
 			'data-shape': ctx.shape,
 			'data-testid': 'progress-label',

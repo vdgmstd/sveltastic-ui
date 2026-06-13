@@ -262,6 +262,7 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 		function cleanup(): void {
 			if (disposed) return;
 			disposed = true;
+			signal.removeEventListener('abort', cleanup);
 			stop();
 			liveStops.delete(stop);
 			layer.remove();

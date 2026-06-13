@@ -14,6 +14,7 @@
 	import { backOut, cubicOut } from 'svelte/easing';
 	import { getDialogCtx } from './context';
 	import { scrollLock } from '../../state/scrollLock.svelte';
+	import { portal } from '../../actions/portal';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { dataState } from '../../utils/attrs';
 	import { cn } from '../../utils/cn';
@@ -68,7 +69,7 @@
 
 	$effect(() => {
 		if (!root.open) return;
-		return scrollLock.lock();
+		return scrollLock.lock(dialogEl);
 	});
 
 	function handleCancel(event: Event): void {
@@ -82,8 +83,14 @@
 	function handleClose(): void {
 		if (root.open) root.setOpen(false);
 	}
+	let pointerDownOnBackdrop = false;
+	function handlePointerDown(event: PointerEvent): void {
+		pointerDownOnBackdrop = event.target === dialogEl;
+	}
 	function handleBackdrop(event: MouseEvent): void {
-		if (event.target !== dialogEl) return;
+		// Close only when both the press and the release land on the backdrop — a text drag that ends on it must not dismiss.
+		if (event.target !== dialogEl || !pointerDownOnBackdrop) return;
+		pointerDownOnBackdrop = false;
 		if (root.persistent) {
 			root.pulse();
 			return;
@@ -107,6 +114,7 @@
 		'data-align': root.align,
 		oncancel: handleCancel,
 		onclose: handleClose,
+		onpointerdown: handlePointerDown,
 		onclick: handleBackdrop
 	});
 	const merged = $derived(mergeProps(rest, attrs, { class: cn('dialog', className) }));
@@ -122,6 +130,7 @@
 			ref = null;
 		};
 	}}
+	use:portal={{ target: root.portal.target, disabled: !root.portal.active || root.portal.disabled }}
 	style:--c={root.triplet}
 >
 	{#if root.open}

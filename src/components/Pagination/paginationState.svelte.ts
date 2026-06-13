@@ -45,7 +45,8 @@ export class PaginationRootState {
 		return this.#opts.length();
 	}
 	get max(): number {
-		return this.#opts.max();
+		// Clamp to >=5 so the middle-window innerSpan (max-5) can't go negative and drop the current page.
+		return Math.max(5, this.#opts.max());
 	}
 	get dottedJump(): number {
 		return this.#opts.dottedJump();
@@ -154,6 +155,10 @@ export class PaginationRootState {
 		return `${this.#opts.baseId}-page-${n}`;
 	}
 
+	gapId(direction: 'prev' | 'next'): string {
+		return `${this.#opts.baseId}-gap-${direction}`;
+	}
+
 	isItemDisabled(n: number): boolean {
 		return this.disabledItems.includes(n);
 	}
@@ -184,11 +189,20 @@ export class PaginationRootState {
 
 	/** Roving keyboard nav across page buttons; RTL-aware via the focused element's computed direction. */
 	handleKeydown(event: KeyboardEvent, from: number): void {
+		this.#handleRovingKeydown(event, this.pageId(from));
+	}
+
+	/** Roving keyboard nav from a jump-ellipsis; shares the page registry so arrows step into the gap. */
+	handleGapKeydown(event: KeyboardEvent, direction: 'prev' | 'next'): void {
+		this.#handleRovingKeydown(event, this.gapId(direction));
+	}
+
+	#handleRovingKeydown(event: KeyboardEvent, fromId: string): void {
 		if (this.disabled) return;
 		const target = event.currentTarget as Element | null;
 		if (target) {
 			this.roving.dir = getComputedStyle(target).direction === 'rtl' ? 'rtl' : 'ltr';
 		}
-		this.roving.handleKeydown(event, this.pageId(from));
+		this.roving.handleKeydown(event, fromId);
 	}
 }

@@ -85,7 +85,7 @@
 		box-shadow: none;
 	}
 	:global(.switch[data-icon][data-checked]) .switch__circle {
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 	}
 
 	/* Indeterminate — knob centered. */
@@ -96,5 +96,23 @@
 
 	:global(.switch[data-loading]) .switch__circle {
 		opacity: 0;
+	}
+
+	/* RTL: the knob slides on `left` (one animatable property), so mirror the rest positions here. */
+	:global([dir='rtl'] .switch) .switch__circle {
+		left: auto;
+		right: var(--knob-pad);
+	}
+	:global([dir='rtl'] .switch[data-checked]:has(.switch__input:active)) .switch__circle {
+		right: calc(100% - var(--knob-d) - var(--knob-pad) - 6px);
+	}
+	:global([dir='rtl'] .switch[data-checked]) .switch__circle {
+		left: auto;
+		right: calc(100% - var(--knob-d) - var(--knob-pad));
+		box-shadow: 5px 0 25px 0 rgb(var(--background) / 0.6);
+	}
+	:global([dir='rtl'] .switch[data-indeterminate]) .switch__circle {
+		left: 50%;
+		right: auto;
 	}
 </style>

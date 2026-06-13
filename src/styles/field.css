@@ -91,8 +91,11 @@
 		rgb(var(--c, 25 91 255) / 0.24) 100%
 	);
 }
-.input__field:has(.input__label--label),
-.input__field:has(.input__label-block) {
+.input__field:has(.input__label--label) {
+	margin-top: var(--space-8);
+}
+/* Inline label is a sibling of .input__field (direct child of .input); scope the :has to the wrapper so the field still gets the top gap. */
+.input:has(.input__label-block) .input__field {
 	margin-top: var(--space-8);
 }
 .input--shape-square .input__field { border-radius: 0; }
@@ -102,9 +105,9 @@
 .input__field:has(.input__icon) .input__el,
 .input__field:has(.input__icon) .input__mask { min-width: calc(var(--mask-len, 0) * 1ch + 64px); }
 .input__field:has(.input__icon:not(.input__icon--after)) .input__el,
-.input__field:has(.input__icon:not(.input__icon--after)) .input__mask { padding-left: calc(38px + 2px * var(--fp)); }
+.input__field:has(.input__icon:not(.input__icon--after)) .input__mask { padding-inline-start: calc(38px + 2px * var(--fp)); }
 .input__field:has(.input__icon--after) .input__el,
-.input__field:has(.input__icon--after) .input__mask { padding-right: calc(38px + 2px * var(--fp)); }
+.input__field:has(.input__icon--after) .input__mask { padding-inline-end: calc(38px + 2px * var(--fp)); }
 
 .input__underline {
 	position: absolute;
@@ -128,7 +131,7 @@
 
 .input__loading {
 	position: absolute;
-	right: 7px;
+	inset-inline-end: 7px;
 	top: 50%;
 	transform: translateY(-50%);
 	display: flex;
@@ -152,7 +155,8 @@
 	width: 200px;
 	min-width: calc(var(--mask-len, 0) * 1ch + 32px);
 	min-height: 38px;
-	padding: var(--space-4) calc(13px + 5px * var(--fp));
+	/* min-height centers the single line; slack the block padding so tall Manrope descenders (y/g/p/q) don't clip. */
+	padding: var(--space-2) calc(13px + 5px * var(--fp));
 	border: 2px solid transparent;
 	border-radius: inherit;
 	background: rgb(var(--gray-2));
@@ -210,7 +214,8 @@
 	inset: 0;
 	display: flex;
 	align-items: center;
-	padding: var(--space-4) calc(13px + 5px * var(--fp));
+	/* Keep block padding in lockstep with .input__el so the mask overlay stays glyph-aligned. */
+	padding: var(--space-2) calc(13px + 5px * var(--fp));
 	border: 2px solid transparent;
 	box-sizing: border-box;
 	font: inherit;
@@ -228,7 +233,7 @@
 
 .input__reveal {
 	position: absolute;
-	right: 4px;
+	inset-inline-end: 4px;
 	top: 50%;
 	transform: translateY(-50%);
 	width: 32px;
@@ -265,7 +270,7 @@
 
 .input__icon {
 	position: absolute;
-	left: 0;
+	inset-inline-start: 0;
 	top: 0;
 	bottom: 0;
 	margin: auto 0;
@@ -285,8 +290,8 @@
 	z-index: 2;
 }
 .input__icon--after {
-	left: auto;
-	right: 0;
+	inset-inline-start: auto;
+	inset-inline-end: 0;
 }
 .input__icon--clickable { pointer-events: auto; cursor: pointer; }
 .input__icon--clickable:hover {
@@ -347,7 +352,7 @@
 	will-change: transform, opacity;
 }
 .input--icon-fill-bg.input--focused .input__icon,
-.input--icon-fill-bg .input__icon--clickable:hover { color: rgb(255 255 255); }
+.input--icon-fill-bg .input__icon--clickable:hover { color: rgb(var(--on-accent)); }
 
 .input--variant-border .input__icon,
 .input--variant-border .input__icon--after,
@@ -383,7 +388,7 @@
 
 .input__label {
 	position: absolute;
-	left: calc(13px + 7px * max(var(--fp), var(--vp)));
+	inset-inline-start: calc(13px + 7px * max(var(--fp), var(--vp)));
 	top: 0;
 	font-size: var(--fs-md);
 	cursor: text;
@@ -399,7 +404,7 @@
 }
 
 .input__label--placeholder {
-	left: calc(13px + (0.8rem - 13px) * var(--lh));
+	inset-inline-start: calc(13px + (0.8rem - 13px) * var(--lh));
 	transform: translateY(calc(-80% * var(--lh)));
 	font-size: calc(var(--fs-md) - 0.10rem * var(--lh));
 	opacity: calc(0.4 + 0.6 * var(--lh));
@@ -407,7 +412,7 @@
 }
 
 .input__label--label {
-	left: 0.8rem;
+	inset-inline-start: 0.8rem;
 	top: auto;
 	bottom: 100%;
 	height: auto;
@@ -417,9 +422,9 @@
 	color: color-mix(in oklab, rgb(var(--text) / 0.7), rgb(var(--c)) calc(var(--fp) * 100%));
 }
 
-.input__field:has(.input__icon:not(.input__icon--after)) .input__label { left: calc(44px + 0px * var(--fp)); }
-.input__field:has(.input__icon:not(.input__icon--after)) .input__label--placeholder { left: calc(44px + 0px * var(--fp)); }
-.input__field:has(.input__icon:not(.input__icon--after)) .input__label--label { left: 0.8rem; }
+.input__field:has(.input__icon:not(.input__icon--after)) .input__label { inset-inline-start: calc(44px + 0px * var(--fp)); }
+.input__field:has(.input__icon:not(.input__icon--after)) .input__label--placeholder { inset-inline-start: calc(44px + 0px * var(--fp)); }
+.input__field:has(.input__icon:not(.input__icon--after)) .input__label--label { inset-inline-start: 0.8rem; }
 
 .input--state-primary .input__label,
 .input--state-success .input__label,
@@ -427,21 +432,22 @@
 .input--state-warn .input__label,
 .input--state-dark .input__label { color: rgb(var(--c)); }
 
-/* inline label — static block above the field, height-matched to the active floating label */
+/* inline label — centred in the reserved band above the field; bounded so it never escapes the wrapper */
 .input__label-block {
 	position: absolute;
-	left: 0.8rem;
-	top: 0;
-	height: 100%;
+	inset-inline-start: 0.8rem;
+	height: var(--space-8);
 	display: flex;
+	align-items: center;
+	font-size: var(--fs-sm);
 	-webkit-user-select: none;
 	user-select: none;
-	align-items: center;
-	transform: translateY(-80%);
-	font-size: var(--fs-sm);
 	pointer-events: none;
 	color: color-mix(in oklab, rgb(var(--text) / 0.7), rgb(var(--c)) calc(var(--fp) * 100%));
 }
+/* Anchor differs by nesting: sibling of the field (shell) tops the wrapper; inside the field (compound) sits in the field's margin band. */
+.input > .input__label-block { top: 0; }
+.input__field > .input__label-block { top: calc(-1 * var(--space-8)); }
 .input--state-primary .input__label-block,
 .input--state-success .input__label-block,
 .input--state-danger .input__label-block,
@@ -472,7 +478,7 @@
 
 .textarea__label-block {
 	position: absolute;
-	left: 0.8rem;
+	inset-inline-start: 0.8rem;
 	top: 0;
 	font-size: var(--fs-sm);
 	line-height: 1.4;
@@ -515,7 +521,7 @@
 
 .textarea__label {
 	position: absolute;
-	left: calc(13px + 7px * max(var(--fp), var(--vp)));
+	inset-inline-start: calc(13px + 7px * max(var(--fp), var(--vp)));
 	top: 8px;
 	font-size: var(--fs-md);
 	line-height: 1.4;
@@ -529,7 +535,7 @@
 	z-index: 2;
 }
 .textarea__label--placeholder {
-	left: calc(13px + (0.8rem - 13px) * var(--lh));
+	inset-inline-start: calc(13px + (0.8rem - 13px) * var(--lh));
 	top: 30px;
 	transform: translateY(calc(-30px * var(--lh)));
 	font-size: calc(var(--fs-md) - 0.10rem * var(--lh));
@@ -537,7 +543,7 @@
 	color: color-mix(in oklab, rgb(var(--text)), rgb(var(--c)) calc(var(--lh) * 100%));
 }
 .textarea__label--label {
-	left: 0.8rem;
+	inset-inline-start: 0.8rem;
 	top: 0;
 	font-size: var(--fs-sm);
 	opacity: 1;
@@ -609,4 +615,20 @@
 	font-size: var(--fs-sm);
 	padding: var(--space-1) var(--space-4) 0;
 	color: rgb(var(--c));
+}
+
+/* RTL: flip the transform-origin + clickable-icon hover lift (no logical form for these). */
+[dir='rtl'] .input__label { transform-origin: right center; }
+[dir='rtl'] .textarea__label { transform-origin: right top; }
+[dir='rtl'] .input__icon--clickable:hover {
+	transform: translate(6px, -6px);
+	box-shadow:
+		-12px 14px 24px -4px rgb(0 0 0 / 0.22),
+		-6px 6px 12px -2px rgb(0 0 0 / 0.1);
+}
+[dir='rtl'] .input__icon--clickable.input__icon--after:hover {
+	transform: translate(-6px, -6px);
+	box-shadow:
+		12px 14px 24px -4px rgb(0 0 0 / 0.22),
+		6px 6px 12px -2px rgb(0 0 0 / 0.1);
 }

@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { createRovingFocus, type RovingFocus } from '../../state/rovingFocus.svelte';
 import { createSlidingIndicator, type SlidingIndicator } from '../../state/slidingIndicator.svelte';
@@ -90,12 +91,18 @@ export class SegmentedRootState {
 		return id === null ? undefined : this.#valuesById.get(id);
 	}
 
-	/** Register a value↔id pairing for an item; returns a deregister. */
+	/**
+	 * Register a value↔id pairing for an item; returns a deregister. Untracked: called from a
+	 * registering `$effect`, so reading/writing `#valuesById` here must not subscribe that effect
+	 * (would loop on the write). `valueOfId` keeps reading the map reactively for keyboard nav.
+	 */
 	registerValue(value: SegmentedValue): () => void {
 		const id = this.itemId(value);
-		this.#valuesById.set(id, value);
+		untrack(() => this.#valuesById.set(id, value));
 		return () => {
-			if (this.#valuesById.get(id) === value) this.#valuesById.delete(id);
+			untrack(() => {
+				if (this.#valuesById.get(id) === value) this.#valuesById.delete(id);
+			});
 		};
 	}
 

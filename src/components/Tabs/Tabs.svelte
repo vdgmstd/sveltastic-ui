@@ -149,6 +149,8 @@
 <style>
 	:where(.tabs-root) {
 		--c: var(--primary);
-		display: contents;
+		display: block;
+		position: relative;
+		width: 100%;
 	}
 </style>

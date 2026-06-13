@@ -4,7 +4,7 @@
 
 	export type SliderTooltipProps = WithElementRef<
 		{
-			/** Bound thumb index — `0` (low / single) or `1` (high, range only). */
+			/** Bound thumb index — `0` (low / single) or `1` (high, range only). Auto-derived from mount order when omitted; pass it explicitly when rendering only the high tooltip (a lone tooltip auto-resolves to `0`, so use `index={1}` to pair it with the high thumb). */
 			index?: 0 | 1;
 			/** Custom tooltip content. Defaults to the formatted thumb value. */
 			children?: Snippet;
@@ -25,13 +25,21 @@
 
 	let {
 		ref = $bindable(null),
-		index = 0,
+		index: indexProp,
 		children,
 		child,
 		class: className,
 		...rest
 	}: SliderTooltipProps = $props();
 	const root = getSliderCtx();
+
+	// Auto-index from mount order unless an explicit `index` is passed (explicit wins).
+	const token = Symbol('SliderTooltip');
+	let autoIndex = $derived(indexProp === undefined);
+	$effect(() => {
+		if (autoIndex) return root.registerTooltip(token);
+	});
+	let index = $derived<0 | 1>(autoIndex ? root.tooltipIndex(token) : (indexProp as 0 | 1));
 
 	const isHigh = $derived(index === 1);
 	const positionClass = $derived(isHigh ? 'slider__tooltip--high' : 'slider__tooltip--low');

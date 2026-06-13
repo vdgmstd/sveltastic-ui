@@ -47,7 +47,6 @@
 	import { boolAttr } from '../../utils/attrs';
 	import { attachRef } from '../../utils/ref';
 	import { mergeProps } from '../../utils/mergeProps';
-	import { reducedMotion } from '../../state/reducedMotion.svelte';
 	import { setAlertCtx } from './context';
 	import { AlertRootState } from './alert.svelte';
 
@@ -87,8 +86,6 @@
 
 	let triplet = $derived(rgbTriplet(color));
 	let endTriplet = $derived(gradientEnd ? rgbTriplet(gradientEnd) : undefined);
-
-	$effect(() => reducedMotion.subscribe());
 
 	const refKey = createAttachmentKey();
 	const rootProps = $derived(
@@ -131,7 +128,7 @@
 		width: 100%;
 		padding: 0 var(--space-8);
 		background: rgb(var(--c));
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 		border-radius: var(--rad-xl);
 		font-size: var(--fs-md);
 		z-index: 10;
@@ -170,16 +167,16 @@
 	.alert :global(.alert__title) ~ :global(.alert__content) :global(.alert__content__text) {
 		padding-top: 0;
 	}
-	.alert :global(.alert__icon) ~ :global(.alert__title) { padding-left: 35px; }
+	.alert :global(.alert__icon) ~ :global(.alert__title) { padding-inline-start: 35px; }
 	.alert :global(.alert__icon) ~ :global(.alert__content) :global(.alert__content__text) {
-		padding-left: 35px;
+		padding-inline-start: 35px;
 	}
-	.alert :global(.alert__icon) ~ :global(.alert__footer) { padding-left: 35px; }
+	.alert :global(.alert__icon) ~ :global(.alert__footer) { padding-inline-start: 35px; }
 
 	.alert :global(.alert__close) {
 		position: absolute;
 		top: 9px;
-		right: 6px;
+		inset-inline-end: 6px;
 		width: 30px;
 		height: 30px;
 		display: flex;
@@ -187,7 +184,7 @@
 		justify-content: center;
 		padding: 0;
 		background: transparent;
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 		border: 0;
 		border-radius: var(--rad-sm);
 		cursor: pointer;
@@ -224,5 +221,8 @@
 		background: rgb(255 255 255);
 		transform: scaleX(var(--w, 0));
 		transform-origin: left;
+	}
+	:global([dir='rtl']) .alert :global(.alert__progress__bar) {
+		transform-origin: right;
 	}
 </style>

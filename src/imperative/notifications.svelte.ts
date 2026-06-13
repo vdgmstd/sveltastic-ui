@@ -22,6 +22,8 @@ export type NotificationOptions = {
 	sticky?: boolean;
 	/** Show the close button. */
 	closable?: boolean;
+	/** Accessible label for the close button. */
+	closeLabel?: string;
 	/** Drop the rounded corners. */
 	square?: boolean;
 	/** ms before auto-close (ignored when sticky). */

@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import type { WithElementRef } from '../types';
+	import type { PortalTarget } from '../actions/portal';
 
 	export type PopoverPlacement =
 		| 'bottom'
@@ -52,6 +53,8 @@
 		openEasing?: (t: number) => number;
 		/** Popup ARIA role. */
 		popupRole?: PopoverRole;
+		/** Emit `aria-multiselectable="true"` on the popup (only meaningful for `popupRole="listbox"`). */
+		multiselectable?: boolean;
 		/** ARIA role for the anchor wrapper. Defaults to `'button'`; pass `'combobox'` for select-like inputs. */
 		triggerRole?: PopoverTriggerRole;
 		/** Focus the first focusable on keyboard-initiated open (Enter / Space / ArrowDown). */
@@ -60,8 +63,14 @@
 		modal?: boolean;
 		/** Accessible label for the popup when it has no visible heading. */
 		ariaLabel?: string;
-		/** Anchor / trigger content. Receives `open` for visual state sync. */
-		trigger?: Snippet<[boolean]>;
+		/** Portal target for the popup; defaults to `document.body`. CSS selector or element. */
+		portalTarget?: PortalTarget;
+		/** Render the popup in place instead of portalling it. */
+		portalDisabled?: boolean;
+		/** Keep the popup mounted while closed (presence driven by `data-state`); skips the kit open/close transition. */
+		forceMount?: boolean;
+		/** Anchor / trigger content. Receives the ARIA/role prop bag to spread on the real trigger element + `open` for visual state sync. */
+		trigger?: Snippet<[{ props: Record<string, unknown>; open: boolean }]>;
 		/** Sticky popup header. Receives a `close` callback. */
 		header?: Snippet<[() => void]>;
 		/** Popup body. Receives a `close` callback so items can dismiss the popover. */
@@ -88,7 +97,12 @@
 	import { dismissibleLayer } from '../actions/dismissibleLayer';
 	import { focusTrap } from '../actions/focusTrap';
 	import { isUsingKeyboard } from '../state/isUsingKeyboard.svelte';
-	import { computeAnchorPosition, watchAnchor, type AnchorFlipState } from '../utils/anchor';
+	import {
+		computeAnchorPosition,
+		measureAvailableHeight,
+		watchAnchor,
+		type AnchorFlipState
+	} from '../utils/anchor';
 	import { cn } from '../utils/cn';
 	import { boolAttr, dataState } from '../utils/attrs';
 
@@ -107,10 +121,14 @@
 		openDuration,
 		openEasing,
 		popupRole = 'menu',
+		multiselectable = false,
 		triggerRole = 'button',
 		autoFocus = true,
 		modal,
 		ariaLabel,
+		portalTarget,
+		portalDisabled = false,
+		forceMount = false,
 		ref = $bindable(null),
 		trigger,
 		header,
@@ -131,6 +149,7 @@
 	let popupEl = $state<HTMLDivElement | null>(null);
 	let coords = $state({ x: 0, y: 0 });
 	let triggerWidth = $state(0);
+	let availableHeight = $state(0);
 	let resolvedPlacement = $state<PopoverPlacement>(untrack(() => placement));
 	let visible = $state(false);
 	let returnFocusEl: HTMLElement | null = null;
@@ -179,6 +198,13 @@
 		onopenchange?.(next);
 		if (!next) restoreFocusOnClose();
 	}
+
+	let wasOpen = false;
+	// Restore focus when `open` is flipped externally (e.g. Menu select bypasses setOpen).
+	$effect(() => {
+		if (!open && wasOpen) restoreFocusOnClose();
+		wasOpen = open;
+	});
 
 	function restoreFocusOnClose(): void {
 		const active = document.activeElement;
@@ -237,12 +263,24 @@
 		coords = { x: result.x, y: result.y };
 		triggerWidth = result.triggerWidth;
 		resolvedPlacement = result.placement;
+		availableHeight = result.availableHeight;
 	}
 
 	$effect(() => {
 		if (!open) {
 			flip.side = null;
 			flip.align = null;
+			// forceMount keeps the popup in the DOM; hide it (a11y + top layer) instead of relying on unmount.
+			if (forceMount) {
+				visible = false;
+				if (supportsPopover && popupEl?.popover && popupEl.matches(':popover-open')) {
+					try {
+						popupEl.hidePopover();
+					} catch {
+						/* already hidden */
+					}
+				}
+			}
 			return;
 		}
 		visible = false;
@@ -251,13 +289,13 @@
 		let stop: (() => void) | undefined;
 		if (supportsAnchor) {
 			resolvedPlacement = placement;
-			if (matchWidth) {
-				const anchor = triggerEl;
-				triggerWidth = anchor.getBoundingClientRect().width;
-				stop = watchAnchor(anchor, popupEl, () => {
-					triggerWidth = anchor.getBoundingClientRect().width;
-				});
-			}
+			const anchor = triggerEl;
+			const measure = (): void => {
+				if (matchWidth) triggerWidth = anchor.getBoundingClientRect().width;
+				availableHeight = measureAvailableHeight(anchor, offset);
+			};
+			measure();
+			stop = watchAnchor(anchor, popupEl, measure);
 		} else {
 			stop = watchAnchor(triggerEl, popupEl, reposition);
 		}
@@ -346,6 +384,16 @@
 		spring: { duration: 380, easing: backOut }
 	} as const;
 
+	// ARIA + role land on the consumer's real trigger element (M9/M13), not this wrapper.
+	const triggerProps = $derived({
+		role: triggerRole === 'combobox' ? ('combobox' as const) : undefined,
+		'aria-haspopup': popupAriaRole,
+		'aria-expanded': popupAriaRole ? open : undefined,
+		'aria-controls': popupAriaRole && open ? popupId : undefined,
+		'data-state': dataState(open ? 'open' : 'closed'),
+		'data-disabled': boolAttr(disabled)
+	});
+
 	function popoverMotion(
 		_node: HTMLElement,
 		params: { variant: PopoverOpenAnim; placement: PopoverPlacement }
@@ -369,8 +417,7 @@
 	}
 </script>
 
-<!-- Anchor takes role="combobox"/"button" and is the popover's keyboard target; the static check can't follow the dynamic role. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- Role-less positioning anchor: the popup's ARIA/role live on the real trigger via triggerProps; handlers stay here to catch bubbled events. -->
 <div
 	{@attach (node) => {
 		triggerEl = node;
@@ -383,23 +430,17 @@
 	class={cn('popover-anchor', block && 'popover-anchor--block', className)}
 	style:anchor-name={anchorName}
 	style={userStyle}
-	role={triggerRole}
-	tabindex={triggerRole === 'combobox' && !disabled ? 0 : -1}
-	aria-haspopup={popupAriaRole}
-	aria-expanded={popupAriaRole ? open : undefined}
-	aria-controls={popupAriaRole && open ? popupId : undefined}
-	data-state={dataState(open ? 'open' : 'closed')}
-	data-disabled={boolAttr(disabled)}
+	role="presentation"
 	onclick={handleTriggerClick}
 	onkeydown={handleTriggerKeydown}
 	onmouseenter={handleEnter}
 	onmouseleave={handleLeave}
 	{...rest}
 >
-	{#if trigger}{@render trigger(open)}{/if}
+	{#if trigger}{@render trigger({ props: triggerProps, open })}{/if}
 </div>
 
-{#if open}
+{#if open || forceMount}
 	<div
 		bind:this={popupEl}
 		id={popupId}
@@ -409,6 +450,7 @@
 		role={popupAriaRole ?? 'group'}
 		aria-modal={popupRole === 'dialog' && trapsFocus ? 'true' : undefined}
 		aria-orientation={popupRole === 'menu' ? 'vertical' : undefined}
+		aria-multiselectable={popupRole === 'listbox' && multiselectable ? 'true' : undefined}
 		aria-label={ariaLabel}
 		tabindex="-1"
 		data-state={dataState(visible ? 'open' : 'closed')}
@@ -419,9 +461,10 @@
 		style:--popover-offset="{offset}px"
 		style:--popover-coord-x={!supportsAnchor ? `${coords.x}px` : null}
 		style:--popover-coord-y={!supportsAnchor ? `${coords.y}px` : null}
+		style:--popover-available-h={availableHeight ? `${availableHeight}px` : null}
 		style:width={matchWidth && triggerWidth ? `${triggerWidth}px` : null}
 		style:visibility={visible ? null : 'hidden'}
-		use:portal
+		use:portal={{ target: portalTarget, disabled: portalDisabled }}
 		use:escapeLayer={{
 			disabled: !closeOnEsc,
 			onEscape: () => close()
@@ -488,6 +531,11 @@
 			0 5px 12px -2px rgb(0 0 0 / 0.1);
 		top: var(--popover-coord-y, 0);
 		left: var(--popover-coord-x, 0);
+		max-height: clamp(
+			var(--popover-min-h, 9rem),
+			var(--popover-available-h, calc(100dvh - 16px)),
+			var(--popover-max-h, 640px)
+		);
 	}
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 		.popover {
@@ -517,6 +565,7 @@
 		flex-direction: column;
 		gap: var(--space-1);
 		min-height: 0;
+		overflow-y: auto;
 	}
 	.popover__header,
 	.popover__footer {

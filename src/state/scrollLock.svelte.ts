@@ -3,6 +3,7 @@ class ScrollLock {
 	#priorStyle: string | null = null;
 	#touchHandler: ((e: TouchEvent) => void) | null = null;
 	#pendingRestore: number | null = null;
+	#allowed = new Set<Element>();
 
 	#hasStableGutter(): boolean {
 		if (typeof window === 'undefined') return false;
@@ -27,7 +28,9 @@ class ScrollLock {
 		this.#touchHandler = (e: TouchEvent): void => {
 			if (e.touches.length > 1) return;
 			const target = e.target as Element | null;
-			if (target?.closest('[data-scroll-lock-allow]')) return;
+			if (!target) return;
+			if (target.closest('[data-scroll-lock-allow]')) return;
+			for (const el of this.#allowed) if (el.contains(target)) return;
 			e.preventDefault();
 		};
 		document.addEventListener('touchmove', this.#touchHandler, { passive: false });
@@ -38,32 +41,35 @@ class ScrollLock {
 		if (this.#priorStyle) body.setAttribute('style', this.#priorStyle);
 		else body.removeAttribute('style');
 		this.#priorStyle = null;
+		this.#allowed.clear();
 		if (this.#touchHandler) {
 			document.removeEventListener('touchmove', this.#touchHandler);
 			this.#touchHandler = null;
 		}
 	}
 
-	/** Lock body scroll (ref-counted). Returns an idempotent unlock. */
-	lock(): () => void {
+	/** Lock body scroll (ref-counted). Pass the scrollable layer to keep touch scrolling inside it. Returns an idempotent unlock. */
+	lock(allow?: Element | null): () => void {
 		if (typeof document === 'undefined') return () => {};
+		if (allow) this.#allowed.add(allow);
 		// Relock within the deferred-release window: body is still locked and #priorStyle still holds the true original — resume without re-#apply (which would capture the locked style).
 		if (this.#pendingRestore !== null) {
 			clearTimeout(this.#pendingRestore);
 			this.#pendingRestore = null;
 			this.#count += 1;
-			return this.#makeRelease();
+			return this.#makeRelease(allow);
 		}
 		if (this.#count === 0) this.#apply();
 		this.#count += 1;
-		return this.#makeRelease();
+		return this.#makeRelease(allow);
 	}
 
-	#makeRelease(): () => void {
+	#makeRelease(allow?: Element | null): () => void {
 		let released = false;
 		return () => {
 			if (released) return;
 			released = true;
+			if (allow) this.#allowed.delete(allow);
 			this.#count -= 1;
 			if (this.#count === 0) {
 				this.#pendingRestore = window.setTimeout(() => {

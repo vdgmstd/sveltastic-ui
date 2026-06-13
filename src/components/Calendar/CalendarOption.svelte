@@ -115,7 +115,7 @@
 
 	.picker-btn--option[data-selected] {
 		background: rgb(var(--c));
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 		box-shadow: var(--shadow-accent-sm);
 	}
 

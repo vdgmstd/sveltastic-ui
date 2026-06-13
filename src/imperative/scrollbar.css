@@ -48,15 +48,9 @@
 		}
 	}
 
-	/* Smooth anchor-link and programmatic scroll. Affects in-page #hash jumps
-	   and `element.scrollTo / scrollIntoView` calls without an explicit
-	   `behavior: 'auto'` — they animate instead of snapping. Direct user
-	   input (wheel, touch, drag) is unaffected and stays pixel-perfect.
-	   Disabled when the user prefers reduced motion. */
-	@media (prefers-reduced-motion: no-preference) {
-		html {
-			scroll-behavior: smooth;
-		}
+	/* Smooth in-page #hash jumps and scrollTo/scrollIntoView (without behavior:'auto'); direct wheel/touch input is unaffected. */
+	html {
+		scroll-behavior: smooth;
 	}
 
 	*,

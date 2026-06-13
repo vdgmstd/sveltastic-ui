@@ -76,7 +76,7 @@
 {#if child}
 	{@render child({ props: badgeProps })}
 {:else}
-	<div {...badgeProps} in:scale={badgeIn} out:scale={badgeOut}>
+	<div {...badgeProps} in:scale|global={badgeIn} out:scale|global={badgeOut}>
 		{#if writing}
 			<div class="avatar__points" aria-hidden="true">
 				<span class="avatar__points__point"></span>

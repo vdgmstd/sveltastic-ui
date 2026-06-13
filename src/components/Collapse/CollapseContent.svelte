@@ -17,9 +17,8 @@
 
 <script lang="ts">
 	import { createAttachmentKey } from 'svelte/attachments';
-	import { slide } from 'svelte/transition';
+	import type { TransitionConfig } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { reducedMotion } from '../../state/reducedMotion.svelte';
 	import { cn } from '../../utils/cn';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
@@ -35,8 +34,17 @@
 	}: CollapseContentProps = $props();
 	const root = getCollapseItemContext();
 
-	$effect(() => reducedMotion.subscribe());
-	let slideDuration = $derived(reducedMotion.current ? 0 : 360);
+	const slideDuration = 360;
+
+	// Height-only collapse; svelte's `slide` animates 6 properties at once, which janks/skips on some WebKit + Windows builds.
+	function expand(node: HTMLElement, { duration = 360 } = {}): TransitionConfig {
+		const full = node.scrollHeight;
+		return {
+			duration,
+			easing: quintOut,
+			css: (t) => `overflow: hidden; height: ${t * full}px`
+		};
+	}
 
 	const refKey = createAttachmentKey();
 	const merged = $derived(
@@ -58,7 +66,7 @@
 {:else if root.isOpen}
 	<div
 		{...merged}
-		transition:slide={{ duration: slideDuration, easing: quintOut }}
+		transition:expand={{ duration: slideDuration }}
 		onintroend={() => root.completeOpen()}
 		onoutroend={() => root.completeClose()}
 	>

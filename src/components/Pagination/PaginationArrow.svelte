@@ -38,17 +38,16 @@
 	}: PaginationArrowProps = $props();
 	const ctx = usePaginationContext();
 
-	let variant = $derived(ctx?.variant ?? 'flat');
-	let shape = $derived(ctx?.shape ?? 'default');
-	let mode = $derived(ctx?.mode ?? 'numbers');
+	let variant = $derived(ctx.variant);
+	let shape = $derived(ctx.shape);
+	let mode = $derived(ctx.mode);
 	let isDisabled = $derived.by(() => {
-		const disabled = ctx?.disabled ?? false;
-		if (disabled) return true;
-		if (ctx?.infinite) return false;
-		return direction === 'prev' ? (ctx?.page ?? 1) <= 1 : (ctx?.page ?? 1) >= (ctx?.length ?? 0);
+		if (ctx.disabled) return true;
+		if (ctx.infinite) return false;
+		return direction === 'prev' ? ctx.page <= 1 : ctx.page >= ctx.length;
 	});
 
-	let rippleOptions = $derived({ disabled: !(ctx?.ripple ?? true) || isDisabled });
+	let rippleOptions = $derived({ disabled: !ctx.ripple || isDisabled });
 
 	const attrs = $derived({
 		type: 'button' as const,
@@ -58,9 +57,9 @@
 		'data-mode': mode,
 		'data-disabled': boolAttr(isDisabled),
 		disabled: isDisabled || undefined,
-		'aria-label': ariaLabel ?? (direction === 'prev' ? ctx?.ariaLabelPrev : ctx?.ariaLabelNext),
+		'aria-label': ariaLabel ?? (direction === 'prev' ? ctx.ariaLabelPrev : ctx.ariaLabelNext),
 		'data-testid': `pagination-${direction}`,
-		onclick: () => (direction === 'prev' ? ctx?.goPrev() : ctx?.goNext())
+		onclick: () => (direction === 'prev' ? ctx.goPrev() : ctx.goNext())
 	});
 	const merged = $derived(
 		mergeProps(rest, attrs, {
@@ -159,5 +158,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+	}
+	/* RTL: prev/next carets point the other way. */
+	:global([dir='rtl']) .pagination__icon {
+		transform: scaleX(-1);
 	}
 </style>

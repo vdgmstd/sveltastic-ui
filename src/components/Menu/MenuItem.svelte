@@ -66,7 +66,7 @@
 	const refKey = createAttachmentKey();
 	const rovingKey = createAttachmentKey();
 	// Stable identity — inlining re-ran register/deregister each recompute (loop vs tabindexFor).
-	const registerRoving = (node: HTMLElement) => root.register(id, node);
+	const registerRoving = (node: HTMLElement) => root.register(id, node, () => disabled);
 	const attrs = $derived({
 		type: 'button' as const,
 		class: 'menu-item',

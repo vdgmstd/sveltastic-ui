@@ -104,6 +104,8 @@
 	$effect(() => root.sync());
 
 	const refKey = createAttachmentKey();
+	// Mint once: the style string reads tweens that change every frame, so an inline attachment would re-run per frame.
+	const refAttach = attachRef<HTMLDivElement>((n) => (ref = n));
 	const merged = $derived(
 		mergeProps(rest, {
 			class: cn(
@@ -136,7 +138,7 @@
 			'data-variant': variant,
 			'data-label-style': labelStyle,
 			'data-testid': 'textarea',
-			[refKey]: attachRef<HTMLDivElement>((n) => (ref = n))
+			[refKey]: refAttach
 		})
 	);
 </script>

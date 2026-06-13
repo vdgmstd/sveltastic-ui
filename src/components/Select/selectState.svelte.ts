@@ -1,9 +1,10 @@
-import type { Snippet } from 'svelte';
+import { untrack, type Snippet } from 'svelte';
 import { createTypeahead, type Typeahead } from '../../state/typeahead.svelte';
 import { rgbTriplet } from '../../utils/color';
 import type { Color, ColorName } from '../../types';
 import type { InputState, InputLabelStyle, InputVariant } from '../../primitives/fieldShell.svelte';
 import type { PopoverOpenAnim } from '../../primitives/Popover.svelte';
+import type { PortalTarget } from '../../actions/portal';
 
 export type SelectItem<V = unknown> = {
 	/** Stored when this row is picked. */
@@ -52,6 +53,7 @@ export type SelectConfig<V> = {
 	readonly label: string | undefined;
 	readonly color: Color;
 	readonly ariaLabel: string | undefined;
+	readonly emptyText: string;
 	onValueChange?: (value: V | V[] | undefined) => void;
 	onOpenChange?: (open: boolean) => void;
 	onOpenChangeComplete?: (open: boolean) => void;
@@ -73,13 +75,18 @@ export class SelectRootState<V = unknown> {
 	activeIndex = $state(-1);
 	justOpened = $state(false);
 
-	triggerSnippet = $state<Snippet | undefined>(undefined);
+	/** Mount-order registry for auto-indexed `Select.Item`s (manual composition). */
+	#registry = $state<symbol[]>([]);
+
+	triggerSnippet = $state<Snippet<[Record<string, unknown>]> | undefined>(undefined);
 	contentSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
 	valueSnippet = $state<Snippet | undefined>(undefined);
 	iconSnippet = $state<Snippet | undefined>(undefined);
 	emptySnippet = $state<Snippet | undefined>(undefined);
 	chipSnippet = $state<Snippet<[SelectItem<V>, () => void]> | undefined>(undefined);
 	hasCustomValue = $state(false);
+	/** Set by an optional `Select.Portal` wrapper; consumed by the Popover that renders the panel. */
+	portal = $state<{ target?: PortalTarget; disabled?: boolean; forceMount?: boolean }>({});
 
 	constructor(cfg: SelectConfig<V>, triggerId: string, contentId: string) {
 		this.#cfg = cfg;
@@ -144,6 +151,9 @@ export class SelectRootState<V = unknown> {
 	get ariaLabel(): string | undefined {
 		return this.#cfg.ariaLabel;
 	}
+	get emptyText(): string {
+		return this.#cfg.emptyText;
+	}
 
 	readonly resolvedColor: Color = $derived.by(() =>
 		this.#cfg.fieldState === 'default' ? this.#cfg.color : (this.#cfg.fieldState as ColorName)
@@ -162,6 +172,27 @@ export class SelectRootState<V = unknown> {
 
 	get activeId(): string | undefined {
 		return this.activeIndex >= 0 ? this.optionId(this.activeIndex) : undefined;
+	}
+
+	/**
+	 * Claim a stable mount-order slot for an auto-indexed item; returns the unregister hook.
+	 * Untracked: called from a registering `$effect`; mutating `#registry` here must not subscribe
+	 * that effect (it would re-run on its own push/splice). `itemIndex` reads `#registry` reactively
+	 * elsewhere to drive the index `$derived`.
+	 */
+	registerItem(token: symbol): () => void {
+		untrack(() => this.#registry.push(token));
+		return () => {
+			untrack(() => {
+				const i = this.#registry.indexOf(token);
+				if (i !== -1) this.#registry.splice(i, 1);
+			});
+		};
+	}
+
+	/** Flat index of an auto-registered item, matching the items-driven `visibleItems` order. */
+	itemIndex(token: symbol): number {
+		return this.#registry.indexOf(token);
 	}
 
 	readonly flatItems: SelectItem<V>[] = $derived.by(() => {

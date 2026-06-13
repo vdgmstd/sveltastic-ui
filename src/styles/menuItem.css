@@ -14,7 +14,7 @@
 	font: inherit;
 	font-size: var(--fs-md);
 	color: inherit;
-	text-align: left;
+	text-align: start;
 	cursor: pointer;
 	transition: background-color var(--dur-fast) var(--ease-standard);
 }
@@ -46,7 +46,7 @@
 .menu-item__label {
 	flex: 1 1 auto;
 	min-width: 0;
-	text-align: left;
+	text-align: start;
 }
 .menu-item__trailing,
 .menu-item__check {

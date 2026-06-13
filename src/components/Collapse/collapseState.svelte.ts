@@ -1,8 +1,6 @@
-import { untrack } from 'svelte';
 import { Tween } from 'svelte/motion';
 import { quintOut } from 'svelte/easing';
 import { createRovingFocus, type RovingFocus } from '../../state/rovingFocus.svelte';
-import { reducedMotion } from '../../state/reducedMotion.svelte';
 import type { Color, Shape, Size } from '../../types';
 import type { CollapseGroupLayout, CollapseGroupType, CollapseVariant } from './context';
 
@@ -117,8 +115,7 @@ export class CollapseRootState {
 		this.#opts = opts;
 		this.bodyId = opts.bodyId;
 		this.headerId = opts.headerId;
-		const motionOff = untrack(() => reducedMotion.current);
-		const duration = motionOff ? 0 : DURATION;
+		const duration = DURATION;
 		this.caret = new Tween(0, { duration, easing: quintOut });
 		this.openness = new Tween(0, { duration, easing: quintOut });
 		this.isOpen = $derived.by(() => this.#opts.open());
@@ -160,7 +157,7 @@ export class CollapseRootState {
 
 	/** Register the trigger node with the group's roving registry; no-op outside a group. */
 	registerRoving(node: HTMLElement): (() => void) | void {
-		return this.#opts.group()?.roving.register(this.#opts.key(), node);
+		return this.#opts.group()?.roving.register(this.#opts.key(), node, () => this.#opts.disabled());
 	}
 
 	completeOpen(): void {

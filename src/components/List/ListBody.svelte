@@ -36,7 +36,8 @@
 	let variant = $derived(ctx?.variant ?? 'default');
 	let size = $derived(ctx?.size ?? 'medium');
 	let role = $derived(ctx?.role ?? 'list');
-	let surfaceRole = $derived(role === 'menu' ? 'menu' : role === 'listbox' ? 'listbox' : 'list');
+	// Default 'list' mode renders plain divs (no listitem/group children), so no role to avoid aria-required-children.
+	let surfaceRole = $derived(role === 'menu' ? 'menu' : role === 'listbox' ? 'listbox' : undefined);
 	let divided = $derived(ctx?.divided ?? false);
 	let multiselectable = $derived(role === 'listbox' && (ctx?.multiple ?? false));
 

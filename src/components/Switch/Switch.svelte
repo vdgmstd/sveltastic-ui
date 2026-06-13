@@ -57,6 +57,10 @@
 		disabled = false,
 		class: className,
 		style: userStyle,
+		name,
+		value,
+		required,
+		form,
 		...rest
 	}: SwitchRootProps = $props();
 
@@ -121,6 +125,10 @@
 		{@attach attachRef<HTMLInputElement>((node) => (ref = node))}
 		class="switch__input"
 		{id}
+		{name}
+		{value}
+		{required}
+		{form}
 		{...root.inputAttrs}
 		onchange={handleChange}
 	/>
@@ -161,7 +169,7 @@
 		border-radius: var(--track-radius);
 		/* Slight bump from pure gray-2 so the small track reads against the page bg in both themes. */
 		background: color-mix(in oklab, rgb(var(--gray-2)), rgb(var(--text)) 7%);
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 		cursor: pointer;
 		overflow: hidden;
 		box-sizing: border-box;
@@ -239,6 +247,14 @@
 	.switch[data-checked] .switch__background {
 		opacity: 1;
 		left: 0;
+	}
+	/* RTL: the swoop enters from the trailing edge — mirror to slide on `right`. */
+	:global([dir='rtl']) .switch__background {
+		left: auto;
+		right: -100%;
+	}
+	:global([dir='rtl']) .switch[data-checked] .switch__background {
+		right: 0;
 	}
 
 	/* Loading — collapses track to a circle and shows the kit spinner overlay. */

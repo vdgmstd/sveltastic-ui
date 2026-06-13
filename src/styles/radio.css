@@ -122,6 +122,6 @@
 }
 .radio[data-label-before] .radio__label {
 	order: -1;
-	padding-right: var(--space-3);
-	padding-left: 0;
+	padding-inline-end: var(--space-3);
+	padding-inline-start: 0;
 }

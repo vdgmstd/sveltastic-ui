@@ -54,7 +54,7 @@
 	.checkbox__label::before {
 		content: '';
 		position: absolute;
-		left: 4px;
+		inset-inline-start: 4px;
 		top: 50%;
 		width: calc(var(--lt) * (100% - 8px));
 		height: 2px;

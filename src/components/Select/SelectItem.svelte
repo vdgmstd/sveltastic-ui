@@ -10,7 +10,7 @@
 			label?: string;
 			/** Inert row, can't be picked. */
 			disabled?: boolean;
-			/** Global row index, supplied by Select.Content. */
+			/** Override the auto-derived flat row index. Auto-indexing from mount order covers manual composition; pass this only to force a position. */
 			index?: number;
 			/** Custom row content (composed from Select.ItemText / Select.ItemIndicator). */
 			children?: Snippet;
@@ -36,15 +36,23 @@
 		value,
 		label,
 		disabled = false,
-		index = 0,
+		index: indexProp,
 		children,
 		child,
 		...rest
 	}: SelectItemProps<V> = $props();
 	const root = getSelectCtx<V>();
 
+	// Auto-index from mount order unless an explicit `index` is passed (explicit wins).
+	const token = Symbol('SelectItem');
+	let autoIndex = $derived(indexProp === undefined);
+	$effect(() => {
+		if (autoIndex) return root.registerItem(token);
+	});
+	let index = $derived(autoIndex ? root.itemIndex(token) : (indexProp as number));
+
 	let isSelected = $derived(root.isSelected(value));
-	let isHighlighted = $derived(root.activeIndex === index);
+	let isHighlighted = $derived(index >= 0 && root.activeIndex === index);
 	let optionId = $derived(root.optionId(index));
 
 	setSelectItemCtx({

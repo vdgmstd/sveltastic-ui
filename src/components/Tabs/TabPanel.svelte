@@ -34,56 +34,47 @@
 		...rest
 	}: TabsContentProps = $props();
 	const ctx = useTabsContext();
-	let isActive = $derived(ctx?.value === value);
-	let panelVariant = $derived(ctx?.panelVariant ?? 'plain');
-	let orientation = $derived(ctx?.orientation ?? 'horizontal');
-	let transitionMode = $derived(ctx?.transition ?? 'crossfade');
+	let isActive = $derived(ctx.value === value);
+	let panelVariant = $derived(ctx.panelVariant);
+	let orientation = $derived(ctx.orientation);
+	let transitionMode = $derived(ctx.transition);
 	let useTransition = $derived(transitionMode !== 'none' && !keepMounted);
 
 	let overlapMode = $derived(transitionMode === 'fade' || transitionMode === 'crossfade');
 
 	function clearPin(node: HTMLElement): void {
 		node.style.position = '';
-		node.style.insetBlockStart = '';
-		node.style.insetInlineStart = '';
-		node.style.inlineSize = '';
+		node.style.top = '';
+		node.style.left = '';
+		node.style.width = '';
 	}
 
-	// Lift the leaving panel out of flow and pin it over the active one, so the two never stack side-by-side.
+	// Pin the leaving panel within the positioned `.tabs-root` (its offset parent) so it overlays in place during the crossfade.
+	// Offset coords (not the viewport rect) stay correct under scroll; a 0-size panel is left in flow rather than pinned to (0,0).
 	function pinLeaving(node: HTMLElement): void {
+		const w = node.offsetWidth;
+		if (w === 0) return;
 		node.style.position = 'absolute';
-		const active = node.parentElement?.querySelector<HTMLElement>(
-			':scope > .tab-panel[data-state="active"]'
-		);
-		if (!active) return;
-		const a = active.getBoundingClientRect();
-		const cb = node.offsetParent as HTMLElement | null;
-		if (cb) {
-			const c = cb.getBoundingClientRect();
-			node.style.insetBlockStart = `${a.top - c.top - cb.clientTop + cb.scrollTop}px`;
-			node.style.insetInlineStart = `${a.left - c.left - cb.clientLeft + cb.scrollLeft}px`;
-		} else {
-			node.style.insetBlockStart = `${a.top + window.scrollY}px`;
-			node.style.insetInlineStart = `${a.left + window.scrollX}px`;
-		}
-		node.style.inlineSize = `${a.width}px`;
+		node.style.top = `${node.offsetTop}px`;
+		node.style.left = `${node.offsetLeft}px`;
+		node.style.width = `${w}px`;
 	}
 
 	const send = (node: Element, params: { key: string }) => {
-		const config = ctx ? ctx.send(node, params) : { duration: 0 };
+		const config = ctx.send(node, params);
 		if (overlapMode && node instanceof HTMLElement) pinLeaving(node);
 		return config;
 	};
 	const receive = (node: Element, params: { key: string }) => {
 		if (node instanceof HTMLElement) clearPin(node);
-		return ctx ? ctx.receive(node, params) : { duration: 0 };
+		return ctx.receive(node, params);
 	};
 
 	const attrs = $derived({
 		class: `tab-panel tab-panel--${panelVariant}`,
 		role: 'tabpanel' as const,
-		id: ctx?.panelId(value),
-		'aria-labelledby': ctx?.tabId(value),
+		id: ctx.panelId(value),
+		'aria-labelledby': ctx.tabId(value),
 		'data-state': isActive ? ('active' as const) : ('inactive' as const),
 		'data-orientation': orientation,
 		'data-testid': 'tab-panel'

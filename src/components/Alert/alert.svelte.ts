@@ -1,5 +1,3 @@
-import { reducedMotion } from '../../state/reducedMotion.svelte';
-
 export type AlertVariant = 'relief' | 'gradient';
 
 type AlertRootConfig = {
@@ -50,7 +48,7 @@ export class AlertRootState {
 	}
 
 	get motionDuration(): number {
-		return reducedMotion.current ? 0 : 250;
+		return 250;
 	}
 
 	setOpen(next: boolean): void {

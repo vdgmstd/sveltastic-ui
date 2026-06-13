@@ -27,13 +27,13 @@
 {#snippet body(_close: () => void)}
 	{#if children}
 		{@render children()}
-	{:else if root.flatItems.length === 0}
+	{:else if root.visibleItems.length === 0}
 		<div class="select__empty" data-state={root.open ? 'open' : 'closed'}>
 			{#if root.emptySnippet}
 				{@render root.emptySnippet()}
 			{:else}
 				<TrayIcon size={28} weight="duotone" />
-				<span>No data</span>
+				<span>{root.emptyText}</span>
 			{/if}
 		</div>
 	{:else}

@@ -29,27 +29,39 @@
 	const ctx = usePaginationContext();
 
 	let n = $derived(page.n);
-	let variant = $derived(ctx?.variant ?? 'flat');
-	let shape = $derived(ctx?.shape ?? 'default');
-	let mode = $derived(ctx?.mode ?? 'numbers');
-	let isActive = $derived(ctx?.safeValue === n);
-	let isItemDisabled = $derived(ctx?.isItemDisabled(n) ?? false);
-	let isItemLoading = $derived(ctx?.isItemLoading(n) ?? false);
-	let isInert = $derived((ctx?.disabled ?? false) || isItemDisabled || isItemLoading);
-	let triplet = $derived(rgbTriplet(ctx?.color ?? 'primary'));
+	let variant = $derived(ctx.variant);
+	let shape = $derived(ctx.shape);
+	let mode = $derived(ctx.mode);
+	let isActive = $derived(ctx.safeValue === n);
+	let isItemDisabled = $derived(ctx.isItemDisabled(n));
+	let isItemLoading = $derived(ctx.isItemLoading(n));
+	let isInert = $derived(ctx.disabled || isItemDisabled || isItemLoading);
+	let triplet = $derived(rgbTriplet(ctx.color));
 
 	let rippleOptions = $derived({
-		disabled: !(ctx?.ripple ?? true) || isInert,
+		disabled: !ctx.ripple || isInert,
 		solidBg: isActive && (variant === 'default' || variant === 'border')
 	});
 
-	let pageId = $derived(ctx ? ctx.pageId(n) : '');
+	let pageId = $derived(ctx.pageId(n));
 
+	// Mint once: re-minting in the $derived re-runs the attachment every recompute → update-depth loop
+	// (the ref attachment writes `node`, and `merged` reads the registry via `tabindexFor`, so a fresh
+	// attachment closure each recompute bounced `node` and re-fired registration).
 	const refKey = createAttachmentKey();
-	const registerKey = createAttachmentKey();
 
-	// Stable identity — inlining re-ran register/deregister each recompute (loop vs tabindexFor); reads pageId lazily at attach time.
-	const registerRoving = (node: HTMLElement) => ctx?.roving.register(pageId, node);
+	let node = $state<HTMLElement | null>(null);
+	// Stable, change-guarded ref attachment: identity never changes, captured node only updates on
+	// actual DOM-node change — so `merged` recomputing (e.g. on registry-driven `tabindexFor`) can't
+	// re-run this and bounce `node`.
+	const attachNode = attachRef<HTMLButtonElement>((el) => {
+		ref = el;
+		node = el;
+	});
+	// Re-register on in-place page-number change so roving keyboard nav follows without remount.
+	$effect(() => {
+		if (node) return ctx.roving.register(pageId, node, () => isInert);
+	});
 
 	const attrs = $derived({
 		type: 'button' as const,
@@ -61,21 +73,15 @@
 		'data-selected': boolAttr(isActive),
 		'data-loading': boolAttr(isItemLoading),
 		'data-value': n,
-		tabindex: ctx?.roving.tabindexFor(pageId) ?? (isActive ? 0 : -1),
+		tabindex: ctx.roving.tabindexFor(pageId),
 		'aria-current': isActive ? ('page' as const) : undefined,
-		'aria-label': mode === 'dots' ? ctx?.pageLabel(n) : undefined,
+		'aria-label': mode === 'dots' ? ctx.pageLabel(n) : undefined,
 		disabled: isInert || undefined,
 		'data-testid': 'pagination-page',
-		onclick: () => ctx?.setPage(n),
-		onkeydown: (e: KeyboardEvent) => ctx?.handleKeydown(e, n)
+		onclick: () => ctx.setPage(n),
+		onkeydown: (e: KeyboardEvent) => ctx.handleKeydown(e, n)
 	});
-	const merged = $derived(
-		mergeProps(rest, attrs, {
-			class: className,
-			[refKey]: attachRef<HTMLButtonElement>((node) => (ref = node)),
-			[registerKey]: registerRoving
-		})
-	);
+	const merged = $derived(mergeProps(rest, attrs, { class: className, [refKey]: attachNode }));
 </script>
 
 {#snippet body()}

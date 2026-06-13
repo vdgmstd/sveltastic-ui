@@ -62,6 +62,9 @@
 		get file() {
 			return file;
 		},
+		get removeLabel() {
+			return root.removeLabelFor(file);
+		},
 		remove: () => root.ctl.remove(file)
 	});
 

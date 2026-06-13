@@ -247,8 +247,6 @@
 		root.caretPx = metrics.caretPx;
 	});
 
-	$effect(() => root.subscribeMotion());
-
 	let bodyEl = $state<HTMLDivElement | null>(null);
 	const bodyHeight = new Tween(0, { duration: 280, easing: cubicOut });
 	let measured = $state(false);
@@ -409,4 +407,8 @@
 		transition: background-color var(--dur-fast) var(--ease-standard);
 	}
 	.calendar__action:hover { background: rgb(var(--c) / 0.12); }
+	.calendar__action:focus-visible {
+		outline: 2px solid rgb(var(--c) / 0.6);
+		outline-offset: 2px;
+	}
 </style>

@@ -92,6 +92,11 @@
 	);
 
 	const refKey = createAttachmentKey();
+	// Mint once: `merged` recomputes every icon-pulse frame (fillStyle reads tweens), which would re-run an inline attachment.
+	const refAttach = attachRef<HTMLButtonElement>((n) => {
+		ref = n;
+		iconButtonEl = n ?? undefined;
+	});
 	const merged = $derived(
 		mergeProps(rest, {
 			class: cn(
@@ -106,10 +111,7 @@
 			'aria-hidden': !oniconclick,
 			style: fillStyle,
 			onclick: handleClick,
-			[refKey]: attachRef<HTMLButtonElement>((n) => {
-				ref = n;
-				iconButtonEl = n ?? undefined;
-			})
+			[refKey]: refAttach
 		})
 	);
 </script>

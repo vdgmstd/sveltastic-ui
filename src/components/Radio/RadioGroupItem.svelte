@@ -31,7 +31,6 @@
 	import { boolAttr } from '../../utils/attrs';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
-	import { reducedMotion } from '../../state/reducedMotion.svelte';
 	import { setRadioItemContext, useRadioGroupContext } from './context';
 	import { RadioGroupItemState } from './radioGroupState.svelte';
 
@@ -68,7 +67,6 @@
 		})
 	);
 
-	$effect(() => reducedMotion.subscribe());
 	$effect(() => root.registerValue(value));
 	$effect(() => item.syncActive());
 

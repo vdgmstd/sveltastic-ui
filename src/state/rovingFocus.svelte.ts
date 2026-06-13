@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
 
 export type Orientation = 'horizontal' | 'vertical' | 'both';
@@ -32,6 +33,7 @@ export function getDirectionalKeys(orientation: Orientation, dir: Direction): Di
 /** Composite-widget roving tabindex: one element in the page Tab order, arrows move within. */
 class RovingFocus {
 	#nodes = new SvelteMap<string, HTMLElement>();
+	#disabled = new SvelteMap<string, () => boolean>();
 	#order: string[] = $state([]);
 	#current = $state<string | null>(null);
 	orientation: Orientation;
@@ -48,18 +50,29 @@ class RovingFocus {
 		return this.#current;
 	}
 
-	/** Register an item; returns a deregister. */
-	register(id: string, node: HTMLElement): () => void {
-		this.#nodes.set(id, node);
-		if (!this.#order.includes(id)) this.#order.push(id);
+	/** Register an item (untracked R-M-W to avoid a register/deregister effect loop); pass `isDisabled` for reactive disabled tracking, else `#enabledIds` reads DOM attrs untracked. */
+	register(id: string, node: HTMLElement, isDisabled?: () => boolean): () => void {
+		untrack(() => {
+			if (this.#nodes.has(id)) {
+				throw new Error(
+					`Roving focus: duplicate item id "${id}". Each item value must be unique within its parent.`
+				);
+			}
+			this.#nodes.set(id, node);
+			if (isDisabled) this.#disabled.set(id, isDisabled);
+			if (!this.#order.includes(id)) this.#order.push(id);
+		});
 		return () => this.deregister(id);
 	}
 
 	deregister(id: string): void {
-		this.#nodes.delete(id);
-		const i = this.#order.indexOf(id);
-		if (i >= 0) this.#order.splice(i, 1);
-		if (this.#current === id) this.#current = null;
+		untrack(() => {
+			this.#nodes.delete(id);
+			this.#disabled.delete(id);
+			const i = this.#order.indexOf(id);
+			if (i >= 0) this.#order.splice(i, 1);
+			if (this.#current === id) this.#current = null;
+		});
 	}
 
 	/** Explicitly mark an item as the current tab-stop. */
@@ -71,6 +84,8 @@ class RovingFocus {
 		const ids = this.#order.filter((id) => {
 			const node = this.#nodes.get(id);
 			if (!node) return false;
+			const isDisabled = this.#disabled.get(id);
+			if (isDisabled) return !isDisabled();
 			if (node.hasAttribute('data-disabled') || node.hasAttribute('disabled')) return false;
 			if (node.getAttribute('aria-disabled') === 'true' || node.hasAttribute('inert')) return false;
 			return true;

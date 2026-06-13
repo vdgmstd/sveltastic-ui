@@ -70,10 +70,15 @@
 	</span>
 {/snippet}
 
-{#snippet triggerBody()}
+{#snippet triggerBody(popoverProps: Record<string, unknown>)}
+	{@const full = mergeProps(merged, popoverProps)}
+	{@const slotHost =
+		usesInputField && !root.filter
+			? mergeProps(full, { tabindex: 0, onkeydown: root.handleTriggerKeydown })
+			: undefined}
 	{@render children?.()}
 	{#if child}
-		{@render child({ props: merged })}
+		{@render child({ props: full })}
 	{:else}
 		<InputShell
 			value={root.inputValue}
@@ -97,10 +102,11 @@
 			spellcheck={false}
 			icon={caretIcon}
 			control={usesInputField ? inputField : undefined}
+			controlHostProps={slotHost}
 			oninput={handleInput}
 			onclick={handleClick}
 			onkeydown={root.handleTriggerKeydown}
-			{...merged}
+			{...full}
 		/>
 	{/if}
 {/snippet}

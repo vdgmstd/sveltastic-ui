@@ -39,17 +39,17 @@
 	.alert__icon {
 		position: absolute;
 		top: 15px;
-		left: 0;
+		inset-inline-start: 0;
 		width: 50px;
 		height: 1.5rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding-left: var(--space-1);
+		padding-inline-start: var(--space-1);
 		box-sizing: border-box;
 		-webkit-user-select: none;
 		user-select: none;
 	}
-	.alert__icon :global(i) { font-size: var(--fs-xl); color: rgb(255 255 255); }
-	.alert__icon :global(svg) { width: 24px; height: 24px; fill: rgb(255 255 255); }
+	.alert__icon :global(i) { font-size: var(--fs-xl); color: rgb(var(--on-accent)); }
+	.alert__icon :global(svg) { width: 24px; height: 24px; fill: rgb(var(--on-accent)); }
 </style>

@@ -6,6 +6,8 @@
 	import { portal } from '../actions/portal';
 	import Spinner from '../primitives/Spinner.svelte';
 
+	let { closeLabel = 'Close' }: { closeLabel?: string } = $props();
+
 	const POSITIONS: NotificationPosition[] = [
 		'top-right',
 		'top-left',
@@ -77,7 +79,6 @@
 						<button
 							type="button"
 							class="notif__action"
-							aria-label={entry.title ?? entry.text ?? 'Notification'}
 							onclick={() => {
 								entry.onclick?.();
 								if (entry.clickClose) notifications.close(entry.id);
@@ -112,7 +113,7 @@
 						<button
 							type="button"
 							class="notif__close"
-							aria-label="Close"
+							aria-label={entry.closeLabel ?? closeLabel}
 							onclick={(e) => {
 								e.stopPropagation();
 								notifications.close(entry.id);

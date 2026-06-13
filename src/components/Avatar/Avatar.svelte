@@ -232,7 +232,7 @@
 
 	.avatar--has-color .avatar__body { color: rgb(var(--on-accent)); }
 
-	.avatar__body :global(img) {
+	.avatar__body :global(.avatar__img) {
 		width: 100%;
 		height: auto;
 		display: block;
@@ -245,8 +245,12 @@
 		font-size: var(--fs-xl);
 		transition: transform var(--dur-slow) var(--avatar-elastic) 160ms;
 	}
+	.avatar__body :global(.avatar__icons svg),
+	.avatar__body :global(.avatar__icons i) {
+		font-size: var(--fs-md);
+	}
 
-	.avatar:hover .avatar__body :global(img),
+	.avatar:hover .avatar__body :global(.avatar__img),
 	.avatar:hover .avatar__body :global(svg),
 	.avatar:hover .avatar__body :global(i) { transition-delay: 0ms; }
 
@@ -256,7 +260,7 @@
 	.avatar--has-color:hover .avatar__body {
 		box-shadow: inset 0 0 40px 0 rgb(0 0 0 / 0.1);
 	}
-	.avatar:hover .avatar__body :global(img),
+	.avatar:hover .avatar__body :global(.avatar__img),
 	.avatar:hover .avatar__body :global(svg),
 	.avatar:hover .avatar__body :global(i) { transform: scale(1.12); }
 
@@ -369,13 +373,13 @@
 	.avatar[data-in-group]:not([data-group-float]):hover .avatar__body {
 		box-shadow: inset 0 0 0 0 rgb(0 0 0 / 0.1);
 	}
-	.avatar[data-in-group]:not([data-group-float]):hover .avatar__body :global(img),
+	.avatar[data-in-group]:not([data-group-float]):hover .avatar__body :global(.avatar__img),
 	.avatar[data-in-group]:not([data-group-float]):hover .avatar__body :global(svg),
 	.avatar[data-in-group]:not([data-group-float]):hover .avatar__body :global(i),
 	.avatar[data-in-group]:not([data-group-float]):hover :global(.avatar__text) {
 		transform: scale(1);
 	}
-	.avatar[data-in-group]:not([data-group-float]) .avatar__body :global(img) {
+	.avatar[data-in-group]:not([data-group-float]) .avatar__body :global(.avatar__img) {
 		width: calc(100% - 6px);
 	}
 

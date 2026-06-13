@@ -1,0 +1,248 @@
+/* Chip styles — global (not scoped) so render-delegated `child` root elements get them too. */
+
+	:where(.chip) {
+		--c: var(--primary);
+		--ge: var(--gradient-end);
+		--sa-color: var(--c);
+
+		--chip-font: var(--fs-md);
+		--chip-pad-x: var(--space-6);
+		--chip-pad-y: var(--space-4);
+		--chip-gap: var(--space-3);
+		--chip-close-size: 18px;
+		--chip-close-icon: 11px;
+		--chip-radius: var(--radius);
+
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--chip-gap);
+		box-sizing: border-box;
+		margin: 0;
+		padding: var(--chip-pad-y) var(--chip-pad-x);
+		border: 0;
+		border-radius: var(--rad-pill);
+		background: transparent;
+		font: inherit;
+		font-size: var(--chip-font);
+		line-height: var(--line-height);
+		text-align: inherit;
+		color: rgb(var(--c));
+		white-space: nowrap;
+		outline: none;
+		-webkit-user-select: none;
+		user-select: none;
+		isolation: isolate;
+		transform-origin: center;
+		transition: transform 320ms var(--ease-spring);
+	}
+	.chip:not([data-disabled]):hover {
+		transform: scale(1.08);
+	}
+	/* Optical cap-height trim the dropped `.chip__text` wrapper used to receive from tokens.css. */
+	@supports (text-box: trim-both cap alphabetic) {
+		:where(.chip) {
+			text-box: trim-both cap alphabetic;
+		}
+	}
+	.chip--clickable {
+		cursor: pointer;
+	}
+	.chip--clickable[data-disabled] {
+		cursor: not-allowed;
+	}
+	.chip:focus-visible {
+		box-shadow: 0 0 0 2px rgb(var(--background)), 0 0 0 4px rgb(var(--c) / 0.6);
+	}
+
+	.chip__bg {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		pointer-events: none;
+		z-index: -1;
+		transition:
+			background 200ms var(--ease-standard),
+			box-shadow 200ms var(--ease-standard);
+	}
+
+	.chip__sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	:where(.chip:has(.chip__close)) {
+		padding-inline-end: calc(var(--chip-close-size) + var(--chip-pad-x) / 2 + var(--chip-gap) / 2);
+	}
+
+	:where(.chip[data-disabled]) {
+		pointer-events: none;
+		opacity: 0.45;
+	}
+
+	:where(.chip--shape-default) {
+		border-radius: var(--rad-pill);
+	}
+	:where(.chip--shape-square) {
+		border-radius: var(--chip-radius);
+	}
+	:where(.chip--shape-circle) {
+		border-radius: var(--rad-pill);
+		aspect-ratio: 1 / 1;
+		justify-content: center;
+		padding-left: var(--chip-pad-y);
+		padding-right: var(--chip-pad-y);
+		gap: 0;
+	}
+
+	/* Sizes mirror Button so chips and buttons line up at the same height. */
+	:where(.chip--size-xl) {
+		--chip-font: var(--fs-xl);
+		--chip-pad-x: var(--space-8);
+		--chip-pad-y: var(--space-6);
+		--chip-gap: var(--space-5);
+		--chip-close-size: 24px;
+		--chip-close-icon: 14px;
+		--chip-radius: var(--rad-xl);
+	}
+	:where(.chip--size-large) {
+		--chip-font: var(--fs-lg);
+		--chip-pad-x: var(--space-7);
+		--chip-pad-y: var(--space-5);
+		--chip-gap: var(--space-4);
+		--chip-close-size: 22px;
+		--chip-close-icon: 13px;
+		--chip-radius: var(--rad-lg);
+	}
+	:where(.chip--size-medium) {
+		--chip-font: var(--fs-md);
+		--chip-pad-x: var(--space-6);
+		--chip-pad-y: var(--space-4);
+		--chip-gap: var(--space-3);
+		--chip-close-size: 18px;
+		--chip-close-icon: 11px;
+		--chip-radius: var(--rad-md);
+	}
+	:where(.chip--size-small) {
+		--chip-font: var(--fs-sm);
+		--chip-pad-x: var(--space-5);
+		--chip-pad-y: var(--space-3);
+		/* Kept literal: 5px between tokens 4 and 6, both taken by adjacent ramp steps. */
+		--chip-gap: 5px;
+		--chip-close-size: 16px;
+		--chip-close-icon: 10px;
+		--chip-radius: var(--rad-sm);
+	}
+	:where(.chip--size-mini) {
+		--chip-font: var(--fs-xs);
+		--chip-pad-x: var(--space-4);
+		--chip-pad-y: var(--space-2);
+		--chip-gap: var(--space-2);
+		--chip-close-size: 13px;
+		--chip-close-icon: 8px;
+		--chip-radius: var(--rad-xs);
+	}
+
+	:where(.chip--default) {
+		color: rgb(var(--on-accent));
+	}
+	.chip--default .chip__bg {
+		background: rgb(var(--c));
+	}
+
+	.chip--flat {
+		color: rgb(var(--c));
+	}
+	.chip--flat .chip__bg {
+		background: rgb(var(--c) / 0.15);
+	}
+	.chip--flat[data-active] {
+		color: rgb(var(--on-accent));
+	}
+	.chip--flat[data-active] .chip__bg {
+		background: rgb(var(--c));
+	}
+
+	.chip--border {
+		color: rgb(var(--c));
+	}
+	.chip--border .chip__bg {
+		background: transparent;
+		box-shadow: inset 0 0 0 2px rgb(var(--c));
+	}
+	.chip--border[data-active] {
+		color: rgb(var(--on-accent));
+	}
+	.chip--border[data-active] .chip__bg {
+		background: rgb(var(--c));
+		box-shadow: inset 0 0 0 2px rgb(var(--c));
+	}
+
+	.chip--transparent {
+		color: rgb(var(--c));
+	}
+	.chip--transparent .chip__bg {
+		background: transparent;
+	}
+	.chip--transparent[data-active] .chip__bg {
+		background: rgb(var(--c) / 0.12);
+	}
+
+	:where(.chip--gradient) {
+		color: rgb(var(--on-accent));
+	}
+	.chip--gradient .chip__bg {
+		background: linear-gradient(120deg, rgb(var(--c)) 0%, rgb(var(--ge)) 100%);
+	}
+
+	:where(.chip--shadow) {
+		color: rgb(var(--text));
+	}
+	.chip--shadow .chip__bg {
+		background: rgb(var(--gray-1));
+		box-shadow:
+			0 10px 28px -6px rgb(0 0 0 / 0.22),
+			0 3px 10px -2px rgb(0 0 0 / 0.12),
+			inset 0 0 0 1px rgb(var(--gray-3));
+	}
+	.chip--shadow[data-active] {
+		color: rgb(var(--c));
+	}
+	.chip--shadow[data-active] .chip__bg {
+		box-shadow:
+			0 10px 22px -6px rgb(var(--c) / 0.5),
+			0 3px 8px -2px rgb(0 0 0 / 0.08),
+			inset 0 0 0 1px rgb(var(--gray-3));
+	}
+
+	.chip--clickable.chip--default:not([data-disabled]):hover .chip__bg,
+	.chip--clickable.chip--gradient:not([data-disabled]):hover .chip__bg {
+		box-shadow: 0 6px 16px -4px rgb(var(--c) / 0.55);
+	}
+	.chip--clickable.chip--flat:not([data-disabled]):not([data-active]):hover .chip__bg {
+		background: rgb(var(--c) / 0.22);
+	}
+	.chip--clickable.chip--transparent:not([data-disabled]):hover .chip__bg {
+		background: rgb(var(--c) / 0.1);
+	}
+	.chip--clickable.chip--border:not([data-disabled]):not([data-active]):hover .chip__bg {
+		background: rgb(var(--c) / 0.08);
+	}
+	.chip--clickable.chip--shadow:not([data-disabled]):hover .chip__bg {
+		box-shadow:
+			0 14px 32px -6px rgb(0 0 0 / 0.26),
+			0 5px 14px -2px rgb(0 0 0 / 0.14),
+			inset 0 0 0 1px rgb(var(--gray-3));
+	}
+
+	.chip--clickable.chip--default[data-active] .chip__bg,
+	.chip--clickable.chip--gradient[data-active] .chip__bg {
+		box-shadow: 0 6px 18px -4px rgb(var(--c) / 0.6);
+	}

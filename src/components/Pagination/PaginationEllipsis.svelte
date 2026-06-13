@@ -36,12 +36,25 @@
 	const ctx = usePaginationContext();
 
 	let direction = $derived(page.direction);
-	let variant = $derived(ctx?.variant ?? 'flat');
-	let shape = $derived(ctx?.shape ?? 'default');
-	let mode = $derived(ctx?.mode ?? 'numbers');
-	let isDisabled = $derived(ctx?.disabled ?? false);
+	let variant = $derived(ctx.variant);
+	let shape = $derived(ctx.shape);
+	let mode = $derived(ctx.mode);
+	let isDisabled = $derived(ctx.disabled);
 
-	let rippleOptions = $derived({ disabled: !(ctx?.ripple ?? true) || isDisabled });
+	let rippleOptions = $derived({ disabled: !ctx.ripple || isDisabled });
+
+	let gapId = $derived(ctx.gapId(direction));
+
+	const refKey = createAttachmentKey();
+	let node = $state<HTMLElement | null>(null);
+	// Stable, change-guarded ref attachment so registry-driven recomputes can't bounce `node`.
+	const attachNode = attachRef<HTMLButtonElement>((el) => {
+		ref = el;
+		node = el;
+	});
+	$effect(() => {
+		if (node) return ctx.roving.register(gapId, node, () => isDisabled);
+	});
 
 	const attrs = $derived({
 		type: 'button' as const,
@@ -51,17 +64,13 @@
 		'data-mode': mode,
 		'data-direction': direction,
 		'data-pagination-ellipsis': '',
-		tabindex: -1,
-		'aria-label': direction === 'next' ? ctx?.ariaLabelJumpNext : ctx?.ariaLabelJumpPrev,
+		tabindex: ctx.roving.tabindexFor(gapId),
+		'aria-label': direction === 'next' ? ctx.ariaLabelJumpNext : ctx.ariaLabelJumpPrev,
 		'data-testid': 'pagination-ellipsis',
-		onclick: () => ctx?.jump(direction)
+		onclick: () => ctx.jump(direction),
+		onkeydown: (e: KeyboardEvent) => ctx.handleGapKeydown(e, direction)
 	});
-	const merged = $derived(
-		mergeProps(rest, attrs, {
-			class: className,
-			[createAttachmentKey()]: attachRef<HTMLButtonElement>((node) => (ref = node))
-		})
-	);
+	const merged = $derived(mergeProps(rest, attrs, { class: className, [refKey]: attachNode }));
 </script>
 
 {#if child}

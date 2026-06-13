@@ -60,8 +60,13 @@
 	let bubbleEl = $state<HTMLDivElement | null>(null);
 	let coords = $state({ x: 0, y: 0 });
 	let visible = $state(false);
+	let supportsPopover = $state(false);
 
 	const refKey = createAttachmentKey();
+
+	$effect(() => {
+		supportsPopover = typeof HTMLElement !== 'undefined' && 'popover' in HTMLElement.prototype;
+	});
 
 	function reposition(): void {
 		if (!root.triggerRef || !bubbleEl) return;
@@ -70,9 +75,31 @@
 	}
 
 	$effect(() => {
-		if (!root.open || !root.triggerRef || !bubbleEl) return;
+		if (!root.open) {
+			// forceMount keeps the bubble mounted; hide it on close instead of relying on unmount.
+			if (root.portal.forceMount) {
+				visible = false;
+				if (supportsPopover && bubbleEl?.popover && bubbleEl.matches(':popover-open')) {
+					try {
+						bubbleEl.hidePopover();
+					} catch {
+						/* already hidden */
+					}
+				}
+			}
+			return;
+		}
+		if (!root.triggerRef || !bubbleEl) return;
 		// Hide only until positioned for THIS open; never on close, or visibility:hidden would kill the out:fade.
 		visible = false;
+		// Join the top layer so the bubble paints above a modal <dialog> (showModal); plain z-index can't beat it.
+		if (supportsPopover && bubbleEl.popover) {
+			try {
+				bubbleEl.showPopover();
+			} catch {
+				/* already shown */
+			}
+		}
 		return watchAnchor(root.triggerRef, bubbleEl, reposition);
 	});
 
@@ -98,14 +125,15 @@
 	);
 </script>
 
-{#if root.open}
+{#if root.open || root.portal.forceMount}
 	<div
 		{...merged}
+		popover={supportsPopover ? 'manual' : undefined}
 		style:--c={triplet}
 		style:left="{coords.x}px"
 		style:top="{coords.y}px"
 		style:visibility={visible ? null : 'hidden'}
-		use:portal
+		use:portal={{ target: root.portal.target, disabled: root.portal.disabled }}
 		use:escapeLayer={{ disabled: root.trigger === 'manual', onEscape: () => root.setOpen(false) }}
 		use:dismissibleLayer={{
 			disabled: root.trigger !== 'click',
@@ -146,6 +174,14 @@
 		user-select: none;
 		-webkit-backdrop-filter: var(--frost);
 		backdrop-filter: var(--frost);
+	}
+	.tooltip[popover] {
+		inset: auto;
+		margin: 0;
+		overflow: visible;
+	}
+	.tooltip[popover]::backdrop {
+		background: transparent;
 	}
 	:global([data-theme='dark']) .tooltip[data-variant='default'] {
 		box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 24px -8px rgb(0 0 0 / 0.6);

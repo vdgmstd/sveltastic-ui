@@ -1,0 +1,147 @@
+/* ListItem styles — global (not scoped) so render-delegated `child` row elements get them too. */
+
+	:where(.list-item) {
+		--c: var(--primary);
+		--item-radius: var(--rad-md);
+		--item-pad-y: var(--space-4);
+		--item-pad-x: var(--space-6);
+		--item-gap: var(--space-6);
+		--item-font: inherit;
+		position: relative;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		gap: var(--item-gap);
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: var(--item-font);
+		text-align: start;
+		text-decoration: none;
+		outline: none;
+		cursor: default;
+		-webkit-user-select: none;
+		user-select: none;
+		transition: color 200ms var(--ease-standard);
+	}
+	:where(.list-item[data-interactive]) { cursor: pointer; }
+
+	.list-item__bg {
+		position: absolute;
+		inset: 2px 4px;
+		z-index: 0;
+		box-sizing: border-box;
+		border-radius: var(--item-radius);
+		overflow: hidden;
+		pointer-events: none;
+		background: transparent;
+		transform: scale(1);
+		transform-origin: center;
+		transition:
+			transform 220ms var(--ease-standard),
+			background-color 200ms var(--ease-standard);
+	}
+
+	.list-item[data-interactive]:hover:not([data-active]):not([data-selected]):not([data-disabled]) .list-item__bg {
+		background: rgb(var(--text) / 0.05);
+	}
+
+	.list-item[data-interactive]:active:not([data-active]):not([data-selected]):not([data-disabled]) .list-item__bg {
+		transform: scale(0.985);
+		background: rgb(var(--c) / 0.1);
+		transition:
+			transform 80ms var(--ease-standard),
+			background-color 80ms var(--ease-standard);
+	}
+	:where(.list-item:focus-visible) {
+		outline: none;
+	}
+	.list-item:focus-visible .list-item__bg {
+		outline: 2px solid rgb(var(--c) / 0.6);
+		outline-offset: -2px;
+	}
+
+	.list-item[data-interactive]:hover:not([data-active]):not([data-selected]):not([data-disabled]) .list-item__lead {
+		transform: scale(1.18);
+		color: rgb(var(--c));
+	}
+
+	.list-item__main:first-child { padding-inline-start: var(--item-pad-x); }
+	.list-item__lead + .list-item__main,
+	.list-item__main { padding-inline-start: 0; }
+	.list-item:not(:has(.list-item__lead)) .list-item__main { padding-inline-start: var(--item-pad-x); }
+	.list-item:not(:has(.list-item__trail)) .list-item__main { padding-inline-end: var(--item-pad-x); }
+	.list-item:has(.list-item__lead) .list-item__lead { padding-inline-start: var(--item-pad-x); }
+	.list-item:has(.list-item__trail) .list-item__trail { padding-inline-end: var(--item-pad-x); }
+
+	.list-item[data-active] .list-item__bg,
+	.list-item[data-selected] .list-item__bg {
+		background: rgb(var(--c));
+	}
+	:where(.list-item[data-active]),
+	:where(.list-item[data-selected]) {
+		color: rgb(var(--on-accent));
+	}
+	.list-item[data-active] .list-item__trail,
+	.list-item[data-selected] .list-item__trail { opacity: 0.85; }
+
+	.list-item--flat[data-active] .list-item__bg,
+	.list-item--flat[data-selected] .list-item__bg {
+		background: rgb(var(--c) / 0.18);
+	}
+	:where(.list-item--flat[data-active]),
+	:where(.list-item--flat[data-selected]) {
+		color: rgb(var(--c));
+	}
+
+	:where(.list-item[data-disabled]) { opacity: 0.45; cursor: not-allowed; }
+	.list-item[data-disabled] .list-item__bg { background: transparent !important; transform: none !important; }
+
+	.list-item[data-loading] .list-item__loading {
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		border-radius: var(--item-radius);
+		background: rgb(var(--c) / 0.18);
+		-webkit-backdrop-filter: blur(2px);
+		backdrop-filter: blur(2px);
+		pointer-events: none;
+	}
+
+	.list__body[data-divided] .list-item {
+		border-radius: 0;
+	}
+	.list__body[data-divided] .list-item .list-item__bg {
+		inset: 0;
+		border-radius: 0;
+	}
+	.list__body[data-divided] .list-item:first-child .list-item__bg {
+		border-top-left-radius: var(--list-radius);
+		border-top-right-radius: var(--list-radius);
+	}
+	.list__body[data-divided] .list-item:last-child .list-item__bg {
+		border-bottom-left-radius: var(--list-radius);
+		border-bottom-right-radius: var(--list-radius);
+	}
+	.list__body[data-divided] .list-item + .list-item::before {
+		content: '';
+		position: absolute;
+		left: 12px;
+		right: 12px;
+		top: 0;
+		height: 1px;
+		background: rgb(var(--text) / 0.08);
+		z-index: 1;
+		pointer-events: none;
+	}
+
+	:where(.list-item--size-xl)     { --item-radius: var(--rad-lg); --item-pad-y: var(--space-7); --item-pad-x: var(--space-8); --item-gap: 14px; }
+	:where(.list-item--size-large)  { --item-radius: 14px; --item-pad-y: var(--space-6); --item-pad-x: var(--space-7); --item-gap: 13px; }
+	:where(.list-item--size-medium) { --item-radius: var(--rad-md); --item-pad-y: var(--space-4);  --item-pad-x: var(--space-6); --item-gap: var(--space-6); }
+	:where(.list-item--size-small)  { --item-radius: 10px; --item-pad-y: var(--space-3);  --item-pad-x: var(--space-5); --item-gap: var(--space-5); }
+	:where(.list-item--size-mini)   { --item-radius: var(--rad-sm);  --item-pad-y: var(--space-2);  --item-pad-x: var(--space-4);  --item-gap: var(--space-4); }

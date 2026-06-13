@@ -38,68 +38,71 @@
 	}: TabsTriggerProps = $props();
 	const ctx = useTabsContext();
 
-	const tab = ctx
-		? new TabState(
-				ctx,
-				() => value,
-				() => disabled
-			)
-		: undefined;
+	const tab = new TabState(
+		ctx,
+		() => value,
+		() => disabled
+	);
 
-	let variant = $derived(ctx?.variant ?? 'underline');
-	let color = $derived(ctx?.color ?? 'primary');
-	let orientation = $derived(ctx?.orientation ?? 'horizontal');
-	let isActive = $derived(tab?.isActive ?? false);
-	let isInert = $derived(tab?.isInert ?? disabled);
+	let variant = $derived(ctx.variant);
+	let color = $derived(ctx.color);
+	let orientation = $derived(ctx.orientation);
+	let isActive = $derived(tab.isActive);
+	let isInert = $derived(tab.isInert);
 	let onFilledThumb = $derived(variant === 'default' || variant === 'relief');
 
 	let rippleOptions = $derived({
-		disabled: isInert || variant === 'underline' || !(ctx?.ripple ?? true),
+		disabled: isInert || variant === 'underline' || !ctx.ripple,
 		color: onFilledThumb && isActive ? '255 255 255' : color,
 		soft: true,
 		duration: 1000,
-		mountTo: ctx?.thumbLayer,
+		mountTo: ctx.thumbLayer,
 		// Label colour is owned by CSS + the sliding thumb; a ripple text shift flashes white-wrong on flat/border.
 		textColor: 'currentColor' as const
 	});
 
 	$effect(() => {
-		ctx?.adoptDefault(value, isInert);
+		ctx.adoptDefault(value, isInert);
 	});
 
-	// Mint once: re-minting in the $derived re-runs the attachment every recompute.
+	// Mint once: re-minting in the $derived re-runs the attachment every recompute → update-depth loop
+	// (the ref attachment writes `node`, and `merged` reads the registry via `tabindexFor`, so a fresh
+	// attachment closure each recompute bounced `node` and re-fired registration).
 	const refKey = createAttachmentKey();
-	const rovingKey = createAttachmentKey();
 
-	// Stable identity — inlining re-ran register/deregister each recompute (loop vs tabindexFor).
-	const registerRoving = (node: HTMLElement) => ctx?.roving.register(value, node);
+	let node = $state<HTMLElement | null>(null);
+	// Stable, change-guarded ref attachment: identity never changes, captured node only updates on
+	// actual DOM-node change — so `merged` recomputing (e.g. on registry-driven `tabindexFor`) can't
+	// re-run this and bounce `node`.
+	const attachNode = attachRef<HTMLButtonElement>((n) => {
+		ref = n;
+		node = n;
+	});
+	// Re-register on in-place `value` change so roving keyboard nav follows without remount.
+	$effect(() => {
+		if (node) return ctx.roving.register(value, node, () => tab.isInert);
+	});
 
 	const attrs = $derived({
 		type: 'button' as const,
 		class: `tab tab--variant-${variant}`,
 		role: 'tab' as const,
-		id: ctx?.tabId(value),
+		id: ctx.tabId(value),
 		'aria-selected': isActive,
-		'aria-controls': ctx?.panelId(value),
+		'aria-controls': ctx.panelId(value),
 		'aria-disabled': isInert ? ('true' as const) : undefined,
-		tabindex: ctx?.roving.tabindexFor(value) ?? (isActive ? 0 : -1),
+		tabindex: ctx.roving.tabindexFor(value),
 		disabled: isInert || undefined,
 		'data-state': isActive ? ('active' as const) : ('inactive' as const),
 		'data-value': value,
 		'data-orientation': orientation,
 		'data-disabled': boolAttr(isInert),
 		'data-testid': 'tab',
-		onclick: () => tab?.select(),
-		onfocus: () => tab?.handleFocus(),
-		onkeydown: (e: KeyboardEvent) => tab?.handleKeydown(e)
+		onclick: () => tab.select(),
+		onfocus: () => tab.handleFocus(),
+		onkeydown: (e: KeyboardEvent) => tab.handleKeydown(e)
 	});
-	const merged = $derived(
-		mergeProps(rest, attrs, {
-			class: className,
-			[refKey]: attachRef<HTMLButtonElement>((n) => (ref = n)),
-			[rovingKey]: registerRoving
-		})
-	);
+	const merged = $derived(mergeProps(rest, attrs, { class: className, [refKey]: attachNode }));
 </script>
 
 {#if child}
@@ -139,6 +142,11 @@
 
 	:global(:where(.tab:focus-visible[data-state='inactive'])) {
 		color: rgb(var(--c));
+	}
+
+	/* Visible focus ring for keyboard users, on both active and inactive tabs. */
+	:global(:where(.tab:focus-visible)) {
+		box-shadow: 0 0 0 2px rgb(var(--c) / 0.6);
 	}
 
 	:global(:where(.tab:disabled)),

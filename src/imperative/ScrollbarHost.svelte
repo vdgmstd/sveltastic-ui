@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	let mounted = false;
+	const mountedRoots = new Set<Document | ShadowRoot | HTMLElement>();
 </script>
 
 <script lang="ts">
@@ -22,10 +22,9 @@
 	const ATTR = 'data-scrolling';
 
 	onMount(() => {
-		if (mounted) return;
-		mounted = true;
-
 		const root: Document | ShadowRoot | HTMLElement = target ?? document;
+		if (mountedRoots.has(root)) return;
+		mountedRoots.add(root);
 		const timers = new WeakMap<Element, ReturnType<typeof setTimeout>>();
 		const tagged = new Set<Element>();
 
@@ -65,7 +64,7 @@
 				el.removeAttribute(ATTR);
 			}
 			tagged.clear();
-			mounted = false;
+			mountedRoots.delete(root);
 		};
 	});
 </script>

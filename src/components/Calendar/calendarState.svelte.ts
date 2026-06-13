@@ -18,7 +18,6 @@ import {
 	today as todayFn
 } from '../../utils/date';
 import { rgbTriplet } from '../../utils/color';
-import { reducedMotion } from '../../state/reducedMotion.svelte';
 import { pressBounce } from '../../actions/pressBounce.svelte';
 
 export type CalendarType = 'single' | 'range';
@@ -151,8 +150,8 @@ export class CalendarRootState {
 	readonly viewMonth = $derived.by(
 		() =>
 			this.placeholderDate ??
-			(this.type === 'single' ? this.selectedDate : null) ??
 			this.#viewMonthInternal ??
+			(this.type === 'single' ? this.selectedDate : null) ??
 			todayFn()
 	);
 
@@ -216,10 +215,6 @@ export class CalendarRootState {
 		}
 		return isSameMonth(this.realToday, this.viewMonth) ? this.realToday : this.viewMonth;
 	});
-
-	subscribeMotion(): () => void {
-		return reducedMotion.subscribe();
-	}
 
 	setRowsEl(el: HTMLElement | null): void { this.#rowsEl = el; }
 	setCellWidth(w: number): void { this.#cellW = w; }
@@ -346,7 +341,6 @@ export class CalendarRootState {
 	}
 
 	async pulse(scaleT: Tween<number>, opacityT: Tween<number>): Promise<void> {
-		if (reducedMotion.current) return;
 		scaleT.set(0, { duration: 0 });
 		opacityT.set(0, { duration: 0 });
 		await Promise.all([
@@ -600,7 +594,7 @@ class TweenedRect {
 
 	set(x: number, y: number, w: number): void {
 		if (this.primed) {
-			const o = reducedMotion.current ? { duration: 0 } : undefined;
+			const o = undefined;
 			this.x.set(x, o);
 			this.y.set(y, o);
 			this.w.set(w, o);

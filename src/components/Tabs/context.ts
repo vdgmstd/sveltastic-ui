@@ -13,6 +13,8 @@ export function setTabsContext(value: TabsRootState): TabsRootState {
 	return setContext(KEY, value);
 }
 
-export function useTabsContext(): TabsRootState | undefined {
-	return getContext<TabsRootState | undefined>(KEY);
+export function useTabsContext(): TabsRootState {
+	const ctx = getContext<TabsRootState | undefined>(KEY);
+	if (!ctx) throw new Error('<Tabs> parts must be used within <Tabs.Root>');
+	return ctx;
 }

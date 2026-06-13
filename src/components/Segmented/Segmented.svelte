@@ -29,8 +29,8 @@
 			children?: Snippet;
 			/** Fired on selection change. */
 			onValueChange?: (value: V) => void;
-			/** Render-delegation: receive the merged props and render your own root element. */
-			child?: Snippet<[{ props: Record<string, unknown> }]>;
+			/** Render-delegation: receive the merged props + the kit's `body` snippet (the sliding thumb + items); render your own root element with `{@render body()}` inside it so the thumb is preserved. */
+			child?: Snippet<[{ props: Record<string, unknown>; body: Snippet }]>;
 			/** Class merged onto the root. */
 			class?: string;
 			/** Inline style merged onto the root. */
@@ -41,6 +41,7 @@
 </script>
 
 <script lang="ts" generics="V extends SegmentedValue">
+	import '../../styles/segmented.css';
 	import { createAttachmentKey } from 'svelte/attachments';
 	import { rgbTriplet } from '../../utils/color';
 	import { boolAttr } from '../../utils/attrs';
@@ -161,141 +162,19 @@
 	</span>
 {/snippet}
 
+{#snippet body()}
+	{@render thumb()}
+	{@render children?.()}
+{/snippet}
+
 {#if child}
 	{@render child({
-		props: { ...merged, style: `--c:${triplet};--at:${activeTriplet};${userStyle ?? ''}` }
+		props: { ...merged, style: `--c:${triplet};--at:${activeTriplet};${userStyle ?? ''}` },
+		body
 	})}
 {:else}
 	<div {...merged} style:--c={triplet} style:--at={activeTriplet} style={userStyle}>
-		{@render thumb()}
-		{@render children?.()}
+		{@render body()}
 	</div>
 {/if}
 
-<style>
-	:where(.segmented) {
-		--c: var(--primary);
-		--at: var(--c);
-		--x: 0px;
-		--w: 0px;
-		--pad: 3px;
-		--radius: var(--rad-md);
-		--inner-radius: 10px;
-		--item-py: 5px;
-		--item-px: var(--space-6);
-		--font-size: var(--fs-md);
-		--ripple-soft-alpha: 0.2;
-
-		position: relative;
-		display: inline-flex;
-		align-items: stretch;
-		padding: var(--pad);
-		background: rgb(var(--gray-2));
-		border-radius: var(--radius);
-		-webkit-user-select: none;
-		user-select: none;
-		isolation: isolate;
-	}
-
-	:where(.segmented--xl) {
-		--pad: var(--space-3);
-		--item-py: var(--space-5);
-		--item-px: var(--space-8);
-		--font-size: var(--fs-xl);
-		--radius: var(--rad-xl);
-		--inner-radius: var(--rad-lg);
-	}
-
-	:where(.segmented--large) {
-		--pad: var(--space-2);
-		--item-py: var(--space-3);
-		--item-px: var(--space-7);
-		--font-size: var(--fs-lg);
-		--radius: var(--rad-lg);
-		--inner-radius: var(--rad-md);
-	}
-
-	:where(.segmented--small) {
-		--pad: var(--space-1);
-		--item-py: var(--space-2);
-		--item-px: var(--space-5);
-		--font-size: var(--fs-sm);
-		--radius: var(--rad-sm);
-		--inner-radius: var(--rad-sm);
-	}
-
-	:where(.segmented--mini) {
-		--pad: 1px;
-		--item-py: var(--space-1);
-		--item-px: var(--space-4);
-		--font-size: var(--fs-xs);
-		--radius: var(--rad-xs);
-		--inner-radius: var(--rad-xs);
-	}
-
-	:where(.segmented--block) {
-		display: grid;
-		grid-auto-flow: column;
-		grid-auto-columns: 1fr;
-		width: 100%;
-	}
-
-	:where(.segmented[data-disabled]) {
-		opacity: 0.55;
-	}
-
-	.segmented__thumb {
-		position: absolute;
-		top: var(--pad);
-		bottom: var(--pad);
-		left: 0;
-		width: var(--w);
-		transform: translateX(var(--x)) scale(var(--ps, 1));
-		transform-origin: center;
-		background: rgb(var(--at));
-		border-radius: var(--inner-radius);
-		pointer-events: none;
-		z-index: 1;
-		transition: background-color 220ms var(--ease-standard);
-	}
-
-	.segmented__thumb-ripples {
-		position: absolute;
-		inset: 0;
-		overflow: hidden;
-		pointer-events: none;
-		border-radius: inherit;
-	}
-
-	.segmented__thumb[data-hidden] {
-		opacity: 0;
-	}
-
-	/* flat — soft accent-tinted thumb (mirrors Button flat) */
-	:where(.segmented--variant-flat) {
-		background: rgb(var(--c) / 0.08);
-	}
-	.segmented--variant-flat .segmented__thumb {
-		background: rgb(var(--at) / 0.15);
-	}
-
-	/* border — outlined track and thumb (mirrors Button border) */
-	:where(.segmented--variant-border) {
-		background: transparent;
-		box-shadow: inset 0 0 0 1px rgb(var(--text) / 0.18);
-	}
-	.segmented--variant-border .segmented__thumb {
-		background: transparent;
-		box-shadow: inset 0 0 0 2px rgb(var(--at));
-	}
-
-	/* relief — solid accent thumb with bottom-border depth (mirrors Button relief) */
-	.segmented--variant-relief {
-		background: rgb(var(--gray-2));
-	}
-	.segmented--variant-relief .segmented__thumb {
-		box-shadow:
-			inset 0 -3px 0 color-mix(in oklab, rgb(var(--at)), black 28%),
-			0 1px 2px rgb(0 0 0 / 0.1);
-	}
-</style>

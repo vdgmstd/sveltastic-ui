@@ -70,8 +70,8 @@
 	);
 </script>
 
-<!-- Rounded clip wrapper keeps the img + hover zoom inside the frame; body itself is overflow:visible so badges/icons escape. -->
-<span class="avatar__img-clip" aria-hidden="true">
+<!-- Clip wrapper is hidden from AT only when the image is decorative (empty alt), else the alt must be announced. -->
+<span class="avatar__img-clip" aria-hidden={alt ? undefined : 'true'}>
 	{#if child}
 		{@render child({ props: imageProps })}
 	{:else}

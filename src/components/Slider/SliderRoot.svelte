@@ -141,7 +141,9 @@
 		<SliderRange />
 		{#if root.ticks}
 			{#each root.tickList as tick, i (tick)}
-				<SliderTick index={i} />
+				{#if i > 0 && i < root.tickList.length - 1}
+					<SliderTick index={i} />
+				{/if}
 			{/each}
 		{/if}
 		<SliderThumb index={0} />
@@ -260,25 +262,25 @@
 	}
 
 	:global(.slider:not([data-range]) .slider__seg--left) {
-		left: 0;
-		right: calc(100% - var(--p1) + var(--thumb-w) / 2 + var(--gap));
+		inset-inline-start: 0;
+		inset-inline-end: calc(100% - var(--p1) + var(--thumb-w) / 2 + var(--gap));
 	}
 	:global(.slider:not([data-range]) .slider__seg--right) {
-		left: calc(var(--p1) + var(--thumb-w) / 2 + var(--gap));
-		right: 0;
+		inset-inline-start: calc(var(--p1) + var(--thumb-w) / 2 + var(--gap));
+		inset-inline-end: 0;
 	}
 
 	:global(.slider[data-range] .slider__seg--left) {
-		left: 0;
-		right: calc(100% - var(--p1) + var(--thumb-w) / 2 + var(--gap));
+		inset-inline-start: 0;
+		inset-inline-end: calc(100% - var(--p1) + var(--thumb-w) / 2 + var(--gap));
 	}
 	:global(.slider[data-range] .slider__seg--mid) {
-		left: calc(var(--p1) + var(--thumb-w) / 2 + var(--gap));
-		right: calc(100% - var(--p2) + var(--thumb-w) / 2 + var(--gap));
+		inset-inline-start: calc(var(--p1) + var(--thumb-w) / 2 + var(--gap));
+		inset-inline-end: calc(100% - var(--p2) + var(--thumb-w) / 2 + var(--gap));
 	}
 	:global(.slider[data-range] .slider__seg--right) {
-		left: calc(var(--p2) + var(--thumb-w) / 2 + var(--gap));
-		right: 0;
+		inset-inline-start: calc(var(--p2) + var(--thumb-w) / 2 + var(--gap));
+		inset-inline-end: 0;
 	}
 
 	:global(.slider .slider__tick) {
@@ -292,7 +294,7 @@
 		z-index: 1;
 	}
 	:global(.slider .slider__tick[data-bounded]) {
-		background: rgb(255 255 255 / 0.85);
+		background: rgb(var(--on-accent) / 0.85);
 	}
 
 	:global(.slider .slider__thumb) {
@@ -315,10 +317,10 @@
 		pointer-events: none;
 	}
 	:global(.slider .slider__thumb--low) {
-		left: var(--p1);
+		inset-inline-start: var(--p1);
 	}
 	:global(.slider .slider__thumb--high) {
-		left: var(--p2);
+		inset-inline-start: var(--p2);
 	}
 
 	:global(.slider:hover:not([data-disabled]) .slider__thumb),
@@ -386,7 +388,7 @@
 		font-variant-numeric: tabular-nums;
 		padding: var(--space-2) var(--space-4);
 		background: rgb(var(--c));
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 		border-radius: var(--rad-xs);
 		pointer-events: none;
 		white-space: nowrap;
@@ -409,10 +411,10 @@
 		border-radius: 1px;
 	}
 	:global(.slider .slider__tooltip--low) {
-		left: var(--p1);
+		inset-inline-start: var(--p1);
 	}
 	:global(.slider .slider__tooltip--high) {
-		left: var(--p2);
+		inset-inline-start: var(--p2);
 	}
 	:global(.slider:hover:not([data-no-tooltip]) .slider__tooltip),
 	:global(.slider:focus-within:not([data-no-tooltip]) .slider__tooltip),

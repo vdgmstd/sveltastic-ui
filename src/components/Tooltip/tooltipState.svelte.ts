@@ -1,6 +1,7 @@
 import { rgbTriplet } from '../../utils/color';
 import type { Color } from '../../types';
 import type { TooltipPlacement, TooltipTrigger } from './context';
+import type { PortalTarget } from '../../actions/portal';
 
 export type TooltipConfig = {
 	/** Read the bindable `open` prop (controlled/uncontrolled both flow through it). */
@@ -23,6 +24,8 @@ export class TooltipRootState {
 	/** ARIA id linking the focusable trigger child to the live bubble. */
 	bubbleId = $state<string | undefined>(undefined);
 	pointerOnBubble = $state(false);
+	/** Set by an optional `Tooltip.Portal` wrapper; consumed by `Tooltip.Content`. */
+	portal = $state<{ target?: PortalTarget; disabled?: boolean; forceMount?: boolean }>({});
 
 	private timer: number | undefined;
 

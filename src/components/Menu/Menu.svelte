@@ -129,14 +129,17 @@
 	{popupRole}
 	{autoFocus}
 	{ariaLabel}
+	portalTarget={root.portal.target}
+	portalDisabled={root.portal.disabled}
+	forceMount={root.portal.forceMount}
 	class={className}
 	style={userStyle}
 	header={root.headerSnippet ? headerBody : undefined}
 	footer={root.footerSnippet ? footerBody : undefined}
 	onopenchangecomplete={() => root.completeOpenChange(false)}
 >
-	{#snippet trigger(isOpen)}
-		{#if root.triggerSnippet}{@render root.triggerSnippet(isOpen)}{/if}
+	{#snippet trigger(arg)}
+		{#if root.triggerSnippet}{@render root.triggerSnippet(arg)}{/if}
 	{/snippet}
 
 	{#snippet children(close)}

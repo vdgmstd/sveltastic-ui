@@ -59,15 +59,15 @@
 		border-radius: 0;
 	}
 	.button-group :global(.button--border:not(:first-of-type) .button__bg::before) {
-		border-left-width: 0;
+		border-inline-start-width: 0;
 	}
 	.button-group :global(.button:first-of-type) {
-		border-top-right-radius: 0;
-		border-bottom-right-radius: 0;
+		border-start-end-radius: 0;
+		border-end-end-radius: 0;
 	}
 	.button-group :global(.button:last-of-type) {
-		border-top-left-radius: 0;
-		border-bottom-left-radius: 0;
+		border-start-start-radius: 0;
+		border-end-start-radius: 0;
 	}
 	/* No per-button press dip in a group — the shrinking fill would open gaps at shared edges. */
 	.button-group :global(.button[data-pressing] .button__bg) {

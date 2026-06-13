@@ -58,6 +58,6 @@
 	}
 	:where(.list-divider--inset),
 	:where(.list-divider[data-inset]) {
-		margin-left: 44px;
+		margin-inline-start: 44px;
 	}
 </style>

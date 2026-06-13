@@ -25,12 +25,14 @@
 	const root = getCollapseItemContext();
 
 	const refKey = createAttachmentKey();
+	const rovingKey = createAttachmentKey();
 	const registerRoving = (node: HTMLElement) => root.registerRoving(node);
 
 	const merged = $derived(
 		mergeProps(rest, root.triggerAttrs, {
 			class: cn('collapse__header', className),
-			[refKey]: attachRef<HTMLButtonElement>((n) => (ref = n))
+			[refKey]: attachRef<HTMLButtonElement>((n) => (ref = n)),
+			[rovingKey]: registerRoving
 		})
 	);
 </script>
@@ -38,5 +40,5 @@
 {#if child}
 	{@render child({ props: merged })}
 {:else}
-	<button {...merged} {@attach registerRoving}>{@render children?.()}</button>
+	<button {...merged}>{@render children?.()}</button>
 {/if}

@@ -19,6 +19,9 @@ export type UploadRootConfig = {
 	error: () => string | undefined;
 	clearable: () => boolean;
 	buttonOnly: () => boolean;
+	countLabel: () => (n: number) => string;
+	clearLabel: () => string;
+	removeLabel: () => (file: File) => string;
 	onValueChange?: (files: File[]) => void;
 	onerror?: (errors: UploadError[]) => void;
 	messages?: () => Partial<UploadMessages> | undefined;
@@ -73,6 +76,15 @@ export class UploadRootState {
 	}
 	get buttonOnly(): boolean {
 		return this.#cfg.buttonOnly();
+	}
+	get countText(): string {
+		return this.#cfg.countLabel()(this.files.length);
+	}
+	get clearText(): string {
+		return this.#cfg.clearLabel();
+	}
+	removeLabelFor(file: File): string {
+		return this.#cfg.removeLabel()(file);
 	}
 	get hasFiles(): boolean {
 		return this.files.length > 0;

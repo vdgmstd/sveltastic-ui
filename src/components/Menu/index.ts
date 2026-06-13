@@ -1,5 +1,6 @@
 import Root from './Menu.svelte';
 import Trigger from './MenuTrigger.svelte';
+import Portal from './MenuPortal.svelte';
 import Content from './MenuContent.svelte';
 import Header from './MenuHeader.svelte';
 import Footer from './MenuFooter.svelte';
@@ -14,10 +15,11 @@ import Group from './MenuGroup.svelte';
 import GroupHeading from './MenuGroupHeading.svelte';
 import Separator from './MenuSeparator.svelte';
 
-/** Dropdown menu. Pure compound: `Menu.Root` + `Trigger`/`Content`/`Header`/`Footer`/`Item`/`ItemIcon`/`ItemTrailing`/`Shortcut`/`CheckboxItem`/`RadioGroup`/`RadioItem`/`Group`/`GroupHeading`/`Separator`. */
+/** Dropdown menu. Pure compound: `Menu.Root` + `Trigger`/`Portal`/`Content`/`Header`/`Footer`/`Item`/`ItemIcon`/`ItemTrailing`/`Shortcut`/`CheckboxItem`/`RadioGroup`/`RadioItem`/`Group`/`GroupHeading`/`Separator`. */
 export const Menu = {
 	Root,
 	Trigger,
+	Portal,
 	Content,
 	Header,
 	Footer,
@@ -41,6 +43,7 @@ export type {
 	MenuRootProps
 } from './Menu.svelte';
 export type { MenuTriggerProps } from './MenuTrigger.svelte';
+export type { MenuPortalProps } from './MenuPortal.svelte';
 export type { MenuContentProps } from './MenuContent.svelte';
 export type { MenuHeaderProps } from './MenuHeader.svelte';
 export type { MenuFooterProps } from './MenuFooter.svelte';

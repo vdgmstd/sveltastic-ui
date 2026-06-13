@@ -11,6 +11,7 @@ import type {
 	PopoverOpenAnim,
 	PopoverRole
 } from '../../primitives/Popover.svelte';
+import type { PortalTarget } from '../../actions/portal';
 
 export type MenuPlacement = PopoverPlacement;
 export type MenuTriggerOn = PopoverTriggerOn;
@@ -40,10 +41,14 @@ export class MenuRootState {
 	#cfg: MenuConfig;
 	#baseId: string;
 
-	triggerSnippet = $state<Snippet<[boolean]> | undefined>(undefined);
+	triggerSnippet = $state<Snippet<[{ props: Record<string, unknown>; open: boolean }]> | undefined>(
+		undefined
+	);
 	contentSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
 	headerSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
 	footerSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
+	/** Set by an optional `Menu.Portal` wrapper; consumed by the Popover that renders the panel. */
+	portal = $state<{ target?: PortalTarget; disabled?: boolean; forceMount?: boolean }>({});
 
 	constructor(cfg: MenuConfig, baseId: string) {
 		this.#cfg = cfg;
@@ -70,8 +75,8 @@ export class MenuRootState {
 		return this.roving.tabindexFor(id);
 	}
 
-	register(id: string, node: HTMLElement): () => void {
-		return this.roving.register(id, node);
+	register(id: string, node: HTMLElement, isDisabled?: () => boolean): () => void {
+		return this.roving.register(id, node, isDisabled);
 	}
 
 	/** Single open funnel: write the prop, reset nav on close, fire onOpenChange once. */

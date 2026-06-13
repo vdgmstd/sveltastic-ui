@@ -402,7 +402,7 @@
 		pointer-events: none;
 		opacity: 0.6;
 	}
-	:where(.button--white:focus) {
+	:where(.button--white:focus-visible) {
 		color: rgb(30 30 30);
 	}
 
@@ -595,7 +595,7 @@
 	}
 
 	:where(.button--default) {
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 	}
 	.button--default .button__bg {
 		background: rgb(var(--c));
@@ -611,14 +611,14 @@
 		background: rgb(var(--c) / 0.15);
 	}
 	:where(.button--flat[data-active]) {
-		color: rgb(255 255 255) !important;
+		color: rgb(var(--on-accent)) !important;
 	}
 	.button--flat[data-active] .button__bg {
 		background: rgb(var(--c));
 	}
 
 	:where(.button--floating) {
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 	}
 	.button--floating .button__bg {
 		background: rgb(var(--c));
@@ -651,7 +651,7 @@
 		color: rgb(var(--c));
 	}
 	:where(.button--border.button--upload) {
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 	}
 	.button--border .button__bg::before {
 		content: '';
@@ -663,14 +663,14 @@
 		pointer-events: none;
 	}
 	:where(.button--border[data-active]) {
-		color: rgb(255 255 255) !important;
+		color: rgb(var(--on-accent)) !important;
 	}
 	.button--border[data-active] .button__bg {
 		background: rgb(var(--c));
 	}
 
 	:where(.button--gradient) {
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 	}
 	.button--gradient .button__bg {
 		background: rgb(var(--c));
@@ -686,7 +686,7 @@
 	}
 
 	:where(.button--relief) {
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 	}
 	.button--relief .button__bg {
 		background: rgb(var(--c));

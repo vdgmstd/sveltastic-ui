@@ -178,7 +178,7 @@
 	.picker-btn--cell[data-selected],
 	.picker-btn--cell[data-range-start],
 	.picker-btn--cell[data-range-end] {
-		color: rgb(255 255 255);
+		color: rgb(var(--on-accent));
 	}
 
 	.picker-btn[data-disabled] {

@@ -22,6 +22,7 @@
 		min={root.min}
 		max={root.max}
 		disabled={root.disabled}
+		readonly={root.readonly}
 	/>
 </div>
 

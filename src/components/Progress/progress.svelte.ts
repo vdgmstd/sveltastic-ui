@@ -21,6 +21,7 @@ export class ProgressRootState {
 	#cfg: ProgressRootConfig;
 	readonly fill: Tween<number>;
 	hasLabel = $state(false);
+	labelId = $state<string | undefined>(undefined);
 
 	constructor(cfg: ProgressRootConfig) {
 		this.#cfg = cfg;
@@ -57,6 +58,9 @@ export class ProgressRootState {
 	}
 	get gradId(): string {
 		return `progress-grad-${this.id}`;
+	}
+	get defaultLabelId(): string {
+		return `${this.id}-label`;
 	}
 
 	get isIndeterminate(): boolean {

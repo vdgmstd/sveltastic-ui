@@ -87,6 +87,8 @@ export class DateTimePickerRootState {
 	inputValue = $state('');
 	#syncTimer: number | undefined;
 	#lastSync = 0;
+	/** True when the last value change came from typing in the field (vs a panel pick) — gates the input reflection. */
+	#fieldDriven = false;
 
 	readonly fieldId: string;
 	fieldEl = $state<HTMLInputElement | null>(null);
@@ -129,6 +131,9 @@ export class DateTimePickerRootState {
 	}
 
 	setValue(next: string): void {
+		if (this.readonly) return;
+		// Default: change is panel/programmatic-driven; handleInputText re-flags it as field-driven after.
+		this.#fieldDriven = false;
 		this.#cfg.setValueProp(next);
 		this.#cfg.onValueChange?.(next);
 	}
@@ -244,6 +249,9 @@ export class DateTimePickerRootState {
 			});
 			return;
 		}
+		// Skip reflection only while the user is typing in the field (field-driven + focused) — that write resets the caret.
+		// Panel picks clear #fieldDriven, so they always reflect even though the field keeps focus.
+		if (this.#fieldDriven && this.fieldEl && document.activeElement === this.fieldEl) return;
 		const now = performance.now();
 		const elapsed = now - this.#lastSync;
 		if (elapsed >= INPUT_SYNC_MS) {
@@ -356,6 +364,8 @@ export class DateTimePickerRootState {
 			if (dt && this.#inBound(dt.toPlainDate()))
 				this.emitDateTime(dt.toPlainDate(), { h: dt.hour, m: dt.minute, s: dt.second });
 		}
+		// Mark field-driven AFTER the emit (which routes through setValue and clears the flag).
+		this.#fieldDriven = true;
 	}
 
 	handleFieldKeydown(e: KeyboardEvent): void {

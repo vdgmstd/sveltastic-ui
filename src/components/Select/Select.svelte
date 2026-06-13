@@ -42,6 +42,8 @@
 		label?: string;
 		/** Placeholder text. */
 		placeholder?: string;
+		/** Text shown in the default empty state (no rows / filtered to nothing). Override the whole tray with `Select.Empty`. */
+		emptyText?: string;
 		/** Palette color. */
 		color?: Color;
 		/** Accessible name for the trigger when no visible label is present. */
@@ -98,6 +100,7 @@
 		labelStyle = 'default',
 		label,
 		placeholder = '',
+		emptyText = 'No data',
 		color = 'primary',
 		ariaLabel,
 		allowDeselect = false,
@@ -126,6 +129,7 @@
 				get loop() { return loop; },
 				get allowDeselect() { return type !== 'multiple' && allowDeselect; },
 				get placeholder() { return placeholder; },
+				get emptyText() { return emptyText; },
 				get disabled() { return disabled; },
 				get loading() { return loading; },
 				get variant() { return variant; },
@@ -156,10 +160,6 @@
 	data-testid="select"
 	data-state={root.open ? 'open' : 'closed'}
 >
-	{#if label && labelStyle === 'inline'}
-		<label class="select__label-block" for={triggerId}>{label}</label>
-	{/if}
-
 	{@render children?.()}
 
 	<Popover
@@ -168,16 +168,20 @@
 		openAnim={root.panelAnim}
 		matchWidth
 		popupRole="listbox"
+		multiselectable={root.isMultiple}
 		triggerRole="combobox"
 		closeOnSelect={!root.isMultiple}
 		autoFocus={false}
 		{disabled}
 		{block}
 		{ariaLabel}
+		portalTarget={root.portal.target}
+		portalDisabled={root.portal.disabled}
+		forceMount={root.portal.forceMount}
 		onopenchangecomplete={() => root.completeOpenChange(false)}
 	>
-		{#snippet trigger()}
-			{#if root.triggerSnippet}{@render root.triggerSnippet()}{/if}
+		{#snippet trigger({ props })}
+			{#if root.triggerSnippet}{@render root.triggerSnippet(props)}{/if}
 		{/snippet}
 
 		{#snippet children(close)}
@@ -196,8 +200,4 @@
 		max-width: 100%;
 	}
 	:where(.select-wrap--block) { display: flex; width: 100%; }
-	.select__label-block {
-		font-size: var(--fs-sm);
-		color: rgb(var(--text) / 0.7);
-	}
 </style>

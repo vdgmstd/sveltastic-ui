@@ -17,8 +17,8 @@ export function getSelectCtx<V = unknown>(): SelectRootState<V> {
 
 /** Group heading id wiring for Select.Group + Select.GroupHeading. */
 export type SelectGroupCtx = {
-	readonly headingId: string;
-	registerHeading: (id: string) => void;
+	readonly headingId: string | undefined;
+	registerHeading: (id: string | undefined) => void;
 };
 
 export function setSelectGroupCtx(group: SelectGroupCtx): SelectGroupCtx {

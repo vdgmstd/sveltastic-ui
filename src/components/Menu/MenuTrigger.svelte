@@ -30,6 +30,7 @@
 	const merged = $derived(
 		mergeProps(rest, attrs, { [refKey]: attachRef<HTMLElement>((n) => (ref = n)) })
 	);
+	const wrapped = $derived(mergeProps(merged, { class: 'menu-trigger' }));
 
 	$effect(() => {
 		root.triggerSnippet = triggerBody;
@@ -39,10 +40,17 @@
 	});
 </script>
 
-{#snippet triggerBody(open: boolean)}
+{#snippet triggerBody(arg: { props: Record<string, unknown>; open: boolean })}
 	{#if child}
-		{@render child({ props: merged, open })}
+		{@render child({ props: mergeProps(arg.props, merged), open: arg.open })}
 	{:else}
-		{@render children?.()}
+		<span {...mergeProps(arg.props, wrapped)}>{@render children?.()}</span>
 	{/if}
 {/snippet}
+
+<style>
+	/* Contents-dissolving wrapper so ref, data attributes and rest land in the default path without a box. */
+	.menu-trigger {
+		display: contents;
+	}
+</style>

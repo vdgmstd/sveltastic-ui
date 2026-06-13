@@ -38,7 +38,7 @@
 			'data-bounded': boolAttr(isBounded)
 		}, {
 			class: ['slider__tick', className].filter(Boolean).join(' '),
-			style: `left:${tickPct}%`,
+			style: `inset-inline-start:${tickPct}%`,
 			[refKey]: attachRef<HTMLSpanElement>((n) => (ref = n))
 		})
 	);

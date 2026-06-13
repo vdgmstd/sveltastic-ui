@@ -49,7 +49,6 @@
 	import { boolAttr, dataState } from '../../utils/attrs';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
-	import { reducedMotion } from '../../state/reducedMotion.svelte';
 	import { pressBounce } from '../../actions/pressBounce.svelte';
 	import { useCheckboxGroupContext, setCheckboxRootContext } from './context';
 	import { CheckboxRootState } from './checkbox.svelte';
@@ -81,6 +80,9 @@
 	let id = $derived(idProp ?? uid);
 
 	const groupCtx = useCheckboxGroupContext();
+	if (groupCtx && untrack(() => value) === undefined) {
+		throw new Error('<Checkbox.Root> needs a value when used inside <Checkbox.Group>');
+	}
 	const token = $derived(value === undefined ? undefined : String(value));
 
 	const state = setCheckboxRootContext(
@@ -108,8 +110,6 @@
 	let isChecked = $derived(state.isChecked);
 	let lineTarget = $derived(lineThrough && isChecked ? 1 : 0);
 
-	$effect(() => reducedMotion.subscribe());
-
 	const press = pressBounce({
 		disabled: () => state.disabled || loading,
 		onstart: () => (state.pressColor = !isChecked),
@@ -123,26 +123,26 @@
 	const lineTween = new Tween(untrack(() => lineTarget), { duration: 260, easing: cubicOut });
 	$effect(() => {
 		const next = state.fillTarget;
-		const duration = reducedMotion.current ? 0 : 260;
+		const duration = 260;
 		fillTween.set(next, {
 			duration,
 			easing: cubicOut,
-			delay: next === 1 && state.pressColor && !reducedMotion.current ? 50 : 0
+			delay: next === 1 && state.pressColor ? 50 : 0
 		});
 	});
 	$effect(() => {
 		const next = state.drawTarget;
 		drawTween.set(next, {
-			duration: reducedMotion.current ? 0 : next === 1 ? 460 : 220,
+			duration: next === 1 ? 460 : 220,
 			easing: cubicOut,
-			delay: next === 1 && state.pressColor && !reducedMotion.current ? 130 : 0
+			delay: next === 1 && state.pressColor ? 130 : 0
 		});
 	});
 	$effect(() => {
-		minusTween.set(state.minusTarget, { duration: reducedMotion.current ? 0 : 220, easing: cubicOut });
+		minusTween.set(state.minusTarget, { duration: 220, easing: cubicOut });
 	});
 	$effect(() => {
-		lineTween.set(lineTarget, { duration: reducedMotion.current ? 0 : 260, easing: cubicOut });
+		lineTween.set(lineTarget, { duration: 260, easing: cubicOut });
 	});
 
 	const refKey = createAttachmentKey();

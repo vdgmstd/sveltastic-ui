@@ -1,6 +1,7 @@
 import { Spring } from 'svelte/motion';
 import { rgbTriplet } from '../../utils/color';
 import type { Color } from '../../types';
+import type { PortalTarget } from '../../actions/portal';
 
 export type DialogSize = 'small' | 'medium' | 'large' | 'fullscreen';
 export type DialogAlign = 'center' | 'top';
@@ -26,6 +27,8 @@ export class DialogRootState {
 	titleId = $state<string | undefined>(undefined);
 	descriptionId = $state<string | undefined>(undefined);
 	contentId = $state<string | undefined>(undefined);
+	/** Set by an optional `Dialog.Portal` wrapper; `active` relocates the native `<dialog>` (default: in place). */
+	portal = $state<{ active?: boolean; target?: PortalTarget; disabled?: boolean }>({});
 	readonly rebound = new Spring(1, { stiffness: 0.35, damping: 0.45 });
 
 	constructor(private readonly cfg: DialogConfig) {}

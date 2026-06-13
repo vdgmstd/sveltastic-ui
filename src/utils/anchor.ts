@@ -21,6 +21,8 @@ export type AnchorResult = {
 	y: number;
 	placement: AnchorPlacement;
 	triggerWidth: number;
+	/** Space on the chosen side between the anchor and the viewport edge — used to cap the panel so it scrolls instead of overflowing the page. */
+	availableHeight: number;
 };
 
 /**
@@ -117,7 +119,21 @@ export function computeAnchorPosition(
 
 	const alignKey = align === 'center' ? '' : `-${align}`;
 	const resolved = `${sideTop ? 'top' : 'bottom'}${alignKey}` as AnchorPlacement;
-	return { x, y, placement: resolved, triggerWidth: t.width };
+	const availableHeight = Math.max(0, (sideTop ? spaceAbove : spaceBelow) - offset);
+	return { x, y, placement: resolved, triggerWidth: t.width, availableHeight };
+}
+
+/**
+ * Room for a panel that positions via native CSS anchoring (no JS coords), capped to the LARGER
+ * of the two block sides. The panel flips (CSS `flip-block`) to whichever side fits, so throttling
+ * it to the preferred side both shrinks it AND suppresses the flip — a tiny panel "fits" the tiny
+ * gap, so nothing overflows to flip away from. The min floor + max cap live in CSS.
+ */
+export function measureAvailableHeight(trigger: HTMLElement, offset: number, margin = 8): number {
+	const t = trigger.getBoundingClientRect();
+	const above = t.top - margin;
+	const below = window.innerHeight - t.bottom - margin;
+	return Math.max(0, Math.max(above, below) - offset);
 }
 
 /** Tooltip bubble placement: one of four sides, clamped into the viewport. Fixed-position coords. */

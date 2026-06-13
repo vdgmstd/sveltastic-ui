@@ -36,21 +36,33 @@
 	}: ChipCloseProps = $props();
 	const ctx = useChipCtx();
 
-	function handleClick(event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement }): void {
+	function fireClose(event: Event): void {
 		if (ctx.disabled) return;
 		event.stopPropagation();
-		onclose?.(event);
-		onclick?.(event);
+		onclose?.(event as MouseEvent);
+		onclick?.(event as MouseEvent & { currentTarget: EventTarget & HTMLButtonElement });
 	}
+
+	// On an interactive chip the close affordance is presentational — Delete/Backspace on the chip triggers it.
+	$effect(() => {
+		if (!ctx.isInteractive) return;
+		return ctx.registerClose(fireClose);
+	});
+
+	let isPresentational = $derived(ctx.isInteractive);
 
 	const refKey = createAttachmentKey();
 	let merged = $derived(
 		mergeProps(rest, {
 			class: cn('chip__close', className),
-			type: 'button' as const,
-			'aria-label': ariaLabel,
-			disabled: ctx.disabled || undefined,
-			onclick: handleClick,
+			onclick: fireClose,
+			...(isPresentational
+				? { 'aria-hidden': 'true' as const }
+				: {
+						type: 'button' as const,
+						'aria-label': ariaLabel,
+						disabled: ctx.disabled || undefined
+					}),
 			[refKey]: attachRef<HTMLButtonElement>((n) => (ref = n))
 		})
 	);
@@ -58,6 +70,11 @@
 
 {#if child}
 	{@render child({ props: merged })}
+{:else if isPresentational}
+	<span {...merged}>
+		{@render children?.()}
+		<XIcon size={16} weight="bold" />
+	</span>
 {:else}
 	<button {...merged}>
 		{@render children?.()}
@@ -68,7 +85,7 @@
 <style>
 	.chip__close {
 		position: absolute;
-		right: calc(var(--chip-pad-x) / 2);
+		inset-inline-end: calc(var(--chip-pad-x) / 2);
 		top: 50%;
 		transform: translateY(-50%);
 		z-index: 2;

@@ -43,6 +43,6 @@
 	.select__item-text {
 		flex: 1 1 auto;
 		min-width: 0;
-		text-align: left;
+		text-align: start;
 	}
 </style>

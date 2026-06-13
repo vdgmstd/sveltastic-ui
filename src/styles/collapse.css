@@ -1,0 +1,260 @@
+/* Collapse component styles — global (not scoped) so render-delegated `child` root elements
+   get them too, and so the BEM block beats Tailwind's `.collapse` utility (unlayered > @layer). */
+
+	:where(.collapse) {
+		--c: var(--primary);
+		--ge: var(--gradient-end);
+		--c-bright: color-mix(in oklab, rgb(var(--c)), rgb(255 255 255) 38%);
+		--collapse-radius: var(--rad-md);
+		--collapse-pad-x: var(--space-7);
+		--collapse-pad-y: var(--space-6);
+		--collapse-font: var(--fs-md);
+		--collapse-gap: var(--space-5);
+		--collapse-body-pt: var(--space-6);
+		--collapse-body-pb: var(--space-7);
+
+		position: relative;
+		display: block;
+		visibility: visible;
+		isolation: isolate;
+		border-radius: var(--collapse-radius);
+		font-size: var(--collapse-font);
+		color: rgb(var(--text));
+		box-sizing: border-box;
+	}
+
+	.collapse::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: inherit;
+		pointer-events: none;
+	}
+
+	:where(.collapse[data-disabled]) { opacity: 0.55; }
+	.collapse[data-disabled] .collapse__header { cursor: not-allowed; }
+
+	.collapse .collapse__header {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: var(--collapse-gap);
+		width: 100%;
+		padding: var(--collapse-pad-y) var(--collapse-pad-x);
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: inherit;
+		text-align: start;
+		cursor: pointer;
+		-webkit-user-select: none;
+		user-select: none;
+		border-radius: inherit;
+		box-sizing: border-box;
+	}
+	.collapse .collapse__header:focus-visible {
+		outline: 2px solid rgb(var(--c) / 0.6);
+		outline-offset: 2px;
+	}
+
+	.collapse .collapse__icon,
+	.collapse .collapse__extra {
+		display: inline-flex;
+		align-items: center;
+		flex: 0 0 auto;
+	}
+
+	.collapse .collapse__title {
+		flex: 1 1 auto;
+		min-width: 0;
+		font-weight: 600;
+	}
+
+	.collapse .collapse__caret {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: 0 0 auto;
+		transform: rotate(var(--rot));
+		will-change: transform;
+	}
+
+	.collapse .collapse__body {
+		position: relative;
+		overflow: hidden;
+		border-radius: 0 0 var(--collapse-radius) var(--collapse-radius);
+	}
+	.collapse .collapse__body-inner {
+		position: relative;
+		padding: var(--collapse-body-pt) var(--collapse-pad-x) var(--collapse-body-pb);
+		font-size: 0.92em;
+		line-height: 1.6;
+		color: inherit;
+	}
+	.collapse .collapse__body-inner::before {
+		content: '';
+		position: absolute;
+		left: var(--collapse-pad-x);
+		right: var(--collapse-pad-x);
+		top: 0;
+		height: 1px;
+		background: currentColor;
+		opacity: 0.12;
+		pointer-events: none;
+	}
+
+	/* gap 14px kept literal: snaps onto neighbouring steps' tokens otherwise. */
+	:where(.collapse--size-xl)     { --collapse-radius: var(--rad-xl); --collapse-pad-x: var(--space-9); --collapse-pad-y: var(--space-8); --collapse-font: var(--fs-xl); --collapse-gap: var(--space-7); --collapse-body-pt: var(--space-8); --collapse-body-pb: var(--space-9); }
+	:where(.collapse--size-large)  { --collapse-radius: var(--rad-lg); --collapse-pad-x: var(--space-8); --collapse-pad-y: var(--space-7); --collapse-font: var(--fs-lg); --collapse-gap: 14px;            --collapse-body-pt: var(--space-7); --collapse-body-pb: var(--space-8); }
+	:where(.collapse--size-medium) { --collapse-radius: var(--rad-md); --collapse-pad-x: var(--space-7); --collapse-pad-y: var(--space-6); --collapse-font: var(--fs-lg); --collapse-gap: var(--space-6); --collapse-body-pt: var(--space-6); --collapse-body-pb: var(--space-7); }
+	:where(.collapse--size-small)  { --collapse-radius: var(--rad-sm); --collapse-pad-x: var(--space-6); --collapse-pad-y: var(--space-5); --collapse-font: var(--fs-md); --collapse-gap: var(--space-5); --collapse-body-pt: var(--space-5); --collapse-body-pb: var(--space-6); }
+	:where(.collapse--size-mini)   { --collapse-radius: var(--rad-xs); --collapse-pad-x: var(--space-5); --collapse-pad-y: var(--space-4); --collapse-font: var(--fs-sm); --collapse-gap: var(--space-4); --collapse-body-pt: var(--space-4); --collapse-body-pb: var(--space-5); }
+
+	:where(.collapse--shape-square) { --collapse-radius: 0; }
+	/* Pill curve fixed to the header's half-height so it stays constant as the body grows (a vmax pill re-rounds on open). */
+	:where(.collapse--shape-circle) { --collapse-radius: calc(var(--collapse-pad-y) + 0.7em); }
+	.collapse--shape-circle .collapse__header,
+	.collapse--shape-circle .collapse__body-inner { padding-inline: calc(var(--collapse-pad-x) + 6px); }
+
+	.collapse--default::before {
+		background: rgb(var(--gray-1));
+		box-shadow:
+			inset 0 0 0 1px rgb(var(--gray-4) / calc(1 - var(--o, 0))),
+			inset 0 0 0 1px rgb(var(--c) / calc(0.5 * var(--o, 0))),
+			inset calc(3px * var(--o, 0)) 0 0 0 rgb(var(--c)),
+			0 calc(2px + var(--o, 0) * 6px) calc(8px + var(--o, 0) * 14px) calc(var(--o, 0) * -4px) rgb(var(--c) / calc(0.06 + var(--o, 0) * 0.22));
+	}
+	.collapse--default .collapse__title,
+	.collapse--default .collapse__caret {
+		color: rgb(var(--text));
+	}
+	.collapse--default .collapse__header,
+	.collapse--default .collapse__body-inner {
+		padding-inline-start: calc(var(--collapse-pad-x) + var(--o, 0) * 4px);
+	}
+	.collapse--default .collapse__body-inner::before {
+		background: color-mix(in oklab, rgb(var(--gray-4)), rgb(255 255 255) calc(var(--rp, 0) * 100%));
+		opacity: 1;
+	}
+
+	.collapse--flat::before {
+		background: rgb(var(--c) / calc(0.08 + var(--o, 0) * 0.05));
+	}
+	:where(.collapse--flat) { color: rgb(var(--text)); }
+	.collapse--flat .collapse__title,
+	.collapse--flat .collapse__icon,
+	.collapse--flat .collapse__caret { color: rgb(var(--c)); }
+	.collapse--flat.collapse--color-dark .collapse__title,
+	.collapse--flat.collapse--color-dark .collapse__icon,
+	.collapse--flat.collapse--color-dark .collapse__caret { color: rgb(var(--text)); }
+	.collapse--flat .collapse__body-inner::before { background: rgb(var(--c)); opacity: 0.14; }
+
+	.collapse--border::before {
+		background: transparent;
+		box-shadow:
+			inset 0 0 0 1px rgb(var(--c) / calc(0.4 + var(--o, 0) * 0.6)),
+			0 calc(var(--o, 0) * 4px) calc(var(--o, 0) * 14px) -8px rgb(var(--c) / calc(var(--o, 0) * 0.25));
+	}
+	.collapse--border .collapse__title,
+	.collapse--border .collapse__caret { color: rgb(var(--c)); }
+	.collapse--border.collapse--color-dark .collapse__title,
+	.collapse--border.collapse--color-dark .collapse__caret { color: rgb(var(--text)); }
+	.collapse--border .collapse__body-inner::before { background: rgb(var(--c)); opacity: calc(0.4 + var(--o, 0) * 0.6); }
+
+	:where(.collapse--solid) {
+		color: rgb(var(--on-accent));
+	}
+	.collapse--solid::before {
+		background: rgb(var(--c));
+		box-shadow: 0 calc(var(--o, 0) * 8px) calc(var(--o, 0) * 22px) calc(var(--o, 0) * -8px) rgb(var(--c) / calc(var(--o, 0) * 0.45));
+	}
+	:where(.collapse--solid.collapse--color-dark) { color: rgb(var(--text)); }
+	.collapse--solid .collapse__body-inner::before { background: rgb(255 255 255); opacity: 0.28; }
+
+	:where(.collapse--gradient) {
+		color: rgb(var(--on-accent));
+	}
+	.collapse--gradient::before {
+		background: rgb(var(--c));
+		overflow: hidden;
+		box-shadow: 0 calc(var(--o, 0) * 10px) calc(var(--o, 0) * 24px) calc(var(--o, 0) * -8px) rgb(var(--c) / calc(var(--o, 0) * 0.5));
+	}
+	.collapse--gradient::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: inherit;
+		background: linear-gradient(30deg, rgb(var(--ge) / 0) 33%, rgb(var(--ge)) 100%);
+		pointer-events: none;
+	}
+	.collapse--gradient .collapse__body-inner::before { background: rgb(255 255 255); opacity: 0.3; }
+
+	:where(.collapse--relief) {
+		color: rgb(var(--on-accent));
+	}
+	.collapse--relief::before {
+		background: rgb(var(--c));
+		box-shadow: 6px 6px 0 0 rgb(var(--c) / 0.32);
+	}
+	:where(.collapse--relief.collapse--color-dark) { color: rgb(var(--text)); }
+	.collapse--relief .collapse__body-inner::before { background: rgb(255 255 255); opacity: 0.28; }
+
+	:where(.collapse--ghost) {
+		border-bottom: 1px solid rgb(var(--gray-3));
+	}
+	.collapse--ghost::before { display: none; }
+	.collapse--ghost .collapse__body-inner::before { display: none; }
+	.collapse--ghost .collapse__title,
+	.collapse--ghost .collapse__caret {
+		color: color-mix(in oklab, rgb(var(--text)), var(--c-bright) calc(var(--o, 0) * 100%));
+	}
+
+	[data-theme='dark'] .collapse--default::before {
+		background: rgb(var(--gray-1));
+		box-shadow:
+			inset 0 0 0 1px rgb(var(--gray-2) / calc(1 - var(--o, 0))),
+			inset 0 0 0 1px rgb(var(--c) / calc(0.5 * var(--o, 0))),
+			inset calc(3px * var(--o, 0)) 0 0 0 rgb(var(--c)),
+			0 calc(2px + var(--o, 0) * 6px) calc(8px + var(--o, 0) * 14px) calc(var(--o, 0) * -4px) rgb(0 0 0 / calc(var(--shadow-opacity) * (0.4 + var(--o, 0) * 0.4)));
+	}
+	[data-theme='dark'] .collapse--default .collapse__body-inner::before {
+		background: rgb(var(--gray-2));
+		opacity: 1;
+	}
+	[data-theme='dark'] .collapse--ghost {
+		border-bottom-color: rgb(var(--gray-2));
+	}
+
+	/* Filled variants clip the ripple inset so the wave stays inside the bg fill, not the shadow halo. */
+	.collapse--flat .ripple__layer,
+	.collapse--border .ripple__layer,
+	.collapse--ghost .ripple__layer {
+		opacity: 0.08;
+		mix-blend-mode: multiply;
+	}
+	[data-theme='dark'] .collapse--flat .ripple__layer,
+	[data-theme='dark'] .collapse--border .ripple__layer,
+	[data-theme='dark'] .collapse--ghost .ripple__layer {
+		opacity: 0.14;
+		mix-blend-mode: screen;
+	}
+
+	.collapse--solid .ripple__layer,
+	.collapse--gradient .ripple__layer,
+	.collapse--relief .ripple__layer {
+		inset: 2px;
+		border-radius: calc(var(--collapse-radius) - 2px);
+		opacity: 0.12;
+	}
+	.collapse--solid .ripple__effect,
+	.collapse--gradient .ripple__effect,
+	.collapse--relief .ripple__effect {
+		background: radial-gradient(circle,
+			rgb(255 255 255) 0%,
+			rgb(255 255 255) 78%,
+			rgb(255 255 255 / 0.85) 92%,
+			rgb(255 255 255) 100%);
+	}

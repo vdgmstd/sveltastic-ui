@@ -22,7 +22,6 @@
 	import { cn } from '../../utils/cn';
 	import { attachRef } from '../../utils/ref';
 	import { mergeProps } from '../../utils/mergeProps';
-	import { reducedMotion } from '../../state/reducedMotion.svelte';
 	import { getAlertCtx } from './context';
 
 	let {
@@ -41,7 +40,7 @@
 
 	const fill = new Tween(untrack(() => value), { duration: 250, easing: cubicInOut });
 	$effect(() => {
-		fill.set(value, { duration: reducedMotion.current ? 0 : 250 });
+		fill.set(value, { duration: 250 });
 	});
 
 	const refKey = createAttachmentKey();

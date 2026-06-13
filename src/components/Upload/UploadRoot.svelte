@@ -44,6 +44,12 @@
 			error?: string;
 			/** Override the screen-reader announcements for add/remove/clear (English defaults). */
 			messages?: Partial<UploadMessages>;
+			/** Footer file-count text builder (English default: `'{n} file' / '{n} files'`). */
+			countLabel?: (count: number) => string;
+			/** Footer clear-all button label (English default: `'Clear all'`). */
+			clearLabel?: string;
+			/** Per-item remove-button aria-label builder (English default: `'Remove {name}'`). */
+			removeLabel?: (file: File) => string;
 			/** Compound parts (`Upload.Dropzone`/`Upload.List`/`Upload.Footer`). */
 			children?: Snippet;
 			/** Fired with rejected files when validation trims the input. */
@@ -83,6 +89,9 @@
 		hint,
 		error,
 		messages,
+		countLabel = (n) => `${n} ${n === 1 ? 'file' : 'files'}`,
+		clearLabel = 'Clear all',
+		removeLabel = (f) => `Remove ${f.name}`,
 		children,
 		onerror,
 		onValueChange,
@@ -111,6 +120,9 @@
 				error: () => error,
 				clearable: () => clearable,
 				buttonOnly: () => buttonOnly,
+				countLabel: () => countLabel,
+				clearLabel: () => clearLabel,
+				removeLabel: () => removeLabel,
 				onerror: (e) => onerror?.(e),
 				onValueChange: (v) => onValueChange?.(v),
 				messages: () => messages

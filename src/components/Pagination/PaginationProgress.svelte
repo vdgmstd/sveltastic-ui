@@ -21,14 +21,14 @@
 	let { ref = $bindable(null), child, class: className, ...rest }: PaginationProgressProps = $props();
 	const ctx = usePaginationContext();
 
-	let percent = $derived(ctx?.progressPercent ?? 0);
+	let percent = $derived(ctx.progressPercent);
 
 	const attrs = $derived({
 		class: 'pagination__progress',
 		role: 'progressbar' as const,
-		'aria-valuenow': ctx?.safeValue ?? 1,
+		'aria-valuenow': ctx.safeValue,
 		'aria-valuemin': 1,
-		'aria-valuemax': (ctx?.length ?? 0) || 1,
+		'aria-valuemax': ctx.length || 1,
 		'data-testid': 'pagination-progress'
 	});
 	const merged = $derived(

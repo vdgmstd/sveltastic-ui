@@ -15,6 +15,7 @@
 		min?: DateLike;
 		max?: DateLike;
 		disabled?: boolean;
+		readonly?: boolean;
 		onchange: (date: string, time: TimeParts) => void;
 	};
 </script>
@@ -35,6 +36,7 @@
 		min,
 		max,
 		disabled = false,
+		readonly = false,
 		onchange
 	}: DateTimePanelProps = $props();
 
@@ -63,6 +65,7 @@
 			{min}
 			{max}
 			{disabled}
+			{readonly}
 		/>
 	</div>
 	<div class="datetime-panel__time">
@@ -85,8 +88,8 @@
 		align-items: center;
 		justify-content: center;
 		gap: var(--space-5);
-		padding-left: var(--space-6);
-		border-left: 1px solid rgb(var(--text) / 0.08);
+		padding-inline-start: var(--space-6);
+		border-inline-start: 1px solid rgb(var(--text) / 0.08);
 	}
 	.datetime-panel__time-chip {
 		display: inline-flex;
@@ -109,9 +112,9 @@
 			gap: var(--space-5);
 		}
 		.datetime-panel__time {
-			padding-left: 0;
+			padding-inline-start: 0;
 			padding-top: var(--space-5);
-			border-left: 0;
+			border-inline-start: 0;
 			border-top: 1px solid rgb(var(--text) / 0.08);
 			min-width: 0;
 		}

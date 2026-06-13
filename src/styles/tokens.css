@@ -156,17 +156,13 @@ html {
 	:where(
 		.button__content,
 		.button__animate,
-		.chip__text,
 		.chip__icon,
-		.segmented__label,
 		.segmented__icon,
 		.picker-btn__label,
-		.tabs__label,
-		.menu__item-label,
+		.tab__label,
+		.menu-item__label,
 		.alert__title,
-		.alert__message,
-		.input__prefix,
-		.input__suffix
+		.alert__content
 	) {
 		text-box: trim-both cap alphabetic;
 	}

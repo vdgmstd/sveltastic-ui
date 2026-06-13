@@ -55,7 +55,7 @@
 	let {
 		ref = $bindable(null),
 		type = 'single',
-		value = $bindable(type === 'multiple' ? [] : null),
+		value = $bindable(),
 		layout = 'stack',
 		variant,
 		color,
@@ -80,7 +80,7 @@
 
 	const group = new CollapseGroupState({
 		type: () => type,
-		value: () => value,
+		value: () => value ?? (type === 'multiple' ? [] : null),
 		setValue: (next) => {
 			value = next;
 			onValueChange?.(next);

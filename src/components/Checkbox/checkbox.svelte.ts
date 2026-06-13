@@ -115,6 +115,9 @@ export class CheckboxRootState {
 	get required(): boolean {
 		return this.cfg.getRequired() ?? this.group?.required ?? false;
 	}
+	get readonly(): boolean {
+		return this.group?.readonly ?? false;
+	}
 	get loading(): boolean {
 		return this.cfg.getLoading();
 	}
@@ -153,7 +156,7 @@ export class CheckboxRootState {
 
 	/** Apply a native toggle: clears indeterminate, updates group membership or the standalone bindable, fires callbacks. */
 	toggle(next: boolean): void {
-		if (this.disabled || this.loading) return;
+		if (this.disabled || this.loading || this.readonly) return;
 		if (this.indeterminate) {
 			this.cfg.setIndeterminateProp(false);
 			this.cfg.onIndeterminateChange?.()?.(false);

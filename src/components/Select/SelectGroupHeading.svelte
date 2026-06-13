@@ -21,7 +21,7 @@
 
 	$effect(() => {
 		group?.registerHeading(headingId);
-		return () => group?.registerHeading('');
+		return () => group?.registerHeading(undefined);
 	});
 </script>
 

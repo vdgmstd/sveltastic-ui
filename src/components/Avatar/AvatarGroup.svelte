@@ -94,17 +94,17 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding-left: var(--group-overlap);
+		padding-inline-start: var(--group-overlap);
 	}
 	:where(.avatar-group[data-float]) {
 		flex-wrap: wrap;
 		align-items: flex-start;
 		justify-content: flex-start;
-		padding-left: 0;
+		padding-inline-start: 0;
 		gap: var(--space-2);
 	}
 	.avatar-group:not([data-float]) :global(.avatar) {
-		margin-left: calc(var(--group-overlap) * -1);
+		margin-inline-start: calc(var(--group-overlap) * -1);
 	}
 	.avatar-group:not([data-float]) :global(.avatar:not(.avatar--has-color) .avatar__body) {
 		background: rgb(var(--background));
@@ -114,5 +114,8 @@
 	}
 	.avatar-group:not([data-float]) :global(.avatar:hover) {
 		transform: translate(calc(var(--group-peek) * -1), 0);
+	}
+	:global([dir='rtl']) .avatar-group:not([data-float]) :global(.avatar:hover) {
+		transform: translate(var(--group-peek), 0);
 	}
 </style>

@@ -112,8 +112,6 @@
 		background: rgb(var(--gray-1));
 		color: rgb(var(--text));
 		width: 100%;
-		max-width: 350px;
-		margin: 0 auto;
 		box-shadow: var(--shadow-2);
 		border-radius: var(--rad-xl);
 		transition:
@@ -221,10 +219,6 @@
 		z-index: 20;
 	}
 
-	:global(.card-content--wide) .card {
-		max-width: 480px;
-	}
-
 	:global(.card-content--img-inset) .card {
 		display: flow-root;
 	}
@@ -243,7 +237,6 @@
 	:global(.card-content--default) .card:hover,
 	:global(.card-content--default) .card:focus-within {
 		box-shadow: 0 0 0 0 rgb(0 0 0 / var(--shadow-opacity));
-		transform: translate(0, 5px);
 	}
 	:global(.card-content--default) .card:hover :global(.card__img-clip) > :global(*),
 	:global(.card-content--default) .card:focus-within :global(.card__img-clip) > :global(*) {
@@ -278,9 +271,9 @@
 		transform: scale(1.15);
 	}
 	:global(.card-content--caption) :global(.card__interactions) {
-		right: 0;
+		inset-inline-end: 0;
 		top: 0;
-		left: auto;
+		inset-inline-start: auto;
 		bottom: auto;
 		align-items: flex-end;
 	}
@@ -332,7 +325,7 @@
 	:global(.card-content--caption) :global(.card__title) {
 		position: absolute;
 		top: 0;
-		left: 16px;
+		inset-inline-start: 16px;
 		transform: translateY(-50%);
 		z-index: 20;
 		padding: 0;
@@ -377,11 +370,9 @@
 		display: grid;
 		grid-template-columns: var(--img-size, 180px) 1fr;
 		grid-template-rows: 1fr auto;
-		max-width: 460px;
 	}
 	:global(.card-content--horizontal) .card:hover,
 	:global(.card-content--horizontal) .card:focus-within {
-		transform: translateY(-3px);
 		box-shadow: 0 12px 28px 0 rgb(0 0 0 / calc(var(--shadow-opacity) * 1.5));
 	}
 	:global(.card-content--horizontal) .card:hover :global(.card__img-clip) > :global(*),
@@ -404,7 +395,7 @@
 		grid-column: 2;
 		grid-row: 1;
 		min-width: 0;
-		padding: var(--space-8) var(--space-8) var(--space-4);
+		padding: var(--space-8) var(--space-7) var(--space-4);
 	}
 	:global(.card-content--horizontal) :global(.card__title) :global(:is(h2, h3, h4, h5, h6)) {
 		padding: 0;
@@ -419,12 +410,7 @@
 
 	:global(.card-content--frosted) .card {
 		box-shadow: none;
-		max-width: 300px;
 		overflow: hidden;
-	}
-	:global(.card-content--frosted) .card:hover,
-	:global(.card-content--frosted) .card:focus-within {
-		transform: translate(0, -5px);
 	}
 	:global(.card-content--frosted) .card:hover :global(.card__img-clip) > :global(*),
 	:global(.card-content--frosted) .card:focus-within :global(.card__img-clip) > :global(*) {
@@ -511,8 +497,12 @@
 		left: 0;
 		transform: translateY(-50%);
 		z-index: 20;
-		padding: 0;
+		padding: var(--space-2) var(--space-5);
 		font-weight: 700;
+		background: rgb(var(--gray-1) / 0.7);
+		-webkit-backdrop-filter: var(--frost);
+		backdrop-filter: var(--frost);
+		border-radius: var(--rad-pill);
 	}
 	:global(.card-content--frosted) :global(.card__text) > :global(:not(.card__title)) {
 		min-height: 0;
@@ -582,7 +572,7 @@
 	}
 	:global(.card-content--peek) :global(.card__interactions) {
 		bottom: 50px;
-		left: 8px;
+		inset-inline-start: 8px;
 		transform: translateY(80px);
 		z-index: 15;
 		transition: transform var(--dur) var(--ease-standard);
@@ -656,7 +646,7 @@
 	}
 	:global(.card-content--compact) :global(.card__interactions) {
 		top: calc(24px + var(--img-size, 100px) * 0.52);
-		left: calc(24px + var(--img-size, 100px) * 0.62);
+		inset-inline-start: calc(24px + var(--img-size, 100px) * 0.62);
 		bottom: auto;
 		width: 20px;
 		height: 20px;
@@ -691,8 +681,8 @@
 		opacity: 0.6;
 	}
 	:global(.card-content--compact) :global(.card__actions) {
-		left: calc(var(--img-size, 100px) + 10px);
-		right: 10px;
+		inset-inline-start: calc(var(--img-size, 100px) + 10px);
+		inset-inline-end: 10px;
 		gap: 0;
 	}
 

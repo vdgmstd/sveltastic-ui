@@ -43,50 +43,58 @@
 	}: SegmentedItemProps<V> = $props();
 	const ctx = useSegmentedContext();
 
-	const item = ctx
-		? new SegmentedItemState(
-				ctx,
-				() => value,
-				() => disabled
-			)
-		: undefined;
+	const item = new SegmentedItemState(
+		ctx,
+		() => value,
+		() => disabled
+	);
 
-	let variant = $derived(ctx?.variant ?? 'default');
-	let groupColor = $derived(ctx?.color ?? 'primary');
-	let isActive = $derived(item?.isActive ?? false);
-	let isInert = $derived(item?.isInert ?? disabled);
-	let onFilledThumb = $derived(ctx?.onFilledThumb ?? true);
+	let variant = $derived(ctx.variant);
+	let groupColor = $derived(ctx.color);
+	let isActive = $derived(item.isActive);
+	let isInert = $derived(item.isInert);
+	let onFilledThumb = $derived(ctx.onFilledThumb);
 
 	$effect(() => {
-		if (isActive) ctx?.setActiveColor(color);
+		if (isActive) ctx.setActiveColor(color);
 	});
 
-	$effect(() => ctx?.registerValue(value));
-
 	let rippleOptions = $derived({
-		disabled: isInert || !(ctx?.ripple ?? true),
+		disabled: isInert || !ctx.ripple,
 		color: onFilledThumb ? '255 255 255' : (color ?? groupColor),
 		soft: true,
 		duration: 1000,
-		mountTo: ctx?.ripplesLayer,
+		mountTo: ctx.ripplesLayer,
 		textColor: 'currentColor' as const
 	});
 
-	// Mint once: re-minting in the $derived re-runs the attachment every recompute.
+	// Mint once: re-minting in the $derived re-runs the attachment every recompute → update-depth loop
+	// (the ref attachment writes `node`, and `merged` reads the registry via `tabindexFor`, so a fresh
+	// attachment closure each recompute bounced `node` and re-fired registration).
 	const refKey = createAttachmentKey();
-	const rovingKey = createAttachmentKey();
 
-	// Stable identity — inlining re-ran register/deregister each recompute (loop vs tabindexFor).
-	const registerRoving = (node: HTMLElement) =>
-		ctx ? ctx.roving.register(ctx.itemId(value), node) : undefined;
+	let node = $state<HTMLElement | null>(null);
+	// Stable, change-guarded ref attachment: identity never changes, captured node only updates on
+	// actual DOM-node change — so `merged` recomputing (e.g. on registry-driven `tabindexFor`) can't
+	// re-run this and bounce `node`.
+	const attachNode = attachRef<HTMLButtonElement>((n) => {
+		ref = n;
+		node = n;
+	});
+	let itemId = $derived(ctx.itemId(value));
+	// Re-register the value↔id map and roving entry on in-place `value` change (keyboard nav follows without remount).
+	$effect(() => ctx.registerValue(value));
+	$effect(() => {
+		if (node) return ctx.roving.register(itemId, node, () => isInert);
+	});
 
 	const attrs = $derived({
 		type: 'button' as const,
 		class: cn(`segmented__item segmented__item--variant-${variant}`, className),
 		role: 'radio' as const,
-		id: ctx?.itemId(value),
+		id: itemId,
 		'aria-checked': isActive,
-		tabindex: ctx?.roving.tabindexFor(ctx.itemId(value)) ?? (isActive ? 0 : -1),
+		tabindex: ctx.roving.tabindexFor(itemId),
 		disabled: isInert || undefined,
 		'data-state': isActive ? ('active' as const) : ('inactive' as const),
 		'data-value': String(value),
@@ -94,17 +102,12 @@
 		'data-testid': 'segmented-item',
 		onpointerdown: (e: PointerEvent) => {
 			if (isInert) return;
-			ctx?.press.onpointerdown(e);
+			ctx.press.onpointerdown(e);
 		},
-		onclick: () => item?.select(),
-		onkeydown: (e: KeyboardEvent) => item?.handleKeydown(e)
+		onclick: () => item.select(),
+		onkeydown: (e: KeyboardEvent) => item.handleKeydown(e)
 	});
-	const merged = $derived(
-		mergeProps(rest, attrs, {
-			[refKey]: attachRef<HTMLButtonElement>((n) => (ref = n)),
-			[rovingKey]: registerRoving
-		})
-	);
+	const merged = $derived(mergeProps(rest, attrs, { [refKey]: attachNode }));
 </script>
 
 {#if child}
@@ -144,6 +147,11 @@
 
 	:global(:where(.segmented__item:focus-visible[data-state='inactive'])) {
 		color: rgb(var(--c));
+	}
+
+	/* Visible focus ring for keyboard users, on both active and inactive segments. */
+	:global(:where(.segmented__item:focus-visible)) {
+		box-shadow: 0 0 0 2px rgb(var(--c) / 0.6);
 	}
 
 	/* Ramp the active colour in step with the spring thumb — neither front-loaded (white-on-track flash) nor back-loaded (late). */

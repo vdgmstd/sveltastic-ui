@@ -29,7 +29,7 @@
 	}: PaginationListProps = $props();
 	const ctx = usePaginationContext();
 
-	let mode = $derived(ctx?.mode ?? 'numbers');
+	let mode = $derived(ctx.mode);
 
 	const attrs = $derived({
 		class: 'pagination__list',

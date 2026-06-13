@@ -34,6 +34,8 @@
 	const root = useInputNumberContext();
 
 	const refKey = createAttachmentKey();
+	// Mint once: `merged` recomputes every frame the digits roll (reads root.displayedText), re-running an inline attachment.
+	const refAttach = attachRef<HTMLInputElement>((n) => (ref = n));
 	const merged = $derived(
 		mergeProps(
 			rest,
@@ -63,7 +65,7 @@
 			},
 			{
 				class: className,
-				[refKey]: attachRef<HTMLInputElement>((n) => (ref = n))
+				[refKey]: refAttach
 			}
 		)
 	);

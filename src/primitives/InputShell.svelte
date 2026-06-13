@@ -61,6 +61,8 @@
 		icon?: Snippet;
 		/** Replaces the native `<input>` with arbitrary content (chips / custom value). The shell chrome is preserved. */
 		control?: Snippet;
+		/** Props spread onto the control slot so it can act as the focusable host (e.g. a chips combobox with no inner input). */
+		controlHostProps?: Record<string, unknown>;
 		/** Feedback message under the field; color follows `fieldState`. */
 		message?: Snippet;
 		/** Fires when the icon is clicked — also makes the icon focusable / clickable. */
@@ -125,6 +127,7 @@
 		hidePasswordLabel = 'Hide password',
 		icon,
 		control,
+		controlHostProps,
 		message,
 		oniconclick,
 		class: className,
@@ -347,6 +350,13 @@
 	const inputRefKey = createAttachmentKey();
 	const iconRefKey = createAttachmentKey();
 
+	// Mint once: an inline attachment in a $derived bag re-runs on every tween frame, bouncing the public ref.
+	const wrapperRefAttach = attachRef<HTMLDivElement>((n) => (ref = n));
+	const inputRefAttach = attachRef<HTMLInputElement>((n) => (inputRef = n));
+	const iconRefAttach = attachRef<HTMLButtonElement>((n) => {
+		iconButtonEl = n ?? undefined;
+	});
+
 	const wrapperAttrs = $derived({
 		class: cn(
 			'input',
@@ -383,7 +393,7 @@
 		'data-variant': variant,
 		'data-loading': boolAttr(loading),
 		'data-testid': 'input',
-		[wrapperRefKey]: attachRef<HTMLDivElement>((n) => (ref = n))
+		[wrapperRefKey]: wrapperRefAttach
 	});
 
 	const fieldProps = $derived(
@@ -403,7 +413,7 @@
 			onfocus: handleFocus,
 			onmousedown: handleMouseDown,
 			...(oninput ? { oninput } : {}),
-			[inputRefKey]: attachRef<HTMLInputElement>((n) => (inputRef = n))
+			[inputRefKey]: inputRefAttach
 		})
 	);
 
@@ -418,9 +428,7 @@
 		disabled: !oniconclick,
 		'aria-hidden': !oniconclick,
 		onclick: handleIconClick,
-		[iconRefKey]: attachRef<HTMLButtonElement>((n) => {
-			iconButtonEl = n ?? undefined;
-		})
+		[iconRefKey]: iconRefAttach
 	});
 </script>
 
@@ -449,6 +457,7 @@
 				class="input__el input__el--slot"
 				class:input__el--has-icon={!!icon}
 				class:input__el--icon-after={iconPosition === 'after'}
+				{...controlHostProps}
 			>
 				{@render control()}
 			</div>

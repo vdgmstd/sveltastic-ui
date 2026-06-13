@@ -28,7 +28,6 @@
 	import { cubicOut } from 'svelte/easing';
 	import { rgbTriplet } from '../utils/color';
 	import { boolAttr } from '../utils/attrs';
-	import { reducedMotion } from '../state/reducedMotion.svelte';
 
 	let {
 		value,
@@ -69,8 +68,6 @@
 
 	const indicatorPulse = new Tween(0.12, { duration: 280, easing: cubicOut });
 
-	$effect(() => reducedMotion.subscribe());
-
 	function indexOf(v: number): number {
 		return items.findIndex((it) => it.key === v);
 	}
@@ -90,7 +87,7 @@
 		const target = virtIdx * itemHeight;
 		driveProgrammatic = true;
 		programmaticScroll.set(scrollEl.scrollTop, { duration: 0 });
-		const dur = reducedMotion.current ? 0 : 320;
+		const dur = 320;
 		void programmaticScroll.set(target, { duration: dur, easing: cubicOut }).then(() => {
 			driveProgrammatic = false;
 		});
