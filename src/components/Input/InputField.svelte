@@ -23,8 +23,7 @@
 <script lang="ts">
 	import { EyeIcon, EyeSlashIcon } from 'phosphor-svelte';
 	import { createAttachmentKey } from 'svelte/attachments';
-	import { mask as maskAction, maskHint, type MaskaDetail } from '../../actions/mask';
-	import type { MaskInputOptions } from 'maska';
+	import { mask as maskAction } from '../../actions/mask';
 	import { attachRef } from '../../utils/ref';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { boolAttr, dataState } from '../../utils/attrs';
@@ -53,70 +52,31 @@
 	let isPasswordRevealed = $state(false);
 	let resolvedType = $derived(isPassword && passwordReveal && isPasswordRevealed ? 'text' : type);
 
-	let maskTemplate = $derived(ctx.mask ? maskHint(ctx.mask) : '');
-	let maskedValue = $state('');
-	let typedLen = $derived(Math.min(maskedValue.length, maskTemplate.length));
-	let maskRemainder = $derived(maskTemplate ? maskTemplate.slice(typedLen) : '');
-	let showMask = $derived(!!maskTemplate && (!ctx.isFloating || ctx.focusedActive || ctx.hasValue));
 	// Fake placeholder — the kit's animated placeholder; native is blanked. Non-floating modes (default/inline) show it.
-	let showFakePlaceholder = $derived(!!placeholder && ctx.labelStyle !== 'placeholder' && !maskTemplate);
+	let showFakePlaceholder = $derived(
+		!!placeholder && ctx.labelStyle !== 'placeholder' && !ctx.maskTemplate
+	);
 
-	let lastPointerDownAt = 0;
-	let caretTimer: ReturnType<typeof setTimeout> | undefined;
-	const POINTER_FOCUS_WINDOW_MS = 300;
-
-	function captureMasked(detail: MaskaDetail): void {
-		maskedValue = detail.masked;
-	}
-	let resolvedMask = $derived.by<MaskInputOptions | undefined>(() => {
-		if (ctx.mask === undefined) return undefined;
-		const base = typeof ctx.mask === 'string' || Array.isArray(ctx.mask) ? { mask: ctx.mask } : ctx.mask;
-		const prior = base.onMaska;
-		const chained = Array.isArray(prior)
-			? [...prior, captureMasked]
-			: prior
-				? [prior, captureMasked]
-				: captureMasked;
-		return { ...base, onMaska: chained };
-	});
-
-	$effect(() => {
-		if (!maskTemplate) maskedValue = '';
-		else maskedValue = ctx.value;
-	});
+	$effect(() => ctx.syncMask());
 
 	$effect(() => {
 		ctx.hasValue = ctx.value !== '';
 	});
 
-	$effect(() => () => clearTimeout(caretTimer));
+	$effect(() => () => ctx.disposeMask());
 
 	function togglePassword(): void {
 		isPasswordRevealed = !isPasswordRevealed;
 	}
 
 	function handleMouseDown(event: MouseEvent & { currentTarget: EventTarget & HTMLInputElement }): void {
-		lastPointerDownAt = Date.now();
+		ctx.markPointerDown();
 		onmousedown?.(event);
 	}
 
 	function handleFocus(event: FocusEvent & { currentTarget: EventTarget & HTMLInputElement }): void {
 		onfocus?.(event);
-		if (!maskTemplate) return;
-		const inputEl = event.currentTarget as HTMLInputElement;
-		const fromPointer = Date.now() - lastPointerDownAt < POINTER_FOCUS_WINDOW_MS;
-		if (fromPointer) return;
-		const pos = ctx.value.length;
-		clearTimeout(caretTimer);
-		caretTimer = setTimeout(() => {
-			if (document.activeElement === inputEl) {
-				try {
-					inputEl.setSelectionRange(pos, pos);
-				} catch {
-					/* unsupported input type */
-				}
-			}
-		}, 0);
+		ctx.repositionCaretOnFocus(event.currentTarget);
 	}
 
 	const refKey = createAttachmentKey();
@@ -148,16 +108,16 @@
 {:else}
 	<input
 		bind:value={() => ctx.value, (v) => ctx.setValue(v)}
-		use:maskAction={resolvedMask}
+		use:maskAction={ctx.resolvedMask}
 		{...fieldProps}
 	/>
 	{#if showFakePlaceholder}
 		<span class="input__label" aria-hidden="true">{placeholder}</span>
 	{/if}
-	{#if showMask}
+	{#if ctx.showMask}
 		<span class="input__mask" aria-hidden="true"
-			><span class="input__mask-typed">{maskedValue.slice(0, typedLen)}</span><span
-				class="input__mask-rest">{maskRemainder}</span
+			><span class="input__mask-typed">{ctx.maskedValue.slice(0, ctx.typedLen)}</span><span
+				class="input__mask-rest">{ctx.maskRemainder}</span
 			></span
 		>
 	{/if}

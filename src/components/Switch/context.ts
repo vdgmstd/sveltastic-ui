@@ -1,14 +1,7 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { SwitchRootState } from './switchState.svelte';
 
-const KEY = Symbol('Switch');
+const ctx = createPartContext<SwitchRootState>('Switch', '<Switch.Thumb>/<Switch.Icon>/<Switch.Label> must be used within <Switch.Root>');
 
-export function setSwitchContext(value: SwitchRootState): SwitchRootState {
-	return setContext(KEY, value);
-}
-
-export function useSwitchContext(): SwitchRootState {
-	const ctx = getContext<SwitchRootState | undefined>(KEY);
-	if (!ctx) throw new Error('<Switch.Thumb>/<Switch.Icon>/<Switch.Label> must be used within <Switch.Root>');
-	return ctx;
-}
+export const setSwitchContext = ctx.set;
+export const useSwitchContext = ctx.get;

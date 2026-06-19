@@ -1,10 +1,13 @@
 import { untrack } from 'svelte';
 import { Tween } from 'svelte/motion';
 import { cubicOut } from 'svelte/easing';
+import type { MaskInputOptions } from 'maska';
 import type { Color, ColorName, Shape, Variant } from '../types';
-import type { MaskOptions } from '../actions/mask';
+import type { MaskOptions, MaskaDetail } from '../actions/mask';
 import { maskHint } from '../actions/mask';
 import { rgbTriplet } from '../utils/color';
+
+const POINTER_FOCUS_WINDOW_MS = 300;
 
 export type InputVariant = Extract<Variant, 'default' | 'border' | 'shadow'>;
 export type InputLabelStyle = 'default' | 'placeholder' | 'inline';
@@ -39,6 +42,10 @@ export class FieldShellState {
 	focused = $state(false);
 	hasValue = $state(false);
 	hasMessage = $state(false);
+	/** Masked display string — captured from the mask action, seeded from the raw value via syncMask(). */
+	maskedValue = $state('');
+	#lastPointerDownAt = 0;
+	#caretTimer: ReturnType<typeof setTimeout> | undefined;
 
 	readonly lhTween = new Tween(0, { duration: 220, easing: cubicOut });
 	readonly fpTween = new Tween(0, { duration: 250, easing: cubicOut });
@@ -121,6 +128,67 @@ export class FieldShellState {
 	}
 	get messageId(): string {
 		return `${this.id}-message`;
+	}
+
+	get typedLen(): number {
+		return Math.min(this.maskedValue.length, this.maskTemplate.length);
+	}
+	get maskRemainder(): string {
+		return this.maskTemplate ? this.maskTemplate.slice(this.typedLen) : '';
+	}
+	get showMask(): boolean {
+		return !!this.maskTemplate && (!this.isFloating || this.focusedActive || this.hasValue);
+	}
+
+	captureMasked = (detail: MaskaDetail): void => {
+		this.maskedValue = detail.masked;
+	};
+
+	readonly resolvedMask: MaskInputOptions | undefined = $derived.by(() => {
+		const mask = this.mask;
+		if (mask === undefined) return undefined;
+		const base = typeof mask === 'string' || Array.isArray(mask) ? { mask } : mask;
+		const prior = base.onMaska;
+		const chained = Array.isArray(prior)
+			? [...prior, this.captureMasked]
+			: prior
+				? [prior, this.captureMasked]
+				: this.captureMasked;
+		return { ...base, onMaska: chained };
+	});
+
+	/** Seed the masked display from the raw value — call inside an `$effect`; the mask action overrides it on input. */
+	syncMask(): void {
+		if (!this.maskTemplate) this.maskedValue = '';
+		else this.maskedValue = this.value;
+	}
+
+	/** Record a pointer-down so a pointer-driven focus skips caret repositioning. */
+	markPointerDown(): void {
+		this.#lastPointerDownAt = Date.now();
+	}
+
+	/** On keyboard focus of a masked field, move the caret to the end of the typed value. */
+	repositionCaretOnFocus(inputEl: HTMLInputElement): void {
+		if (!this.maskTemplate) return;
+		const fromPointer = Date.now() - this.#lastPointerDownAt < POINTER_FOCUS_WINDOW_MS;
+		if (fromPointer) return;
+		const pos = this.value.length;
+		clearTimeout(this.#caretTimer);
+		this.#caretTimer = setTimeout(() => {
+			if (document.activeElement === inputEl) {
+				try {
+					inputEl.setSelectionRange(pos, pos);
+				} catch {
+					/* unsupported input type */
+				}
+			}
+		}, 0);
+	}
+
+	/** Clear the pending caret timer — call from an `$effect` cleanup in the owner. */
+	disposeMask(): void {
+		clearTimeout(this.#caretTimer);
 	}
 
 	get resolvedColor(): Color {

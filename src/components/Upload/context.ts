@@ -1,4 +1,4 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { UploadRootState } from './uploadState.svelte';
 
 export type UploadVariant = 'default' | 'flat' | 'border';
@@ -10,25 +10,10 @@ export type UploadItemState = {
 	remove: () => void;
 };
 
-const KEY = Symbol('Upload');
-const ITEM_KEY = Symbol('UploadItem');
+const rootCtx = createPartContext<UploadRootState>('Upload', 'Upload parts must be used within <Upload.Root>');
+export const setUploadContext = rootCtx.set;
+export const useUploadContext = rootCtx.get;
 
-export function setUploadContext(value: UploadRootState): UploadRootState {
-	return setContext(KEY, value);
-}
-
-export function useUploadContext(): UploadRootState {
-	const ctx = getContext<UploadRootState | undefined>(KEY);
-	if (!ctx) throw new Error('Upload parts must be used within <Upload.Root>');
-	return ctx;
-}
-
-export function setUploadItemContext(value: UploadItemState): UploadItemState {
-	return setContext(ITEM_KEY, value);
-}
-
-export function useUploadItemContext(): UploadItemState {
-	const ctx = getContext<UploadItemState | undefined>(ITEM_KEY);
-	if (!ctx) throw new Error('<Upload.ItemRemove> must be used within <Upload.Item>');
-	return ctx;
-}
+const itemCtx = createPartContext<UploadItemState>('UploadItem', '<Upload.ItemRemove> must be used within <Upload.Item>');
+export const setUploadItemContext = itemCtx.set;
+export const useUploadItemContext = itemCtx.get;

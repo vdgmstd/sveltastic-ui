@@ -4,7 +4,7 @@ import type { Color } from '../../types';
 import type { PortalTarget } from '../../actions/portal';
 
 export type DialogSize = 'small' | 'medium' | 'large' | 'fullscreen';
-export type DialogAlign = 'center' | 'top';
+export type DialogAlign = 'center' | 'top' | 'start' | 'end' | 'bottom';
 export type DialogRole = 'dialog' | 'alertdialog';
 
 export type DialogConfig = {

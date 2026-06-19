@@ -190,6 +190,25 @@
 	caret-color: rgb(var(--text));
 }
 
+/* Kit owns the trailing affordance — hide the UA reveal / autofill-key buttons so they never overlap .input__reveal (autofill dropdown still works). */
+/* Separate rules per vendor pseudo: an engine that doesn't know one selector would drop a whole comma-list. */
+.input__el::-ms-reveal { display: none; }
+.input__el::-ms-clear { display: none; }
+.input__el::-webkit-credentials-auto-fill-button {
+	visibility: hidden;
+	display: none !important;
+	pointer-events: none;
+	margin: 0;
+	width: 0;
+}
+.input__el::-webkit-strong-password-auto-fill-button {
+	visibility: hidden;
+	display: none !important;
+	pointer-events: none;
+	margin: 0;
+	width: 0;
+}
+
 /* Safari garbles the password mask glyph when an OpenType numeric feature applies — reset it while masked. */
 .input__el[type='password'] {
 	font-variant-numeric: normal;

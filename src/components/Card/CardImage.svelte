@@ -1,17 +1,8 @@
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { HTMLAttributes } from 'svelte/elements';
-	import type { WithElementRef } from '../../types';
+	import type { PartProps } from '../../types';
 
-	export type CardImageProps = WithElementRef<
-		{
-			/** Image / media — rendered inside the clipped `.card__img-clip` (overflow hidden, hover-zoom on the direct child). */
-			children?: Snippet;
-			/** Render-delegation for the `.card__img-clip` element. */
-			child?: Snippet<[{ props: Record<string, unknown> }]>;
-		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
-		HTMLDivElement
-	>;
+	/** Props for `Card.Image` — the clipped `.card__img-clip` holder (overflow hidden, hover-zoom on the direct child). */
+	export type CardImageProps = PartProps<HTMLDivElement>;
 </script>
 
 <script lang="ts">

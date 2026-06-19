@@ -214,7 +214,7 @@ export function monthMatrix(
 	weekStart: WeekStart = 1
 ): Temporal.PlainDate[][] {
 	const first = anchor.with({ day: 1 });
-	const offset = (first.dayOfWeek - weekStart + 7) % 7 || (first.dayOfWeek === weekStart ? 0 : 0);
+	const offset = (first.dayOfWeek - weekStart + 7) % 7;
 	const start = first.subtract({ days: offset });
 	const weeks: Temporal.PlainDate[][] = [];
 	for (let w = 0; w < 6; w += 1) {

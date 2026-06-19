@@ -13,13 +13,15 @@
 
 Live playground + per-component API reference at **[sveltastic-ui-docs](https://vdgmstd.github.io/sveltastic-ui-docs/)**.
 
-Svelte 5 (runes) + Tailwind v4 component library. **26 components**, one barrel import, every visual token overridable with one CSS line.
+Svelte 5 (runes) + Tailwind v4 component library. **33 components**, one barrel import, every visual token overridable with one CSS line.
 
 ## Install
 
 ```sh
-npm install sveltastic-ui svelte@^5 tailwindcss@^4 @tailwindcss/vite@^4 phosphor-svelte@^3
+npm install sveltastic-ui svelte@^5 tailwindcss@^4 @tailwindcss/vite@^4
 ```
+
+`phosphor-svelte` (the kit's icon set) is a regular dependency — it installs automatically, no separate step.
 
 ## Setup (SvelteKit + Vite)
 
@@ -122,7 +124,7 @@ sub-parts hanging off the same import (e.g. `Button.Icon`, `Button.Group`):
 
 ## Components
 
-### Forms (13)
+### Forms (18)
 
 - **Button** (`Button.Root` + `Button.Icon` / `Button.Group`)
 - **Input**
@@ -131,9 +133,14 @@ sub-parts hanging off the same import (e.g. `Button.Icon`, `Button.Group`):
 - **Checkbox**
 - **RadioGroup** (`RadioGroup.Root` + `RadioGroup.Item` / `Indicator` / `Label`)
 - **Switch**
+- **Toggle** (`Toggle.Root` — pressed-state toggle button)
+- **ToggleGroup** (`ToggleGroup.Root` + `ToggleGroup.Item`)
 - **Select**
+- **Combobox** (`Combobox.Root` + `Input` / `Content` / `Item` / `Group` / `Empty`)
 - **Slider**
 - **Segmented**
+- **RatingGroup** (`RatingGroup.Root` + `RatingGroup.Item`)
+- **PinInput** (`PinInput.Root` + `PinInput.Cell`)
 - **Upload**
 - **DateTimePicker**
 - **Calendar**
@@ -146,17 +153,19 @@ sub-parts hanging off the same import (e.g. `Button.Icon`, `Button.Group`):
 - **Collapse** (`Collapse.Root` + `Collapse.Trigger` / `Content` / `Group` / …)
 - **Tabs** (`Tabs.Root` + `Tabs.List` / `Trigger` / `Content`)
 
-### Status (5)
+### Status (6)
 
 - **Alert** (`Alert.Root` + `Alert.Icon` / `Title` / `Description` / `Action` / `Close` / …)
 - **Avatar** (`Avatar.Root` + `Avatar.Image` / `Fallback` / `Badge` / `Group` / …)
 - **Chip** (`Chip.Root` + `Chip.Icon` / `Close`)
 - **Progress**
+- **Toast** (`Toast.Provider` + `Toast.Root` / `Icon` / `Title` / `Description` / `Action` / `Close`) + imperative `toast(...)`
 - **Tooltip**
 
-### Overlay & navigation (3)
+### Overlay & navigation (4)
 
 - **Dialog**
+- **Popover** (`Popover.Root` + `Popover.Trigger` / `Portal` / `Content` / `Close`)
 - **Menu**
 - **Pagination**
 
@@ -206,7 +215,8 @@ Dark mode: set `data-theme="dark"` on `<html>`. The kit picks it up automaticall
 |---|---|
 | `svelte` | `^5` |
 | `tailwindcss` | `^4` |
-| `phosphor-svelte` | `^3` |
+
+`phosphor-svelte` ships as a bundled dependency (auto-installed); `@tailwindcss/vite` is needed only for the Vite/SvelteKit setup below.
 
 ## License
 

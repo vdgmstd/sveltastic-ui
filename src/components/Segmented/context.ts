@@ -1,4 +1,4 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { SegmentedRootState } from './segmentedState.svelte';
 
 export type SegmentedValue = string | number;
@@ -6,14 +6,7 @@ export type SegmentedValue = string | number;
 /** Visual variant. `default` — gray track, accent thumb. `flat` — accent-tinted track. `border` — outlined track, no fill. `relief` — sunken track, raised thumb. */
 export type SegmentedVariant = 'default' | 'flat' | 'border' | 'relief';
 
-const KEY = Symbol('Segmented');
+const ctx = createPartContext<SegmentedRootState>('Segmented', '<Segmented> parts must be used within <Segmented.Root>');
 
-export function setSegmentedContext(value: SegmentedRootState): SegmentedRootState {
-	return setContext(KEY, value);
-}
-
-export function useSegmentedContext(): SegmentedRootState {
-	const ctx = getContext<SegmentedRootState | undefined>(KEY);
-	if (!ctx) throw new Error('<Segmented> parts must be used within <Segmented.Root>');
-	return ctx;
-}
+export const setSegmentedContext = ctx.set;
+export const useSegmentedContext = ctx.get;

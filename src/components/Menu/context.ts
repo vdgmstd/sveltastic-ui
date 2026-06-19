@@ -1,31 +1,19 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { Snippet } from 'svelte';
 import type { MenuRootState, MenuRadioGroupBinding } from './menu.svelte';
 
-const KEY = Symbol('Menu');
-const RADIO_KEY = Symbol('MenuRadioGroup');
-const GROUP_KEY = Symbol('MenuGroup');
-const ITEM_KEY = Symbol('MenuItem');
+const root = createPartContext<MenuRootState>('Menu', 'Menu parts must be used within <Menu.Root>');
+const radioGroup = createPartContext<MenuRadioGroupBinding>('MenuRadioGroup', 'Menu.RadioItem must be used within <Menu.RadioGroup>');
+const group = createPartContext<MenuGroupCtx>('MenuGroup');
+const item = createPartContext<MenuItemCtx>('MenuItem');
 
-export function setMenuCtx(state: MenuRootState): MenuRootState {
-	return setContext(KEY, state);
-}
+export const setMenuCtx = root.set;
 
-export function getMenuCtx(): MenuRootState {
-	const ctx = getContext<MenuRootState>(KEY);
-	if (!ctx) throw new Error('Menu parts must be used within <Menu.Root>');
-	return ctx;
-}
+export const getMenuCtx = root.get;
 
-export function setMenuRadioGroupCtx(group: MenuRadioGroupBinding): MenuRadioGroupBinding {
-	return setContext(RADIO_KEY, group);
-}
+export const setMenuRadioGroupCtx = radioGroup.set;
 
-export function getMenuRadioGroupCtx(): MenuRadioGroupBinding {
-	const ctx = getContext<MenuRadioGroupBinding | undefined>(RADIO_KEY);
-	if (!ctx) throw new Error('Menu.RadioItem must be used within <Menu.RadioGroup>');
-	return ctx;
-}
+export const getMenuRadioGroupCtx = radioGroup.get;
 
 /** Group heading id wiring for Menu.Group + Menu.GroupHeading. */
 export type MenuGroupCtx = {
@@ -33,13 +21,9 @@ export type MenuGroupCtx = {
 	registerHeading: (id: string) => void;
 };
 
-export function setMenuGroupCtx(group: MenuGroupCtx): MenuGroupCtx {
-	return setContext(GROUP_KEY, group);
-}
+export const setMenuGroupCtx = group.set;
 
-export function getMenuGroupCtx(): MenuGroupCtx | undefined {
-	return getContext<MenuGroupCtx | undefined>(GROUP_KEY);
-}
+export const getMenuGroupCtx = group.find;
 
 /** Item-slot wiring so ItemIcon/ItemTrailing render in the row's fixed flex slots while bare children fill the label. */
 export type MenuItemCtx = {
@@ -47,10 +31,6 @@ export type MenuItemCtx = {
 	registerTrailing: (snippet: Snippet) => () => void;
 };
 
-export function setMenuItemCtx(item: MenuItemCtx): MenuItemCtx {
-	return setContext(ITEM_KEY, item);
-}
+export const setMenuItemCtx = item.set;
 
-export function getMenuItemCtx(): MenuItemCtx | undefined {
-	return getContext<MenuItemCtx | undefined>(ITEM_KEY);
-}
+export const getMenuItemCtx = item.find;

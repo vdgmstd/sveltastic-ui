@@ -1,16 +1,9 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { ChipRootState } from './chip.svelte';
 
-const KEY = Symbol('Chip');
+const ctx = createPartContext<ChipRootState>('Chip', 'Chip parts must be used within <Chip.Root>');
 
-export function setChipCtx(state: ChipRootState): ChipRootState {
-	return setContext(KEY, state);
-}
-
-export function useChipCtx(): ChipRootState {
-	const ctx = getContext<ChipRootState>(KEY);
-	if (!ctx) throw new Error('Chip parts must be used within <Chip.Root>');
-	return ctx;
-}
+export const setChipCtx = ctx.set;
+export const useChipCtx = ctx.get;
 
 export type { ChipRootState };

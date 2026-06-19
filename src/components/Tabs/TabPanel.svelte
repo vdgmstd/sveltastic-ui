@@ -51,12 +51,19 @@
 
 	// Pin the leaving panel within the positioned `.tabs-root` (its offset parent) so it overlays in place during the crossfade.
 	// Offset coords (not the viewport rect) stay correct under scroll; a 0-size panel is left in flow rather than pinned to (0,0).
+	// Anchor to the SLOT top (min of leaving + incoming offsets), not `node.offsetTop`: when the incoming panel is earlier
+	// in DOM (reverse switch) it has already mounted in flow above the leaver, pushing its measured offset down — which would
+	// stack the two panels instead of overlaying them.
 	function pinLeaving(node: HTMLElement): void {
 		const w = node.offsetWidth;
 		if (w === 0) return;
+		const root = node.offsetParent ?? node.parentElement;
+		const incoming = root?.querySelector<HTMLElement>(`#${CSS.escape(ctx.panelId(ctx.value ?? ''))}`);
+		const top = incoming ? Math.min(node.offsetTop, incoming.offsetTop) : node.offsetTop;
+		const left = incoming ? Math.min(node.offsetLeft, incoming.offsetLeft) : node.offsetLeft;
 		node.style.position = 'absolute';
-		node.style.top = `${node.offsetTop}px`;
-		node.style.left = `${node.offsetLeft}px`;
+		node.style.top = `${top}px`;
+		node.style.left = `${left}px`;
 		node.style.width = `${w}px`;
 	}
 

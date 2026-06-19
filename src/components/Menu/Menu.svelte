@@ -132,6 +132,9 @@
 	portalTarget={root.portal.target}
 	portalDisabled={root.portal.disabled}
 	forceMount={root.portal.forceMount}
+	contentProps={root.contentProps}
+	contentRef={root.setContentRef}
+	contentChild={root.contentChild}
 	class={className}
 	style={userStyle}
 	header={root.headerSnippet ? headerBody : undefined}

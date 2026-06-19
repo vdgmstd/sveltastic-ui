@@ -82,8 +82,3 @@ export function rgbTriplet(color: Color | undefined): string {
 	if (raw) return raw;
 	return 'var(--primary)';
 }
-
-/** Full `rgb()` string for cases where a complete color is needed (rare in the kit). */
-export function cssColor(color: Color | undefined): string {
-	return `rgb(${rgbTriplet(color)})`;
-}

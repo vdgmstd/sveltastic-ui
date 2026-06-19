@@ -1,16 +1,10 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { InputRootState } from './input.svelte';
 
-const KEY = Symbol('Input');
+const ctx = createPartContext<InputRootState>('Input', 'Input parts must be used within <Input.Root>');
 
-export function setInputCtx(state: InputRootState): InputRootState {
-	return setContext(KEY, state);
-}
+export const setInputCtx = ctx.set;
 
-export function useInputCtx(): InputRootState {
-	const ctx = getContext<InputRootState>(KEY);
-	if (!ctx) throw new Error('Input parts must be used within <Input.Root>');
-	return ctx;
-}
+export const useInputCtx = ctx.get;
 
 export type { InputRootState };

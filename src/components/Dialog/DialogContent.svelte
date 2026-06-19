@@ -11,8 +11,10 @@
 
 <script lang="ts">
 	import { scale } from 'svelte/transition';
-	import { backOut, cubicOut } from 'svelte/easing';
+	import type { TransitionConfig } from 'svelte/transition';
+	import { backOut, cubicOut, expoOut } from 'svelte/easing';
 	import { getDialogCtx } from './context';
+	import type { DialogAlign } from './dialog.svelte';
 	import { scrollLock } from '../../state/scrollLock.svelte';
 	import { portal } from '../../actions/portal';
 	import { mergeProps } from '../../utils/mergeProps';
@@ -118,6 +120,34 @@
 		onclick: handleBackdrop
 	});
 	const merged = $derived(mergeProps(rest, attrs, { class: cn('dialog', className) }));
+
+	const isEdge = (a: DialogAlign): boolean => a === 'start' || a === 'end' || a === 'bottom';
+
+	// Edge drawers slide off their anchored edge; direction is inline-axis (RTL-aware) for start/end, block for bottom.
+	function edgeSlide(node: HTMLElement, align: DialogAlign, duration: number, easing: (t: number) => number): TransitionConfig {
+		const rtl = getComputedStyle(node).direction === 'rtl';
+		let tx = 0;
+		let ty = 0;
+		if (align === 'start') tx = rtl ? node.offsetWidth : -node.offsetWidth;
+		else if (align === 'end') tx = rtl ? -node.offsetWidth : node.offsetWidth;
+		else ty = node.offsetHeight;
+		return {
+			duration,
+			easing,
+			css: (t, u) => `transform: translate3d(${u * tx}px, ${u * ty}px, 0); opacity: ${t};`
+		};
+	}
+
+	function panelIn(node: HTMLElement, { align }: { align: DialogAlign }): TransitionConfig {
+		return isEdge(align)
+			? edgeSlide(node, align, 320, expoOut)
+			: scale(node, { start: 0.6, opacity: 0.2, duration: 320, easing: backOut });
+	}
+	function panelOut(node: HTMLElement, { align }: { align: DialogAlign }): TransitionConfig {
+		return isEdge(align)
+			? edgeSlide(node, align, 200, cubicOut)
+			: scale(node, { start: 0.8, opacity: 0, duration: 170, easing: cubicOut });
+	}
 </script>
 
 <dialog
@@ -140,8 +170,8 @@
 			tabindex="-1"
 			{@attach (n) => void n.focus({ preventScroll: true })}
 			style:--rb={root.rebound.current}
-			in:scale={{ start: 0.6, opacity: 0.2, duration: 320, easing: backOut }}
-			out:scale={{ start: 0.8, opacity: 0, duration: 170, easing: cubicOut }}
+			in:panelIn={{ align: root.align }}
+			out:panelOut={{ align: root.align }}
 			onoutroend={onExit}
 		>
 			{@render children?.()}
@@ -208,6 +238,37 @@
 
 	:where(.dialog[data-align='top']) { margin-top: 6vh; margin-bottom: auto; }
 	:where(.dialog[data-size='fullscreen'][data-align='top']) { margin: 0; }
+
+	.dialog[data-align='start'],
+	.dialog[data-align='end'] {
+		height: 100vh;
+		max-height: 100vh;
+		margin-block: 0;
+	}
+	.dialog[data-align='start'] { margin-inline: 0 auto; }
+	.dialog[data-align='end'] { margin-inline: auto 0; }
+	.dialog[data-align='bottom'] {
+		width: 100%;
+		max-width: 100%;
+		max-height: 90vh;
+		margin-block: auto 0;
+		margin-inline: auto;
+	}
+
+	.dialog[data-align='start'] .dialog__panel,
+	.dialog[data-align='end'] .dialog__panel { height: 100%; }
+	.dialog[data-align='start'] .dialog__panel {
+		border-start-start-radius: 0;
+		border-end-start-radius: 0;
+	}
+	.dialog[data-align='end'] .dialog__panel {
+		border-start-end-radius: 0;
+		border-end-end-radius: 0;
+	}
+	.dialog[data-align='bottom'] .dialog__panel {
+		border-end-start-radius: 0;
+		border-end-end-radius: 0;
+	}
 
 	.dialog__panel {
 		display: flex;

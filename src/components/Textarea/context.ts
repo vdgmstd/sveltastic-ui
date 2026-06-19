@@ -1,16 +1,10 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { TextareaRootState } from './textarea.svelte';
 
-const KEY = Symbol('Textarea');
+const ctx = createPartContext<TextareaRootState>('Textarea', 'Textarea parts must be used within <Textarea.Root>');
 
-export function setTextareaCtx(state: TextareaRootState): TextareaRootState {
-	return setContext(KEY, state);
-}
+export const setTextareaCtx = ctx.set;
 
-export function useTextareaCtx(): TextareaRootState {
-	const ctx = getContext<TextareaRootState>(KEY);
-	if (!ctx) throw new Error('Textarea parts must be used within <Textarea.Root>');
-	return ctx;
-}
+export const useTextareaCtx = ctx.get;
 
 export type { TextareaRootState };

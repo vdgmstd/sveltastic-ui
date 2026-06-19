@@ -1,14 +1,8 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { DateTimePickerRootState } from './dateTimePicker.svelte';
 
-const KEY = Symbol('DateTimePicker');
+const ctx = createPartContext<DateTimePickerRootState>('DateTimePicker', 'DateTimePicker parts must be used within <DateTimePicker.Root>');
 
-export function setDtpCtx(state: DateTimePickerRootState): DateTimePickerRootState {
-	return setContext(KEY, state);
-}
+export const setDtpCtx = ctx.set;
 
-export function getDtpCtx(): DateTimePickerRootState {
-	const ctx = getContext<DateTimePickerRootState>(KEY);
-	if (!ctx) throw new Error('DateTimePicker parts must be used within <DateTimePicker.Root>');
-	return ctx;
-}
+export const getDtpCtx = ctx.get;

@@ -1,19 +1,10 @@
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { HTMLAttributes } from 'svelte/elements';
-	import type { WithElementRef } from '../../types';
+	import type { PartProps } from '../../types';
 
-	export type CardFooterProps = WithElementRef<
-		{
-			/** Float the strip absolutely, pinned to the card's bottom edge and hung 50% outside it (`.card__actions`). Default `false` renders the in-flow `.card__buttons` strip. */
-			floating?: boolean;
-			/** Footer content. */
-			children?: Snippet;
-			/** Render-delegation for the footer element. */
-			child?: Snippet<[{ props: Record<string, unknown> }]>;
-		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
-		HTMLDivElement
-	>;
+	export type CardFooterProps = PartProps<HTMLDivElement> & {
+		/** Float the strip absolutely, pinned to the card's bottom edge and hung 50% outside it (`.card__actions`). Default `false` renders the in-flow `.card__buttons` strip. */
+		floating?: boolean;
+	};
 </script>
 
 <script lang="ts">

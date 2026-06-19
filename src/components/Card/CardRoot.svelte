@@ -19,12 +19,14 @@
 			variant?: CardVariant;
 			/** Palette name or hex / `rgb(...)` / `r,g,b`. Exposes `--c` for descendants (Buttons, Avatars). */
 			color?: Color;
-			/** Wider max-width (`480px` instead of the default `350px`). */
-			wide?: boolean;
 			/** Render the image with insets / padding around it instead of edge-to-edge. */
 			imgInset?: boolean;
 			/** Override the image cell's main dimension. Number is treated as `px`; any CSS length is accepted as a string. */
 			imgSize?: number | string;
+			/** Class merged onto the inner `.card` surface (the visible, styled element — for a glass/flush/lift treatment or a `max-width` constraint). */
+			cardClass?: string;
+			/** Inline style merged onto the inner `.card` surface. */
+			cardStyle?: string;
 			/** Card parts — rendered inside the inner `.card` surface. */
 			children?: Snippet;
 			/** Render-delegation: receive the merged prop bag and the kit's `card` snippet, then render your own root element (e.g. `<article>` / `<a>`) with `{@render card()}` inside it. */
@@ -45,9 +47,10 @@
 	let {
 		variant = 'default',
 		color = 'primary',
-		wide = false,
 		imgInset = false,
 		imgSize,
+		cardClass,
+		cardStyle,
 		children,
 		child,
 		ref = $bindable(null),
@@ -74,13 +77,11 @@
 			class: cn(
 				'card-content',
 				`card-content--${variant}`,
-				wide && 'card-content--wide',
 				isImgInset && 'card-content--img-inset',
 				className
 			),
 			'data-testid': 'card',
 			'data-variant': dataState(variant),
-			'data-wide': boolAttr(wide),
 			'data-img-inset': boolAttr(isImgInset),
 			style: styleVars,
 			[refKey]: attachRef<HTMLDivElement>((n) => (ref = n))
@@ -89,7 +90,7 @@
 </script>
 
 {#snippet tree()}
-	<div class="card">
+	<div class={cn('card', cardClass)} style={cardStyle}>
 		{@render children?.()}
 	</div>
 {/snippet}
@@ -214,7 +215,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: var(--space-2);
+		gap: var(--space-3);
 		padding-inline: var(--space-6);
 		z-index: 20;
 	}
@@ -522,16 +523,11 @@
 			transform 260ms var(--ease-standard) 60ms;
 	}
 
+	/* Block, not flex: in a flex column Firefox ignores the panel's negative margin-top (the overlap collapses), and flex `justify-content` + the panel margin land the frame differently per engine. Plain block honours `margin-top: -50px` identically in Chrome + Firefox. */
 	:global(.card-content--peek) .card {
 		box-shadow: none;
 		background: transparent;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-direction: column;
-	}
-	:global(.card-content--peek) :global(.card__img) {
-		align-self: stretch;
+		display: block;
 	}
 	:global(.card-content--peek) :global(.card__img-clip) {
 		transform: translateY(40px);
@@ -570,22 +566,24 @@
 	:global(.card-content--peek) :global(.card__img) {
 		border-radius: 6px 20px 6px 20px;
 	}
+	/* Reactions are ALWAYS visible and just shift up on hover (the design). Move via `bottom`, never `transform`/`opacity`: those composite the overlay, and the continuously-floating mosaic neighbours make Firefox cull the composited layer — the bubble SVG vanishes. Plain `bottom` keeps the icon painted and animates the shift cleanly. */
 	:global(.card-content--peek) :global(.card__interactions) {
-		bottom: 50px;
+		bottom: -5px;
 		inset-inline-start: 8px;
-		transform: translateY(80px);
 		z-index: 15;
-		transition: transform var(--dur) var(--ease-standard);
+		transition: bottom var(--dur) var(--ease-standard);
 	}
 	:global(.card-content--peek) .card:hover :global(.card__interactions),
 	:global(.card-content--peek) .card:focus-within :global(.card__interactions) {
-		transform: translateY(50%);
+		bottom: 20px;
 	}
 	:global(.card-content--peek) :global(.card__text) {
 		background: rgb(var(--background));
 		box-shadow: 0 0 0 0 rgb(0 0 0 / var(--shadow-opacity));
 		border-radius: 6px 20px 6px 20px;
-		margin-top: -50px;
+		/* Overlap via `top` (position:relative) — Firefox doesn't honour a negative margin-top here, but `top` rides identically in both engines. `margin-inline: auto` centres the narrower panel. */
+		top: -50px;
+		margin-inline: auto;
 		z-index: 10;
 		position: relative;
 		width: calc(100% - 30px);

@@ -54,8 +54,8 @@
 	}
 	.button__icon :global(svg) {
 		flex-shrink: 0;
-		/* WebKit shrinks SVG flex-items beside text — pin intrinsic size. */
-		min-width: max-content;
-		min-height: max-content;
+		/* Pin to the glyph's own size; Safari 16 resolves max-content to the SVG viewBox (huge). */
+		min-width: 1em;
+		min-height: 1em;
 	}
 </style>

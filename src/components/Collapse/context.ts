@@ -1,4 +1,4 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { CollapseGroupState, CollapseRootState } from './collapseState.svelte';
 
 export type CollapseVariant =
@@ -13,23 +13,10 @@ export type CollapseVariant =
 export type CollapseGroupLayout = 'stack' | 'fused' | 'card';
 export type CollapseGroupType = 'single' | 'multiple';
 
-const GROUP_KEY = Symbol('collapse-group');
-const ITEM_KEY = Symbol('collapse-item');
+const groupCtx = createPartContext<CollapseGroupState>('collapse-group');
+export const setCollapseGroupContext = groupCtx.set;
+export const useCollapseGroupContext = groupCtx.find;
 
-export function setCollapseGroupContext(value: CollapseGroupState): void {
-	setContext(GROUP_KEY, value);
-}
-
-export function useCollapseGroupContext(): CollapseGroupState | undefined {
-	return getContext<CollapseGroupState | undefined>(GROUP_KEY);
-}
-
-export function setCollapseItemContext(value: CollapseRootState): void {
-	setContext(ITEM_KEY, value);
-}
-
-export function getCollapseItemContext(): CollapseRootState {
-	const ctx = getContext<CollapseRootState | undefined>(ITEM_KEY);
-	if (!ctx) throw new Error('Collapse parts must be used within <Collapse.Root>');
-	return ctx;
-}
+const itemCtx = createPartContext<CollapseRootState>('collapse-item', 'Collapse parts must be used within <Collapse.Root>');
+export const setCollapseItemContext = itemCtx.set;
+export const getCollapseItemContext = itemCtx.get;

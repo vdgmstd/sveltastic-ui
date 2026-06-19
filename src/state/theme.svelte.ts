@@ -3,10 +3,19 @@ import { isBrowser } from '../utils/dom';
 
 const STORAGE_KEY = 'sveltastic-ui:theme';
 
+function readStored(): Theme | null {
+	try {
+		const v = window.localStorage.getItem(STORAGE_KEY);
+		return v === 'light' || v === 'dark' ? v : null;
+	} catch {
+		return null;
+	}
+}
+
 function detectTheme(): Theme {
 	if (!isBrowser) return 'light';
-	const stored = window.localStorage.getItem(STORAGE_KEY);
-	if (stored === 'light' || stored === 'dark') return stored;
+	const stored = readStored();
+	if (stored) return stored;
 	return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
@@ -19,7 +28,11 @@ class ThemeState {
 		this.theme = next;
 		if (!isBrowser) return;
 		document.documentElement.setAttribute('data-theme', next);
-		window.localStorage.setItem(STORAGE_KEY, next);
+		try {
+			window.localStorage.setItem(STORAGE_KEY, next);
+		} catch {
+			// storage blocked (private mode / disabled cookies) — skip persistence
+		}
 	}
 
 	toggleTheme(): void {
@@ -36,13 +49,7 @@ class ThemeState {
 		this.setRtl(!this.rtl);
 	}
 
-	/**
-	 * Sync the rune state with whatever is already on `<html data-theme>` —
-	 * normally set by the consumer's pre-paint inline script in `app.html`
-	 * (see README "Setup"). If the attribute isn't there (script absent
-	 * or storage unavailable), fall back to auto-detect and apply, but do
-	 * NOT persist — only an explicit `setTheme` from a user toggle does that.
-	 */
+	/** Sync rune state with `<html data-theme>` (set by the app's pre-paint script); else auto-detect + apply, never persisting. */
 	hydrate(): void {
 		if (!isBrowser) return;
 		const current = document.documentElement.getAttribute('data-theme');

@@ -1,3 +1,6 @@
+import type { Snippet } from 'svelte';
+import type { HTMLAttributes } from 'svelte/elements';
+
 /** Palette colour names. The runtime maps `'warning'` → CSS token `--warn`. */
 export type ColorName =
 	| 'primary'
@@ -75,3 +78,12 @@ export type DateTimeRange = { from?: string; to?: string };
 
 /** Adds a bindable `ref` to a props type so a consumer can capture the root element. */
 export type WithElementRef<T, El extends HTMLElement = HTMLElement> = T & { ref?: El | null };
+
+/** The bits-ui v2 `child` render-delegation snippet: receives the merged prop bag plus any part-specific extras. */
+export type PartChild<Extra = Record<never, never>> = Snippet<
+	[{ props: Record<string, unknown> } & Extra]
+>;
+
+/** Standard styled-part props: native attributes for `El` + `children` + the `child` snippet + a bindable `ref`. */
+export type PartProps<El extends HTMLElement = HTMLElement, Extra = Record<never, never>> =
+	WithElementRef<Omit<HTMLAttributes<El>, 'children'> & { children?: Snippet; child?: PartChild<Extra> }, El>;

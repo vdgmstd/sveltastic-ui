@@ -178,6 +178,9 @@
 		portalTarget={root.portal.target}
 		portalDisabled={root.portal.disabled}
 		forceMount={root.portal.forceMount}
+		contentProps={root.contentProps}
+		contentRef={root.setContentRef}
+		contentChild={root.contentChild}
 		onopenchangecomplete={() => root.completeOpenChange(false)}
 	>
 		{#snippet trigger({ props })}

@@ -1,6 +1,6 @@
 {
 	"name": "sveltastic-ui",
-	"version": "1.1.5",
+	"version": "1.1.8",
 	"description": "Svelte 5 + Tailwind v4 component library — runes-native, SSR-safe, tree-shakable.",
 	"type": "module",
 	"license": "MIT",
@@ -46,7 +46,6 @@
 		"prepublishOnly": "npm run package"
 	},
 	"peerDependencies": {
-		"phosphor-svelte": "^3",
 		"svelte": "^5",
 		"tailwindcss": "^4"
 	},
@@ -54,6 +53,7 @@
 		"@js-temporal/polyfill": "^0.5.1",
 		"clsx": "^2.1.1",
 		"maska": "^3.2.0",
+		"phosphor-svelte": "^3",
 		"tailwind-merge": "^3.6.0"
 	},
 	"devDependencies": {

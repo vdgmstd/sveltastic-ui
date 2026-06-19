@@ -1,5 +1,6 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Color, Size, WithElementRef } from '../../types';
 	import type {
 		TabsVariant,
@@ -18,7 +19,7 @@
 	} from './context';
 
 	export type TabsRootProps = WithElementRef<
-		{
+		Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'style' | 'children'> & {
 			/** Active tab value. Bindable. */
 			value?: string;
 			/** Palette accent. Drives the thumb fill and active-state color via `--c`. */

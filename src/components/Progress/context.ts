@@ -1,16 +1,10 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { ProgressRootState } from './progress.svelte';
 
-const KEY = Symbol('Progress');
+const ctx = createPartContext<ProgressRootState>('Progress', 'Progress parts must be used within <Progress.Root>');
 
-export function setProgressCtx(state: ProgressRootState): ProgressRootState {
-	return setContext(KEY, state);
-}
+export const setProgressCtx = ctx.set;
 
-export function useProgressCtx(): ProgressRootState {
-	const ctx = getContext<ProgressRootState>(KEY);
-	if (!ctx) throw new Error('Progress parts must be used within <Progress.Root>');
-	return ctx;
-}
+export const useProgressCtx = ctx.get;
 
 export type { ProgressRootState };

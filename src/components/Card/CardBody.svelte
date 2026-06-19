@@ -1,17 +1,8 @@
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { HTMLAttributes } from 'svelte/elements';
-	import type { WithElementRef } from '../../types';
+	import type { PartProps } from '../../types';
 
-	export type CardBodyProps = WithElementRef<
-		{
-			/** Body content — rendered inside `.card__text`. May contain a `Card.Header`. */
-			children?: Snippet;
-			/** Render-delegation for the `.card__text` element. */
-			child?: Snippet<[{ props: Record<string, unknown> }]>;
-		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
-		HTMLDivElement
-	>;
+	/** Props for `Card.Body` — the `.card__text` body-copy region. */
+	export type CardBodyProps = PartProps<HTMLDivElement>;
 </script>
 
 <script lang="ts">

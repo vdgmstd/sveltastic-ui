@@ -1,23 +1,10 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { CheckboxGroupState, CheckboxRootState } from './checkbox.svelte';
 
-const GROUP_KEY = Symbol('CheckboxGroup');
-const ROOT_KEY = Symbol('CheckboxRoot');
+const groupCtx = createPartContext<CheckboxGroupState>('CheckboxGroup');
+export const setCheckboxGroupContext = groupCtx.set;
+export const useCheckboxGroupContext = groupCtx.find;
 
-export function setCheckboxGroupContext(value: CheckboxGroupState): CheckboxGroupState {
-	return setContext(GROUP_KEY, value);
-}
-
-export function useCheckboxGroupContext(): CheckboxGroupState | undefined {
-	return getContext<CheckboxGroupState | undefined>(GROUP_KEY);
-}
-
-export function setCheckboxRootContext(value: CheckboxRootState): CheckboxRootState {
-	return setContext(ROOT_KEY, value);
-}
-
-export function useCheckboxRootContext(): CheckboxRootState {
-	const ctx = getContext<CheckboxRootState | undefined>(ROOT_KEY);
-	if (!ctx) throw new Error('<Checkbox.Indicator>/<Checkbox.Icon>/<Checkbox.Label> must be used within <Checkbox.Root>');
-	return ctx;
-}
+const rootCtx = createPartContext<CheckboxRootState>('CheckboxRoot', '<Checkbox.Indicator>/<Checkbox.Icon>/<Checkbox.Label> must be used within <Checkbox.Root>');
+export const setCheckboxRootContext = rootCtx.set;
+export const useCheckboxRootContext = rootCtx.get;

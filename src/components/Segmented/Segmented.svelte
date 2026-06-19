@@ -1,12 +1,13 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Color, Size, WithElementRef } from '../../types';
 	import type { SegmentedValue, SegmentedVariant } from './context';
 
 	export type { SegmentedValue, SegmentedVariant } from './context';
 
 	export type SegmentedRootProps<V extends SegmentedValue = SegmentedValue> = WithElementRef<
-		{
+		Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'style' | 'children'> & {
 			/** Selected token. Bindable. */
 			value?: V;
 			/** Palette accent for the active thumb and (in `flat`) the track tint. */

@@ -356,6 +356,8 @@
 		font-size: var(--fs-md);
 		text-align: center;
 		text-decoration: none;
+		-webkit-appearance: none;
+		appearance: none;
 		-webkit-user-select: none;
 		user-select: none;
 		cursor: pointer;
@@ -463,9 +465,9 @@
 	.button__content :global(svg),
 	.button__animate :global(svg) {
 		flex-shrink: 0;
-		/* WebKit shrinks SVG flex-items beside text — pin intrinsic size. */
-		min-width: max-content;
-		min-height: max-content;
+		/* Pin to the glyph's own size; Safari 16 resolves max-content to the SVG viewBox (huge). */
+		min-width: 1em;
+		min-height: 1em;
 	}
 
 	.button--anim-vertical .button__animate {

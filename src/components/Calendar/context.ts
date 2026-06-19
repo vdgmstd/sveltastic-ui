@@ -1,14 +1,7 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { CalendarRootState } from './calendarState.svelte';
 
-const KEY = Symbol('Calendar');
+const ctx = createPartContext<CalendarRootState>('Calendar', 'Calendar parts must be used within <Calendar.Root>');
 
-export function setCalendarCtx(state: CalendarRootState): CalendarRootState {
-	return setContext(KEY, state);
-}
-
-export function getCalendarCtx(): CalendarRootState {
-	const ctx = getContext<CalendarRootState>(KEY);
-	if (!ctx) throw new Error('Calendar parts must be used within <Calendar.Root>');
-	return ctx;
-}
+export const setCalendarCtx = ctx.set;
+export const getCalendarCtx = ctx.get;

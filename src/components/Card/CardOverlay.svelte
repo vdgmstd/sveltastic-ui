@@ -1,17 +1,8 @@
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { HTMLAttributes } from 'svelte/elements';
-	import type { WithElementRef } from '../../types';
+	import type { PartProps } from '../../types';
 
-	export type CardOverlayProps = WithElementRef<
-		{
-			/** Overlay content — rendered inside the absolutely-positioned `.card__interactions` region. Place as a sibling of `Card.Image`, inside `Card.Media`. */
-			children?: Snippet;
-			/** Render-delegation for the `.card__interactions` element. */
-			child?: Snippet<[{ props: Record<string, unknown> }]>;
-		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
-		HTMLDivElement
-	>;
+	/** Props for `Card.Overlay` — the absolutely-positioned `.card__interactions` region (sibling of `Card.Image`). */
+	export type CardOverlayProps = PartProps<HTMLDivElement>;
 </script>
 
 <script lang="ts">

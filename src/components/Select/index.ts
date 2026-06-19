@@ -30,7 +30,7 @@ import type { SelectEmptyProps } from './SelectEmpty.svelte';
 import type { SelectChipProps } from './SelectChip.svelte';
 
 /** Combobox/listbox select. Pure compound: `Select.Root` + `Trigger`/`Value`/`Icon`/`Portal`/`Content`/`Viewport`/`Item`/`ItemText`/`ItemIndicator`/`Group`/`GroupHeading`/`Empty`/`Chip`. */
-// Generic parts emit via svelte2tsx's internal alias; cast each to the public `Component` form so the namespace object still emits its `index.d.ts` under build:ui.
+// svelte2tsx emits each generic part via an unnameable `$$IsomorphicComponent` alias; a plain object emits an EMPTY index.d.ts (proven). The cast to the public `Component` form is the least-bad workaround — it restores types, at the cost of erasing the V generic (P3 — a tooling limitation, not fixable without a hand-maintained d.ts).
 export const Select = {
 	Root,
 	Trigger,
@@ -52,7 +52,7 @@ export const Select = {
 	Value: Component<SelectValueProps<any>, {}, ''>;
 	Icon: Component<SelectIconProps, {}, ''>;
 	Portal: Component<SelectPortalProps, {}, ''>;
-	Content: Component<SelectContentProps, {}, ''>;
+	Content: Component<SelectContentProps, {}, 'ref'>;
 	Viewport: Component<SelectViewportProps, {}, 'ref'>;
 	Item: Component<SelectItemProps<any>, {}, 'ref'>;
 	ItemText: Component<SelectItemTextProps, {}, 'ref'>;

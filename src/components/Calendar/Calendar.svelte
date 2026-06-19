@@ -1,5 +1,6 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Color, Size } from '../../types';
 	import type { DateRange, WithElementRef } from '../../types';
 	import type { DateLike, WeekStart } from '../../utils/date';
@@ -14,7 +15,7 @@
 	export type CalendarColor = 'primary' | 'warning';
 
 	type CalendarRootBaseProps = WithElementRef<
-		{
+		Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'style' | 'children'> & {
 			/** Controlled view month (`YYYY-MM-DD`); two-way bindable. Drives which month/year the grid shows. */
 			placeholder?: DateLike;
 			/** Locale for weekday / month labels. Defaults to `'en-US'`. */

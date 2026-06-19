@@ -1,5 +1,6 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
 	import type { Color, Shape, Size, WithElementRef } from '../../types';
 	import type {
 		PaginationMode,
@@ -10,7 +11,7 @@
 	export type { PaginationMode, PaginationVariant } from './context';
 
 	export type PaginationRootProps = WithElementRef<
-		{
+		Omit<HTMLAttributes<HTMLElement>, 'class' | 'style' | 'children'> & {
 			/** Currently selected page (1-based). Bindable. */
 			page?: number;
 			/** Total number of pages. */

@@ -1,4 +1,4 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { PaginationRootState } from './paginationState.svelte';
 
 export type PaginationMode = 'numbers' | 'dots';
@@ -15,14 +15,7 @@ export type PaginationSnippetProps = {
 	currentPage: number;
 };
 
-const KEY = Symbol('Pagination');
+const ctx = createPartContext<PaginationRootState>('Pagination', '<Pagination> parts must be used within <Pagination.Root>');
 
-export function setPaginationContext(value: PaginationRootState): PaginationRootState {
-	return setContext(KEY, value);
-}
-
-export function usePaginationContext(): PaginationRootState {
-	const ctx = getContext<PaginationRootState | undefined>(KEY);
-	if (!ctx) throw new Error('<Pagination> parts must be used within <Pagination.Root>');
-	return ctx;
-}
+export const setPaginationContext = ctx.set;
+export const usePaginationContext = ctx.get;

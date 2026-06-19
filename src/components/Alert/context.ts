@@ -1,14 +1,7 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { AlertRootState } from './alert.svelte';
 
-const KEY = Symbol('Alert');
+const ctx = createPartContext<AlertRootState>('Alert', 'Alert parts must be used within <Alert.Root>');
 
-export function setAlertCtx(state: AlertRootState): AlertRootState {
-	return setContext(KEY, state);
-}
-
-export function getAlertCtx(): AlertRootState {
-	const ctx = getContext<AlertRootState>(KEY);
-	if (!ctx) throw new Error('Alert parts must be used within <Alert.Root>');
-	return ctx;
-}
+export const setAlertCtx = ctx.set;
+export const getAlertCtx = ctx.get;

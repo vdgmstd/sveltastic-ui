@@ -121,13 +121,38 @@ function installStyles(): void {
 	document.head.appendChild(style);
 }
 
+const RIPPLE_COVER = 2.5;
+
+function coverSize(width: number, height: number, x: number, y: number): number {
+	return Math.ceil(
+		Math.max(
+			Math.hypot(x, y),
+			Math.hypot(width - x, y),
+			Math.hypot(x, height - y),
+			Math.hypot(width - x, height - y)
+		) * RIPPLE_COVER
+	);
+}
+
 export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, initial) => {
 	let opts: RippleOptions = initial ?? {};
 	const ac = new AbortController();
 	const { signal } = ac;
 	const liveStops = new Set<() => void>();
+	// Each live disc keeps its origin so a host resize (e.g. an expanding collapse panel) can recompute its cover.
+	const liveEffects = new Set<{ node: HTMLElement; x: number; y: number }>();
 	let activeRipples = 0;
 	let restActive = false;
+
+	const ro = new ResizeObserver(() => {
+		if (liveEffects.size === 0) return;
+		const w = host.clientWidth;
+		const h = host.clientHeight;
+		for (const eff of liveEffects) {
+			eff.node.style.setProperty('--ripple-size', `${coverSize(w, h, eff.x, eff.y)}px`);
+		}
+	});
+	ro.observe(host);
 
 	const fill = new Tween(0, { duration: 200, easing: cubicOut });
 	let restRGB: [number, number, number] | null = null;
@@ -221,14 +246,7 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 		}
 		const w = host.clientWidth;
 		const h = host.clientHeight;
-		const size = Math.ceil(
-			Math.max(
-				Math.hypot(x, y),
-				Math.hypot(w - x, y),
-				Math.hypot(x, h - y),
-				Math.hypot(w - x, h - y)
-			) * 2.5
-		);
+		const size = coverSize(w, h, x, y);
 		const inkDuration = opts.duration ?? (w > 150 ? 750 : 550);
 
 		const layer = document.createElement('span');
@@ -257,6 +275,8 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 			});
 		});
 		liveStops.add(stop);
+		const eff = { node, x, y };
+		liveEffects.add(eff);
 
 		let disposed = false;
 		function cleanup(): void {
@@ -265,6 +285,7 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 			signal.removeEventListener('abort', cleanup);
 			stop();
 			liveStops.delete(stop);
+			liveEffects.delete(eff);
 			layer.remove();
 			if (activeRipples === 0) deactivateRest();
 		}
@@ -305,6 +326,8 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 		},
 		destroy() {
 			ac.abort();
+			ro.disconnect();
+			liveEffects.clear();
 			deactivateRest();
 			host.classList.remove(HOST_CLASS);
 			for (const s of liveStops) s();

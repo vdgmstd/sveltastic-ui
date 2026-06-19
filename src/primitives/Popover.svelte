@@ -77,6 +77,12 @@
 		children?: Snippet<[() => void]>;
 		/** Sticky popup footer. Receives a `close` callback. */
 		footer?: Snippet<[() => void]>;
+		/** Rest-props merged onto the popup body element — an overlay `Content` part forwards its class, style, data, aria and handler props here. */
+		contentProps?: Record<string, unknown>;
+		/** Ref setter for the popup body element — `Content.ref` forwarding (receives the rendered node or `null`). */
+		contentRef?: (node: HTMLElement | null) => void;
+		/** Render-delegation of the popup body — `Content.child` forwarding. Receives merged props + a `body` snippet of the default rows. */
+		contentChild?: Snippet<[{ props: Record<string, unknown>; body: Snippet }]>;
 		/** Fires when `open` changes. */
 		onopenchange?: (open: boolean) => void;
 		/** Fires after the close transition finishes (popup fully removed). */
@@ -96,6 +102,7 @@
 	import { escapeLayer } from '../actions/escapeLayer';
 	import { dismissibleLayer } from '../actions/dismissibleLayer';
 	import { focusTrap } from '../actions/focusTrap';
+	import { overlayScrollbar } from '../actions/overlayScrollbar.svelte';
 	import { isUsingKeyboard } from '../state/isUsingKeyboard.svelte';
 	import {
 		computeAnchorPosition,
@@ -103,7 +110,10 @@
 		watchAnchor,
 		type AnchorFlipState
 	} from '../utils/anchor';
+	import { createAttachmentKey } from 'svelte/attachments';
 	import { cn } from '../utils/cn';
+	import { mergeProps } from '../utils/mergeProps';
+	import { attachRef } from '../utils/ref';
 	import { boolAttr, dataState } from '../utils/attrs';
 
 	let {
@@ -134,6 +144,9 @@
 		header,
 		children,
 		footer,
+		contentProps,
+		contentRef,
+		contentChild,
 		onopenchange,
 		onopenchangecomplete,
 		class: className,
@@ -384,6 +397,26 @@
 		spring: { duration: 380, easing: backOut }
 	} as const;
 
+	let bodyEl = $state<HTMLElement | null>(null);
+	const bodyRefKey = createAttachmentKey();
+	const bodyRefAttach = attachRef<HTMLElement>((n) => (bodyEl = n));
+	// Forward the rendered body node (default or delegated) back to the overlay's Content.ref.
+	$effect(() => {
+		const fn = contentRef;
+		if (!fn) return;
+		fn(bodyEl);
+		return () => fn(null);
+	});
+	const bodyAttrs = $derived(
+		mergeProps(contentProps, {
+			class: 'popover__body',
+			role: 'presentation',
+			'data-state': dataState(visible ? 'open' : 'closed'),
+			onclick: handleBodyClick,
+			[bodyRefKey]: bodyRefAttach
+		})
+	);
+
 	// ARIA + role land on the consumer's real trigger element (M9/M13), not this wrapper.
 	const triggerProps = $derived({
 		role: triggerRole === 'combobox' ? ('combobox' as const) : undefined,
@@ -440,6 +473,10 @@
 	{#if trigger}{@render trigger({ props: triggerProps, open })}{/if}
 </div>
 
+{#snippet bodyInner()}
+	{#if children}{@render children(close)}{/if}
+{/snippet}
+
 {#if open || forceMount}
 	<div
 		bind:this={popupEl}
@@ -490,9 +527,11 @@
 		{#if header}
 			<div class="popover__header">{@render header(close)}</div>
 		{/if}
-		<div class="popover__body" onclick={handleBodyClick} role="presentation">
-			{#if children}{@render children(close)}{/if}
-		</div>
+		{#if contentChild}
+			{@render contentChild({ props: bodyAttrs, body: bodyInner })}
+		{:else}
+			<div {...bodyAttrs} use:overlayScrollbar>{@render bodyInner()}</div>
+		{/if}
 		{#if footer}
 			<div class="popover__footer">{@render footer(close)}</div>
 		{/if}
@@ -566,6 +605,10 @@
 		gap: var(--space-1);
 		min-height: 0;
 		overflow-y: auto;
+		scrollbar-width: none;
+	}
+	.popover__body::-webkit-scrollbar {
+		display: none;
 	}
 	.popover__header,
 	.popover__footer {

@@ -1,16 +1,9 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { DividerRootState } from './divider.svelte';
 
-const KEY = Symbol('Divider');
+const ctx = createPartContext<DividerRootState>('Divider', 'Divider parts must be used within <Divider.Root>');
 
-export function setDividerCtx(state: DividerRootState): DividerRootState {
-	return setContext(KEY, state);
-}
-
-export function useDividerCtx(): DividerRootState {
-	const ctx = getContext<DividerRootState>(KEY);
-	if (!ctx) throw new Error('Divider parts must be used within <Divider.Root>');
-	return ctx;
-}
+export const setDividerCtx = ctx.set;
+export const useDividerCtx = ctx.get;
 
 export type { DividerRootState };

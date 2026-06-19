@@ -112,6 +112,8 @@
 	<svg
 		class="spinner__svg"
 		viewBox="0 0 {vb} {vb}"
+		width={vb}
+		height={vb}
 		aria-hidden="true"
 		style:transform="rotate({rotationDeg}deg)"
 	>
@@ -152,14 +154,12 @@
 		inset: 0;
 		width: 100%;
 		height: 100%;
+		transform-origin: 50% 50%;
+		will-change: transform;
 	}
 	.spinner__circle {
 		stroke: rgb(var(--c));
 		stroke-linecap: round;
 	}
 	.spinner__circle--dashed { opacity: 0.3; }
-	.spinner__svg {
-		transform-origin: 50% 50%;
-		will-change: transform;
-	}
 </style>

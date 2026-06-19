@@ -88,16 +88,16 @@
 	import { EyeIcon, EyeSlashIcon } from 'phosphor-svelte';
 	import { Tween } from 'svelte/motion';
 	import { slide } from 'svelte/transition';
-	import { cubicOut, backOut, cubicInOut } from 'svelte/easing';
+	import { cubicOut, cubicInOut } from 'svelte/easing';
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
-	import { mask as maskAction, maskHint, type MaskaDetail } from '../actions/mask';
-	import type { MaskInputOptions } from 'maska';
+	import { mask as maskAction } from '../actions/mask';
 	import { cn } from '../utils/cn';
 	import { boolAttr, dataState } from '../utils/attrs';
 	import { attachRef } from '../utils/ref';
 	import { mergeProps } from '../utils/mergeProps';
 	import Spinner from './Spinner.svelte';
 	import { FieldShellState } from './fieldShell.svelte';
+	import { IconPulseState } from './iconPulse.svelte';
 
 	let {
 		value = $bindable(''),
@@ -180,91 +180,22 @@
 	let isPasswordRevealed = $state(false);
 	let resolvedType = $derived(isPassword && passwordReveal && isPasswordRevealed ? 'text' : type);
 
-	let maskTemplate = $derived(mask ? maskHint(mask) : '');
-	let maskedValue = $state('');
-	let typedLen = $derived(Math.min(maskedValue.length, maskTemplate.length));
-	let maskRemainder = $derived(maskTemplate ? maskTemplate.slice(typedLen) : '');
-	let showMask = $derived(!!maskTemplate && (!shell.isFloating || shell.focusedActive || shell.hasValue));
-
 	// Label / fake-placeholder: one element shows the static label OR the fading placeholder (mirrors the field shell).
 	let isInline = $derived(labelStyle === 'inline');
 	let placeholderText = $derived(placeholder ?? (shell.isFloating ? label : ''));
 	let staticLabelText = $derived(!isInline && !shell.isFloating ? label : undefined);
 	let showFieldLabel = $derived(
-		!isInline && !control && ((!!placeholderText && (shell.isFloating || !maskTemplate)) || !!staticLabelText)
+		!isInline && !control && ((!!placeholderText && (shell.isFloating || !shell.maskTemplate)) || !!staticLabelText)
 	);
 
-	let lastPointerDownAt = 0;
-	let caretTimer: ReturnType<typeof setTimeout> | undefined;
-	const POINTER_FOCUS_WINDOW_MS = 300;
-
-	function captureMasked(detail: MaskaDetail): void {
-		maskedValue = detail.masked;
-	}
-	let resolvedMask = $derived.by<MaskInputOptions | undefined>(() => {
-		if (mask === undefined) return undefined;
-		const base = typeof mask === 'string' || Array.isArray(mask) ? { mask } : mask;
-		const prior = base.onMaska;
-		const chained = Array.isArray(prior)
-			? [...prior, captureMasked]
-			: prior
-				? [prior, captureMasked]
-				: captureMasked;
-		return { ...base, onMaska: chained };
-	});
-
-	$effect(() => {
-		if (!maskTemplate) maskedValue = '';
-		else maskedValue = shell.value;
-	});
+	$effect(() => shell.syncMask());
 	$effect(() => {
 		shell.hasValue = shell.value !== '';
 	});
-	$effect(() => () => clearTimeout(caretTimer));
+	$effect(() => () => shell.disposeMask());
 
-	let iconButtonEl: HTMLButtonElement | undefined = $state();
-	let iconFillX = $state(0);
-	let iconFillY = $state(0);
-	let iconFillSize = $state(0);
-
-	const ifsTween = new Tween(0, { duration: 0, easing: cubicOut });
-	const ifpTween = new Tween(0, { duration: 450, easing: cubicOut });
-	let iconPulseToken = 0;
-
-	async function runIconPulse(): Promise<void> {
-		const token = ++iconPulseToken;
-		ifsTween.set(0, { duration: 0 });
-		await ifsTween.set(1, { duration: 180, easing: cubicOut });
-		if (token !== iconPulseToken) return;
-		await ifsTween.set(0, { duration: 480, easing: backOut });
-	}
-
-	let prevFocusedActive = false;
-	$effect(() => {
-		const now = shell.focusedActive;
-		if (now && !prevFocusedActive) {
-			void runIconPulse();
-			if (iconButtonEl) {
-				const r = iconButtonEl.getBoundingClientRect();
-				const x = Math.random() * r.width;
-				const y = Math.random() * r.height;
-				iconFillX = x;
-				iconFillY = y;
-				iconFillSize = Math.ceil(
-					Math.max(
-						Math.hypot(x, y),
-						Math.hypot(r.width - x, y),
-						Math.hypot(x, r.height - y),
-						Math.hypot(r.width - x, r.height - y)
-					) * 2.2
-				);
-				ifpTween.target = 1;
-			}
-		} else if (!now && prevFocusedActive) {
-			ifpTween.target = 0;
-		}
-		prevFocusedActive = now;
-	});
+	const pulse = new IconPulseState();
+	$effect(() => pulse.sync(shell.focusedActive));
 
 	function handleFocusin(event: FocusEvent): void {
 		shell.focused = true;
@@ -285,27 +216,13 @@
 	}
 
 	function handleMouseDown(event: MouseEvent & { currentTarget: EventTarget & HTMLInputElement }): void {
-		lastPointerDownAt = Date.now();
+		shell.markPointerDown();
 		onmousedown?.(event);
 	}
 
 	function handleFocus(event: FocusEvent & { currentTarget: EventTarget & HTMLInputElement }): void {
 		onfocus?.(event);
-		if (!maskTemplate) return;
-		const inputEl = event.currentTarget as HTMLInputElement;
-		const fromPointer = Date.now() - lastPointerDownAt < POINTER_FOCUS_WINDOW_MS;
-		if (fromPointer) return;
-		const pos = shell.value.length;
-		clearTimeout(caretTimer);
-		caretTimer = setTimeout(() => {
-			if (document.activeElement === inputEl) {
-				try {
-					inputEl.setSelectionRange(pos, pos);
-				} catch {
-					// setSelectionRange unsupported for this input type
-				}
-			}
-		}, 0);
+		shell.repositionCaretOnFocus(event.currentTarget);
 	}
 
 	function handleIconClick(event: MouseEvent): void {
@@ -354,7 +271,7 @@
 	const wrapperRefAttach = attachRef<HTMLDivElement>((n) => (ref = n));
 	const inputRefAttach = attachRef<HTMLInputElement>((n) => (inputRef = n));
 	const iconRefAttach = attachRef<HTMLButtonElement>((n) => {
-		iconButtonEl = n ?? undefined;
+		pulse.setNode(n ?? undefined);
 	});
 
 	const wrapperAttrs = $derived({
@@ -464,14 +381,14 @@
 		{:else}
 			<input
 				bind:value={() => shell.value, (v) => shell.setValue(v)}
-				use:maskAction={resolvedMask}
+				use:maskAction={shell.resolvedMask}
 				{...fieldProps}
 			/>
 		{/if}
-		{#if !control && showMask}
+		{#if !control && shell.showMask}
 			<span class="input__mask" aria-hidden="true"
-				><span class="input__mask-typed">{maskedValue.slice(0, typedLen)}</span><span
-					class="input__mask-rest">{maskRemainder}</span
+				><span class="input__mask-typed">{shell.maskedValue.slice(0, shell.typedLen)}</span><span
+					class="input__mask-rest">{shell.maskRemainder}</span
 				></span
 			>
 		{/if}
@@ -491,14 +408,7 @@
 		{/if}
 
 		{#if icon}
-			<button
-				{...iconAttrs}
-				style:--ifs={ifsTween.current}
-				style:--ifp={ifpTween.current}
-				style:--icon-fill-x="{iconFillX}px"
-				style:--icon-fill-y="{iconFillY}px"
-				style:--icon-fill-size="{iconFillSize}px"
-			>
+			<button {...iconAttrs} style={pulse.style}>
 				{#if shell.isPlainSurface && shell.isIconFillBg}
 					<span class="input__icon-ripple" aria-hidden="true"></span>
 				{/if}

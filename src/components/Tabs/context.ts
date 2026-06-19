@@ -1,4 +1,4 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { TabsRootState } from './tabsState.svelte';
 
 export type TabsVariant = 'underline' | 'default' | 'flat' | 'border' | 'relief';
@@ -7,14 +7,7 @@ export type TabsTransition = 'fade' | 'crossfade' | 'slide' | 'none';
 export type TabsOrientation = 'horizontal' | 'vertical';
 export type TabsActivationMode = 'automatic' | 'manual';
 
-const KEY = Symbol('Tabs');
+const ctx = createPartContext<TabsRootState>('Tabs', '<Tabs> parts must be used within <Tabs.Root>');
 
-export function setTabsContext(value: TabsRootState): TabsRootState {
-	return setContext(KEY, value);
-}
-
-export function useTabsContext(): TabsRootState {
-	const ctx = getContext<TabsRootState | undefined>(KEY);
-	if (!ctx) throw new Error('<Tabs> parts must be used within <Tabs.Root>');
-	return ctx;
-}
+export const setTabsContext = ctx.set;
+export const useTabsContext = ctx.get;

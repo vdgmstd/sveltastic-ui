@@ -1,25 +1,55 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
+	import type { WithElementRef } from '../../types';
 
-	export type SelectContentProps = {
-		/** Hand-authored rows. When set, replaces the data-driven `items` rows. */
-		children?: Snippet;
-	};
+	export type SelectContentProps = WithElementRef<
+		Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
+			/** Hand-authored rows (`Select.Item` / `Select.Group` / `Select.Empty`). When set, replaces the data-driven `items` rows. */
+			children?: Snippet;
+			/** Render-delegation: receive the merged props + a `body` snippet of the rows and render your own content element. */
+			child?: Snippet<[{ props: Record<string, unknown>; body: Snippet }]>;
+		},
+		HTMLDivElement
+	>;
 </script>
 
 <script lang="ts" generics="V">
 	import { TrayIcon } from 'phosphor-svelte';
+	import { cn } from '../../utils/cn';
+	import { mergeProps } from '../../utils/mergeProps';
 	import MenuLabel from '../../primitives/MenuLabel.svelte';
 	import Item from './SelectItem.svelte';
 	import { getSelectCtx } from './context';
 
-	let { children }: SelectContentProps = $props();
+	let {
+		ref = $bindable(null),
+		children,
+		child,
+		class: className,
+		...rest
+	}: SelectContentProps = $props();
 	const root = getSelectCtx<V>();
+
+	const setRef = (node: HTMLElement | null): void => {
+		ref = node as HTMLDivElement | null;
+	};
+	const merged = $derived(mergeProps(rest, { class: cn(className) || undefined }));
 
 	$effect(() => {
 		root.contentSnippet = body;
+		root.contentChild = child;
+		root.setContentRef = setRef;
 		return () => {
 			if (root.contentSnippet === body) root.contentSnippet = undefined;
+			root.contentChild = undefined;
+			root.setContentRef = undefined;
+		};
+	});
+	$effect(() => {
+		root.contentProps = merged;
+		return () => {
+			root.contentProps = {};
 		};
 	});
 </script>

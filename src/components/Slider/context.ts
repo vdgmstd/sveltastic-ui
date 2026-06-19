@@ -1,14 +1,7 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { SliderRootState } from './slider.svelte';
 
-const KEY = Symbol('Slider');
+const ctx = createPartContext<SliderRootState>('Slider', 'Slider parts must be used within <Slider.Root>');
 
-export function setSliderCtx(value: SliderRootState): SliderRootState {
-	return setContext(KEY, value);
-}
-
-export function getSliderCtx(): SliderRootState {
-	const ctx = getContext<SliderRootState | undefined>(KEY);
-	if (!ctx) throw new Error('Slider parts must be used within <Slider.Root>');
-	return ctx;
-}
+export const setSliderCtx = ctx.set;
+export const getSliderCtx = ctx.get;

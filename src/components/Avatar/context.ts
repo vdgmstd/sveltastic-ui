@@ -1,14 +1,7 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { AvatarRootState } from './avatarState.svelte';
 
-const KEY = Symbol('Avatar');
+const ctx = createPartContext<AvatarRootState>('Avatar', 'Avatar parts must be used within <Avatar.Root>');
 
-export function setAvatarContext(value: AvatarRootState): AvatarRootState {
-	return setContext(KEY, value);
-}
-
-export function getAvatarContext(): AvatarRootState {
-	const ctx = getContext<AvatarRootState | undefined>(KEY);
-	if (!ctx) throw new Error('Avatar parts must be used within <Avatar.Root>');
-	return ctx;
-}
+export const setAvatarContext = ctx.set;
+export const getAvatarContext = ctx.get;

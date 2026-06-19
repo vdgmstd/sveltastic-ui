@@ -1,19 +1,13 @@
-import { getContext, setContext } from 'svelte';
+import { createPartContext } from '../../utils/context';
 import type { SelectRootState } from './selectState.svelte';
 
-const KEY = Symbol('Select');
-const GROUP_KEY = Symbol('SelectGroup');
-const ITEM_KEY = Symbol('SelectItem');
+const rootCtx = createPartContext<SelectRootState<unknown>>('Select', 'Select parts must be used within <Select.Root>');
+const group = createPartContext<SelectGroupCtx>('SelectGroup');
+const item = createPartContext<SelectItemCtx>('SelectItem');
 
-export function setSelectCtx<V>(state: SelectRootState<V>): SelectRootState<V> {
-	return setContext(KEY, state);
-}
+export const setSelectCtx = rootCtx.set as <V>(state: SelectRootState<V>) => SelectRootState<V>;
 
-export function getSelectCtx<V = unknown>(): SelectRootState<V> {
-	const ctx = getContext<SelectRootState<V>>(KEY);
-	if (!ctx) throw new Error('Select parts must be used within <Select.Root>');
-	return ctx;
-}
+export const getSelectCtx = rootCtx.get as <V = unknown>() => SelectRootState<V>;
 
 /** Group heading id wiring for Select.Group + Select.GroupHeading. */
 export type SelectGroupCtx = {
@@ -21,13 +15,9 @@ export type SelectGroupCtx = {
 	registerHeading: (id: string | undefined) => void;
 };
 
-export function setSelectGroupCtx(group: SelectGroupCtx): SelectGroupCtx {
-	return setContext(GROUP_KEY, group);
-}
+export const setSelectGroupCtx = group.set;
 
-export function getSelectGroupCtx(): SelectGroupCtx | undefined {
-	return getContext<SelectGroupCtx | undefined>(GROUP_KEY);
-}
+export const getSelectGroupCtx = group.find;
 
 /** Per-item state Select.Item shares with Select.ItemText / Select.ItemIndicator. */
 export type SelectItemCtx = {
@@ -36,10 +26,6 @@ export type SelectItemCtx = {
 	readonly label: string;
 };
 
-export function setSelectItemCtx(item: SelectItemCtx): SelectItemCtx {
-	return setContext(ITEM_KEY, item);
-}
+export const setSelectItemCtx = item.set;
 
-export function getSelectItemCtx(): SelectItemCtx | undefined {
-	return getContext<SelectItemCtx | undefined>(ITEM_KEY);
-}
+export const getSelectItemCtx = item.find;

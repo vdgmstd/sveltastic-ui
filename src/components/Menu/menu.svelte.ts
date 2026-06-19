@@ -47,6 +47,14 @@ export class MenuRootState {
 	contentSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
 	headerSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
 	footerSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
+	/** Rest-props (class, style, data and aria attributes) `Menu.Content` forwards onto the rendered panel body. */
+	contentProps = $state<Record<string, unknown>>({});
+	/** `Menu.Content`'s render-delegation snippet, applied to the panel body by the Popover. */
+	contentChild = $state<Snippet<[{ props: Record<string, unknown>; body: Snippet }]> | undefined>(
+		undefined
+	);
+	/** Writes the rendered panel-body node back into `Menu.Content`'s bindable `ref`. */
+	setContentRef = $state<((node: HTMLElement | null) => void) | undefined>(undefined);
 	/** Set by an optional `Menu.Portal` wrapper; consumed by the Popover that renders the panel. */
 	portal = $state<{ target?: PortalTarget; disabled?: boolean; forceMount?: boolean }>({});
 

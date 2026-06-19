@@ -1,34 +1,27 @@
-import { untrack, type Snippet } from 'svelte';
-import { createTypeahead, type Typeahead } from '../../state/typeahead.svelte';
+import { type Snippet } from 'svelte';
+import {
+	createListbox,
+	type Listbox,
+	type ListItem,
+	type ListGroup,
+	type ListCollection,
+	type ListType,
+	type ListRenderSection
+} from '../../state/listbox.svelte';
 import { rgbTriplet } from '../../utils/color';
 import type { Color, ColorName } from '../../types';
 import type { InputState, InputLabelStyle, InputVariant } from '../../primitives/fieldShell.svelte';
 import type { PopoverOpenAnim } from '../../primitives/Popover.svelte';
 import type { PortalTarget } from '../../actions/portal';
 
-export type SelectItem<V = unknown> = {
-	/** Stored when this row is picked. */
-	value: V;
-	/** Visible label. */
-	label: string;
-	/** Inert row, can't be picked. */
-	disabled?: boolean;
-};
-
-export type SelectGroup<V = unknown> = {
-	/** Section heading. */
-	title: string;
-	/** Items under this heading. */
-	items: ReadonlyArray<SelectItem<V>>;
-};
-
-export type SelectItems<V = unknown> = ReadonlyArray<SelectItem<V> | SelectGroup<V>>;
+export type SelectItem<V = unknown> = ListItem<V>;
+export type SelectGroup<V = unknown> = ListGroup<V>;
+export type SelectItems<V = unknown> = ListCollection<V>;
+export type RenderSection<V> = ListRenderSection<V>;
 
 export type SelectOpenAnim = PopoverOpenAnim | 'stagger';
 
-export type SelectType = 'single' | 'multiple';
-
-export type RenderSection<V> = { title?: string; items: SelectItem<V>[] };
+export type SelectType = ListType;
 
 /** Config the Root provider hands the root state — getters keep derived chains live, setters proxy the bindable props. */
 export type SelectConfig<V> = {
@@ -59,24 +52,16 @@ export type SelectConfig<V> = {
 	onOpenChangeComplete?: (open: boolean) => void;
 };
 
-function isGroup<V>(it: SelectItem<V> | SelectGroup<V>): it is SelectGroup<V> {
-	return 'items' in it && Array.isArray(it.items);
-}
-
-/** Root state for the Select compound: owns data, selection, active-descendant nav, typeahead, the ARIA id registry, and the slot snippets. */
+/** Root state for the Select compound: wraps the shared listbox engine and adds the field-shell visuals, panel animation, ARIA ids, and slot snippets. */
 export class SelectRootState<V = unknown> {
 	#cfg: SelectConfig<V>;
-	#typeahead: Typeahead = createTypeahead();
+	#list: Listbox<V>;
 
 	readonly triggerId: string;
 	readonly contentId: string;
 
 	filterText = $state('');
-	activeIndex = $state(-1);
 	justOpened = $state(false);
-
-	/** Mount-order registry for auto-indexed `Select.Item`s (manual composition). */
-	#registry = $state<symbol[]>([]);
 
 	triggerSnippet = $state<Snippet<[Record<string, unknown>]> | undefined>(undefined);
 	contentSnippet = $state<Snippet<[() => void]> | undefined>(undefined);
@@ -85,6 +70,14 @@ export class SelectRootState<V = unknown> {
 	emptySnippet = $state<Snippet | undefined>(undefined);
 	chipSnippet = $state<Snippet<[SelectItem<V>, () => void]> | undefined>(undefined);
 	hasCustomValue = $state(false);
+	/** Rest-props (class, style, data and aria attributes) `Select.Content` forwards onto the rendered panel body. */
+	contentProps = $state<Record<string, unknown>>({});
+	/** `Select.Content`'s render-delegation snippet, applied to the panel body by the Popover. */
+	contentChild = $state<Snippet<[{ props: Record<string, unknown>; body: Snippet }]> | undefined>(
+		undefined
+	);
+	/** Writes the rendered panel-body node back into `Select.Content`'s bindable `ref`. */
+	setContentRef = $state<((node: HTMLElement | null) => void) | undefined>(undefined);
 	/** Set by an optional `Select.Portal` wrapper; consumed by the Popover that renders the panel. */
 	portal = $state<{ target?: PortalTarget; disabled?: boolean; forceMount?: boolean }>({});
 
@@ -92,6 +85,22 @@ export class SelectRootState<V = unknown> {
 		this.#cfg = cfg;
 		this.triggerId = triggerId;
 		this.contentId = contentId;
+		this.#list = createListbox<V>({
+			getItems: () => cfg.items,
+			getValue: () => cfg.getValue(),
+			commitValue: (v) => {
+				cfg.setValueProp(v);
+				cfg.onValueChange?.(v);
+			},
+			getType: () => cfg.type,
+			getLoop: () => cfg.loop,
+			getAllowDeselect: () => cfg.allowDeselect,
+			getFilterText: () => this.filterText,
+			optionIdBase: contentId,
+			onPick: () => {
+				this.filterText = '';
+			}
+		});
 	}
 
 	get open(): boolean {
@@ -104,7 +113,7 @@ export class SelectRootState<V = unknown> {
 		return this.#cfg.type;
 	}
 	get isMultiple(): boolean {
-		return this.#cfg.type === 'multiple';
+		return this.#list.isMultiple;
 	}
 	get filter(): boolean {
 		return this.#cfg.filter;
@@ -165,102 +174,44 @@ export class SelectRootState<V = unknown> {
 	);
 	readonly isStagger: boolean = $derived.by(() => this.#cfg.openAnim === 'stagger');
 
-	/** Stable per-row id for `aria-activedescendant` / `role="option"`. */
-	optionId(globalIndex: number): string {
-		return `${this.contentId}-opt-${globalIndex}`;
+	get activeIndex(): number {
+		return this.#list.activeIndex;
 	}
-
+	set activeIndex(value: number) {
+		this.#list.activeIndex = value;
+	}
 	get activeId(): string | undefined {
-		return this.activeIndex >= 0 ? this.optionId(this.activeIndex) : undefined;
+		return this.#list.activeId;
+	}
+	optionId(globalIndex: number): string {
+		return this.#list.optionId(globalIndex);
 	}
 
-	/**
-	 * Claim a stable mount-order slot for an auto-indexed item; returns the unregister hook.
-	 * Untracked: called from a registering `$effect`; mutating `#registry` here must not subscribe
-	 * that effect (it would re-run on its own push/splice). `itemIndex` reads `#registry` reactively
-	 * elsewhere to drive the index `$derived`.
-	 */
 	registerItem(token: symbol): () => void {
-		untrack(() => this.#registry.push(token));
-		return () => {
-			untrack(() => {
-				const i = this.#registry.indexOf(token);
-				if (i !== -1) this.#registry.splice(i, 1);
-			});
-		};
+		return this.#list.registerItem(token);
 	}
-
-	/** Flat index of an auto-registered item, matching the items-driven `visibleItems` order. */
 	itemIndex(token: symbol): number {
-		return this.#registry.indexOf(token);
+		return this.#list.itemIndex(token);
 	}
 
-	readonly flatItems: SelectItem<V>[] = $derived.by(() => {
-		const out: SelectItem<V>[] = [];
-		for (const it of this.#cfg.items) {
-			if (isGroup(it)) for (const sub of it.items) out.push(sub);
-			else out.push(it);
-		}
-		return out;
-	});
-
-	readonly renderSections: RenderSection<V>[] = $derived.by(() => {
-		const q = this.filterText.trim().toLowerCase();
-		const matches = (lbl: string) => !q || lbl.toLowerCase().includes(q);
-		const result: RenderSection<V>[] = [];
-		let buffer: SelectItem<V>[] = [];
-		const flush = () => {
-			if (buffer.length) result.push({ items: buffer });
-			buffer = [];
-		};
-		for (const it of this.#cfg.items) {
-			if (isGroup(it)) {
-				flush();
-				const matched = it.items.filter((s) => matches(s.label));
-				if (matched.length) result.push({ title: it.title, items: [...matched] });
-			} else if (matches(it.label)) {
-				buffer.push(it);
-			}
-		}
-		flush();
-		return result;
-	});
-
-	readonly sectionOffsets: number[] = $derived.by(() => {
-		const offsets: number[] = [];
-		let acc = 0;
-		for (const section of this.renderSections) {
-			offsets.push(acc);
-			acc += section.items.length;
-		}
-		return offsets;
-	});
-
-	readonly visibleItems: SelectItem<V>[] = $derived.by(() => {
-		const out: SelectItem<V>[] = [];
-		for (const section of this.renderSections) for (const it of section.items) out.push(it);
-		return out;
-	});
-
-	readonly chipItems: SelectItem<V>[] = $derived.by(() => {
-		const value = this.#cfg.getValue();
-		if (!this.isMultiple || !Array.isArray(value)) return [];
-		const lookup = new Map<V, SelectItem<V>>();
-		for (const it of this.flatItems) lookup.set(it.value, it);
-		return value.map((v) => lookup.get(v) ?? ({ value: v, label: String(v) } as SelectItem<V>));
-	});
-
-	readonly selectedItem: SelectItem<V> | undefined = $derived.by(() => {
-		if (this.isMultiple) return undefined;
-		return this.flatItems.find((i) => i.value === this.#cfg.getValue());
-	});
-
-	readonly displayLabel: string = $derived.by(() => {
-		if (this.isMultiple) return '';
-		if (this.selectedItem) return this.selectedItem.label;
-		const value = this.#cfg.getValue();
-		return value == null ? '' : String(value);
-	});
+	get renderSections(): RenderSection<V>[] {
+		return this.#list.renderSections;
+	}
+	get sectionOffsets(): number[] {
+		return this.#list.sectionOffsets;
+	}
+	get visibleItems(): SelectItem<V>[] {
+		return this.#list.visibleItems;
+	}
+	get chipItems(): SelectItem<V>[] {
+		return this.#list.chipItems;
+	}
+	get selectedItem(): SelectItem<V> | undefined {
+		return this.#list.selectedItem;
+	}
+	get displayLabel(): string {
+		return this.#list.selectedLabel;
+	}
 
 	readonly inputValue: string = $derived.by(() => {
 		if (this.isMultiple) return '';
@@ -268,16 +219,11 @@ export class SelectRootState<V = unknown> {
 		return this.displayLabel;
 	});
 
-	isSelected = (v: V): boolean => {
-		const value = this.#cfg.getValue();
-		if (this.isMultiple) return Array.isArray(value) && value.includes(v);
-		return value === v;
-	};
+	isSelected = (v: V): boolean => this.#list.isSelected(v);
 
-	setValue(next: V | V[] | undefined): void {
-		this.#cfg.setValueProp(next);
-		this.#cfg.onValueChange?.(next);
-	}
+	pick = (item: SelectItem<V>): void => this.#list.pick(item);
+
+	removeChip = (v: V): void => this.#list.removeChip(v);
 
 	/** Single open funnel: write the prop, reset nav, fire onOpenChange once. Drives both Popover binding and internal closes. */
 	setOpen(next: boolean): void {
@@ -288,14 +234,13 @@ export class SelectRootState<V = unknown> {
 	}
 
 	#applyOpenSideEffects(next: boolean): void {
-		this.#typeahead.clear();
+		this.#list.clearTypeahead();
 		if (next) {
 			this.justOpened = true;
-			const selected = this.visibleItems.findIndex((it) => this.isSelected(it.value));
-			this.activeIndex = selected >= 0 ? selected : this.#firstEnabled(0, 1);
+			this.#list.syncActiveToSelection();
 		} else {
 			this.filterText = '';
-			this.activeIndex = -1;
+			this.#list.resetActive();
 			this.justOpened = false;
 		}
 	}
@@ -304,80 +249,10 @@ export class SelectRootState<V = unknown> {
 		this.#cfg.onOpenChangeComplete?.(open);
 	}
 
-	pick = (item: SelectItem<V>): void => {
-		if (item.disabled) return;
-		if (this.isMultiple) {
-			const value = this.#cfg.getValue();
-			const arr = Array.isArray(value) ? [...value] : [];
-			const idx = arr.indexOf(item.value);
-			if (idx === -1) arr.push(item.value);
-			else arr.splice(idx, 1);
-			this.setValue(arr);
-		} else if (this.#cfg.allowDeselect && this.isSelected(item.value)) {
-			this.setValue(undefined);
-		} else {
-			this.setValue(item.value);
-		}
-		this.filterText = '';
-	};
-
-	removeChip = (v: V): void => {
-		const value = this.#cfg.getValue();
-		if (!Array.isArray(value)) return;
-		this.setValue(value.filter((x) => x !== v));
-	};
-
 	setFilterText = (text: string): void => {
 		this.filterText = text;
-		this.activeIndex = this.visibleItems.length ? this.#firstEnabled(0, 1) : -1;
+		this.#list.refreshActiveForFilter();
 	};
-
-	#firstEnabled(from: number, dir: 1 | -1): number {
-		const items = this.visibleItems;
-		const len = items.length;
-		if (!len) return -1;
-		if (this.#cfg.loop) {
-			for (let step = 0; step < len; step++) {
-				const idx = ((((from + dir * step) % len) + len) % len);
-				if (!items[idx].disabled) return idx;
-			}
-			return -1;
-		}
-		for (let idx = from; idx >= 0 && idx < len; idx += dir) {
-			if (!items[idx].disabled) return idx;
-		}
-		return this.activeIndex;
-	}
-
-	/** Move the active option by `dir`, skipping disabled rows and wrapping per `loop`. */
-	moveActive(dir: 1 | -1): void {
-		const len = this.visibleItems.length;
-		if (!len) return;
-		const from = this.activeIndex < 0 ? (dir === 1 ? -1 : 0) : this.activeIndex + dir;
-		this.activeIndex = this.#firstEnabled(from, dir);
-	}
-
-	activateEdge(edge: 'first' | 'last'): void {
-		const len = this.visibleItems.length;
-		if (!len) return;
-		this.activeIndex =
-			edge === 'first' ? this.#firstEnabled(0, 1) : this.#firstEnabled(len - 1, -1);
-	}
-
-	pickActive = (): void => {
-		const item = this.visibleItems[this.activeIndex];
-		if (item) this.pick(item);
-	};
-
-	/** Type-to-jump over visible options when the inline filter is off. */
-	typeahead(char: string): boolean {
-		const items = this.visibleItems;
-		if (!items.length) return false;
-		const match = this.#typeahead.type(char, items, (it) => it.label, this.activeIndex);
-		if (!match) return false;
-		this.activeIndex = items.indexOf(match);
-		return true;
-	}
 
 	/** Clear the just-opened one-shot once the entrance stagger has played. */
 	clearJustOpened = (): void => {
@@ -393,48 +268,42 @@ export class SelectRootState<V = unknown> {
 				if (!open) return;
 				e.preventDefault();
 				e.stopPropagation();
-				this.moveActive(1);
+				this.#list.moveActive(1);
 				return;
 			case 'ArrowUp':
 				if (!open) return;
 				e.preventDefault();
 				e.stopPropagation();
-				this.moveActive(-1);
+				this.#list.moveActive(-1);
 				return;
 			case 'Home':
 				if (!open) return;
 				e.preventDefault();
 				e.stopPropagation();
-				this.activateEdge('first');
+				this.#list.activateEdge('first');
 				return;
 			case 'End':
 				if (!open) return;
 				e.preventDefault();
 				e.stopPropagation();
-				this.activateEdge('last');
+				this.#list.activateEdge('last');
 				return;
 			case 'Enter':
 				if (!open || this.activeIndex < 0) return;
 				e.preventDefault();
 				e.stopPropagation();
-				this.pickActive();
+				this.#list.pickActive();
 				if (!this.isMultiple) this.setOpen(false);
 				return;
 			default:
 				if (!open || this.filter) return;
-				if (
-					e.key.length === 1 &&
-					!e.ctrlKey &&
-					!e.metaKey &&
-					!e.altKey &&
-					this.typeahead(e.key)
-				)
+				if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && this.#list.typeahead(e.key))
 					e.preventDefault();
 		}
 	};
 
 	/** Release the type-ahead timer; call from a destroy hook. */
 	destroy(): void {
-		this.#typeahead.destroy();
+		this.#list.destroy();
 	}
 }
