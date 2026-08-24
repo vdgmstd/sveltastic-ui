@@ -3,7 +3,7 @@
 	import type { PortalTarget } from '../../actions/portal';
 
 	export type MenuPortalProps = {
-		/** Portal target for the menu panel. CSS selector or element; defaults to `document.body`. */
+		/** Portal target for the menu panel. CSS selector or element; defaults to the nearest ancestor `<dialog>`, else `document.body`. */
 		to?: PortalTarget;
 		/** Render the panel in place instead of portalling it. */
 		disabled?: boolean;

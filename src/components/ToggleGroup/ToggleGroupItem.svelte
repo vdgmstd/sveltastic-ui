@@ -7,6 +7,8 @@
 		{
 			/** Item identifier. Must be unique within the parent `ToggleGroup.Root`. */
 			value: string;
+			/** Native button type. Defaults to `button` so an item never submits an ancestor form. */
+			type?: HTMLButtonAttributes['type'];
 			/** Inert this item only (the group `disabled` also cascades). */
 			disabled?: boolean;
 			/** Square icon-only padding, larger glyph. */
@@ -28,6 +30,7 @@
 
 	let {
 		value,
+		type = 'button',
 		disabled = false,
 		iconOnly = false,
 		ariaLabel,
@@ -54,10 +57,12 @@
 	}
 </script>
 
+<!-- `active` binds read-through: the group owns pressed state, so a re-tap the group rejects can't strand the item off. -->
 <Pressable
 	{...(rest as PressableProps)}
 	bind:ref
-	active={isPressed}
+	{type}
+	bind:active={() => isPressed, () => {}}
 	onActiveChange={() => ctx.toggle(value)}
 	variant={ctx.variant}
 	color={ctx.color}

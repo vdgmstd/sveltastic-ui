@@ -50,6 +50,6 @@
 		-webkit-user-select: none;
 		user-select: none;
 	}
-	.alert__icon :global(i) { font-size: var(--fs-xl); color: rgb(var(--on-accent)); }
-	.alert__icon :global(svg) { width: 24px; height: 24px; fill: rgb(var(--on-accent)); }
+	.alert__icon :global(i) { font-size: var(--fs-xl); color: rgb(var(--on-c)); }
+	.alert__icon :global(svg) { width: 24px; height: 24px; fill: rgb(var(--on-c)); }
 </style>

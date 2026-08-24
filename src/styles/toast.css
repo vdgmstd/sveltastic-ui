@@ -1,4 +1,4 @@
-.toast-stack {
+:where(.toast-stack) {
 	position: fixed;
 	z-index: 99000;
 	display: flex;
@@ -8,15 +8,15 @@
 	max-width: min(420px, 90vw);
 	pointer-events: none;
 }
-.toast-stack--top-right { top: 0; right: 0; }
-.toast-stack--top-left { top: 0; left: 0; }
-.toast-stack--top-center { top: 0; left: 50%; transform: translateX(-50%); }
-.toast-stack--bottom-right { bottom: 0; right: 0; }
-.toast-stack--bottom-left { bottom: 0; left: 0; }
-.toast-stack--bottom-center { bottom: 0; left: 50%; transform: translateX(-50%); }
+:where(.toast-stack--top-right) { top: 0; right: 0; }
+:where(.toast-stack--top-left) { top: 0; left: 0; }
+:where(.toast-stack--top-center) { top: 0; left: 50%; transform: translateX(-50%); }
+:where(.toast-stack--bottom-right) { bottom: 0; right: 0; }
+:where(.toast-stack--bottom-left) { bottom: 0; left: 0; }
+:where(.toast-stack--bottom-center) { bottom: 0; left: 50%; transform: translateX(-50%); }
 .toast-item { pointer-events: auto; }
 
-.toast {
+:where(.toast) {
 	--c: var(--primary);
 	display: flex;
 	align-items: flex-start;
@@ -50,7 +50,7 @@
 	margin-inline-end: 16px;
 	margin-inline-start: 0;
 }
-.toast__action {
+:where(.toast__action) {
 	flex: 1 1 auto;
 	display: flex;
 	align-items: flex-start;
@@ -78,7 +78,7 @@
 	justify-content: center;
 	font-size: 1.1rem;
 }
-.toast__body {
+:where(.toast__body) {
 	flex: 1 1 auto;
 	min-width: 0;
 	display: flex;

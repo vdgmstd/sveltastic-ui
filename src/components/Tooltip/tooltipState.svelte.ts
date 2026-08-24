@@ -3,6 +3,18 @@ import type { Color } from '../../types';
 import type { TooltipPlacement, TooltipTrigger } from './context';
 import type { PortalTarget } from '../../actions/portal';
 
+let hoverQuery: MediaQueryList | undefined;
+
+/**
+ * True only for a pointer that can actually hover. Touch engines synthesise `mouseenter`/`mouseleave`
+ * from a tap, which would otherwise open — and strand — the bubble. Queried lazily so the module stays SSR-safe.
+ */
+function pointerCanHover(): boolean {
+	if (typeof window === 'undefined') return true;
+	hoverQuery ??= window.matchMedia?.('(hover: hover)');
+	return hoverQuery?.matches ?? true;
+}
+
 export type TooltipConfig = {
 	/** Read the bindable `open` prop (controlled/uncontrolled both flow through it). */
 	getOpen: () => boolean;
@@ -90,21 +102,31 @@ export class TooltipRootState {
 		}
 	}
 
+	/** Focus path — active on every device. */
 	handleEnter = (): void => {
 		if (this.cfg.trigger === 'hover') this.show();
 	};
 	handleLeave = (): void => {
 		if (this.cfg.trigger === 'hover') this.hide();
 	};
+	/** Mouse path — inert where the pointer cannot hover, so a tap never opens the bubble. */
+	handlePointerEnter = (): void => {
+		if (pointerCanHover()) this.handleEnter();
+	};
+	handlePointerLeave = (): void => {
+		if (pointerCanHover()) this.handleLeave();
+	};
 	handleClick = (): void => {
 		if (this.cfg.trigger === 'click') this.setOpen(!this.open);
 	};
 
 	bubbleEnter = (): void => {
+		if (!pointerCanHover()) return;
 		this.pointerOnBubble = true;
 		this.clearTimer();
 	};
 	bubbleLeave = (): void => {
+		if (!pointerCanHover()) return;
 		this.pointerOnBubble = false;
 		if (this.cfg.trigger === 'hover') this.hide();
 	};

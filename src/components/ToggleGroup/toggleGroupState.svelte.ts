@@ -10,9 +10,10 @@ export type ToggleGroupRootOptions = {
 	baseId: string;
 	type: () => ToggleGroupType;
 	getValue: () => ToggleGroupValue | undefined;
-	setValueProp: (value: ToggleGroupValue) => void;
-	onValueChange?: () => ((value: ToggleGroupValue) => void) | undefined;
+	setValueProp: (value: ToggleGroupValue | undefined) => void;
+	onValueChange?: () => ((value: ToggleGroupValue | undefined) => void) | undefined;
 	disabled: () => boolean;
+	allowDeselect: () => boolean;
 	loop: () => boolean;
 	orientation: () => ToggleGroupOrientation;
 	rovingFocus: () => boolean;
@@ -39,6 +40,9 @@ export class ToggleGroupRootState {
 	}
 	get disabled(): boolean {
 		return this.#opts.disabled();
+	}
+	get allowDeselect(): boolean {
+		return this.#opts.allowDeselect();
 	}
 	get orientation(): ToggleGroupOrientation {
 		return this.#opts.orientation();
@@ -87,20 +91,22 @@ export class ToggleGroupRootState {
 		return current === value;
 	}
 
-	#commit(next: ToggleGroupValue): void {
+	#commit(next: ToggleGroupValue | undefined): void {
 		this.#opts.setValueProp(next);
 		this.#opts.onValueChange?.()?.(next);
 	}
 
-	/** Toggle an item. Single: select, or deselect when it is already the value (ToggleGroup allows none). Multiple: add/remove. */
+	/** Toggle an item. Single: select, or clear to `undefined` when re-tapped and `allowDeselect`. Multiple: add/remove. */
 	toggle(value: string): void {
 		if (this.disabled) return;
 		const current = this.#opts.getValue();
 		if (this.type === 'multiple') {
 			const arr = Array.isArray(current) ? current : [];
 			this.#commit(arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]);
-		} else {
-			this.#commit(current === value ? '' : value);
+		} else if (current !== value) {
+			this.#commit(value);
+		} else if (this.allowDeselect) {
+			this.#commit(undefined);
 		}
 	}
 

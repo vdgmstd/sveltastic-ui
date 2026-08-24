@@ -147,7 +147,7 @@
 </div>
 
 <style>
-	.pin-input {
+	:where(.pin-input) {
 		position: relative;
 		display: inline-flex;
 		gap: var(--space-2);

@@ -61,7 +61,7 @@
 
 <script lang="ts">
 	import { createAttachmentKey } from 'svelte/attachments';
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { boolAttr } from '../../utils/attrs';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
@@ -71,7 +71,7 @@
 	let {
 		ref = $bindable(null),
 		value = $bindable(),
-		color = 'primary',
+		color,
 		variant = 'underline',
 		size = 'medium',
 		panelVariant = 'plain',
@@ -91,7 +91,12 @@
 	}: TabsRootProps = $props();
 
 	const baseId = $props.id();
-	let triplet = $derived(rgbTriplet(color));
+	// Only an explicit `color` stamps `--c` — an unstamped root keeps the CSS default, so a consumer
+	// can retint a whole subtree from a stylesheet.
+	let styleVars = $derived(
+		`${color === undefined ? '' : `--c:${rgbTriplet(color)};--on-c:${onAccentFor(color)};`}${userStyle ?? ''}` ||
+			undefined
+	);
 
 	const root = setTabsContext(
 		new TabsRootState({
@@ -140,16 +145,21 @@
 </script>
 
 {#if child}
-	{@render child({ props: { ...merged, style: `--c:${triplet};${userStyle ?? ''}` } })}
+	{@render child({ props: { ...merged, style: styleVars } })}
 {:else}
-	<div {...merged} style:--c={triplet} style={userStyle}>
+	<div {...merged} style={styleVars}>
 		{@render children?.()}
 	</div>
 {/if}
 
 <style>
-	:where(.tabs-root) {
+	/* Global so the defaults also reach a `child`-delegated root, which carries no scope class. */
+	:global(:where(.tabs-root)) {
 		--c: var(--primary);
+		--on-c: var(--on-accent);
+	}
+
+	:where(.tabs-root) {
 		display: block;
 		position: relative;
 		width: 100%;

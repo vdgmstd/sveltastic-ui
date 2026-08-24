@@ -2,8 +2,9 @@
    Consumed by Input's compound parts and the InputShell primitive (Select / DateTimePicker).
    Wired kit-wide via tokens.css; no part re-declares these. */
 
-.input {
+:where(.input) {
 	--c: var(--primary);
+	--on-c: var(--on-accent);
 	--icon-c: var(--c);
 	--lh: 0;
 	--fp: 0;
@@ -11,16 +12,25 @@
 	--vp: 0;
 	--ifp: 0;
 	--pp: 0%;
+	/* One inline-end affordance slot; every trailing affordance claims one, so N of them compose. */
+	--input-affordance-w: 38px;
+	--aff-icon: 0;
+	--aff-reveal: 0;
+	--aff-loading: 0;
+	--aff-end: calc(var(--aff-icon) + var(--aff-reveal) + var(--aff-loading));
 	display: inline-flex;
 	flex-direction: column;
 	position: relative;
 	max-width: 100%;
 }
-.input--block {
+.input:has(.input__icon--after) { --aff-icon: 1; }
+.input:has(.input__reveal) { --aff-reveal: 1; }
+.input:has(.input__loading) { --aff-loading: 1; }
+:where(.input--block) {
 	display: flex;
 	width: 100%;
 }
-.input--label-placeholder {
+:where(.input--label-placeholder) {
 	margin-top: var(--space-8);
 }
 
@@ -46,7 +56,7 @@
 .input__progress--warn .input__progress-bar { background: rgb(var(--warn)); }
 .input__progress--success .input__progress-bar { background: rgb(var(--success)); }
 
-.input__field {
+:where(.input__field) {
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -104,10 +114,16 @@
 
 .input__field:has(.input__icon) .input__el,
 .input__field:has(.input__icon) .input__mask { min-width: calc(var(--mask-len, 0) * 1ch + 64px); }
-.input__field:has(.input__icon:not(.input__icon--after)) .input__el,
-.input__field:has(.input__icon:not(.input__icon--after)) .input__mask { padding-inline-start: calc(38px + 2px * var(--fp)); }
-.input__field:has(.input__icon--after) .input__el,
-.input__field:has(.input__icon--after) .input__mask { padding-inline-end: calc(38px + 2px * var(--fp)); }
+/* Scoped from the wrapper, not the field row: the field row is optional (Input.Field may sit directly under Input.Root). */
+.input:has(.input__icon:not(.input__icon--after)) .input__el,
+.input:has(.input__icon:not(.input__icon--after)) .input__mask { padding-inline-start: calc(var(--input-affordance-w) + 2px * var(--fp)); }
+/* Trailing affordances stack on the same edge — the text clears their running total, not just the last one. */
+.input:has(.input__icon--after) .input__el,
+.input:has(.input__icon--after) .input__mask,
+.input:has(.input__reveal) .input__el,
+.input:has(.input__reveal) .input__mask,
+.input:has(.input__loading) .input__el,
+.input:has(.input__loading) .input__mask { padding-inline-end: calc(var(--input-affordance-w) * var(--aff-end) + 2px * var(--fp)); }
 
 .input__underline {
 	position: absolute;
@@ -131,7 +147,8 @@
 
 .input__loading {
 	position: absolute;
-	inset-inline-end: 7px;
+	/* The spinner claims the outermost slot — every other trailing affordance sits between it and the edge. */
+	inset-inline-end: calc(7px + (var(--aff-end) - var(--aff-loading)) * var(--input-affordance-w));
 	top: 50%;
 	transform: translateY(-50%);
 	display: flex;
@@ -252,7 +269,7 @@
 
 .input__reveal {
 	position: absolute;
-	inset-inline-end: 4px;
+	inset-inline-end: calc(4px + var(--aff-icon) * var(--input-affordance-w));
 	top: 50%;
 	transform: translateY(-50%);
 	width: 32px;
@@ -371,7 +388,7 @@
 	will-change: transform, opacity;
 }
 .input--icon-fill-bg.input--focused .input__icon,
-.input--icon-fill-bg .input__icon--clickable:hover { color: rgb(var(--on-accent)); }
+.input--icon-fill-bg .input__icon--clickable:hover { color: rgb(var(--on-icon-c, var(--on-c))); }
 
 .input--variant-border .input__icon,
 .input--variant-border .input__icon--after,
@@ -417,7 +434,7 @@
 	height: 100%;
 	display: flex;
 	align-items: center;
-	opacity: calc(0.4 * (1 - max(var(--fp), var(--vp))));
+	opacity: calc(var(--placeholder-opacity) * (1 - max(var(--fp), var(--vp))));
 	color: rgb(var(--text));
 	transform-origin: left center;
 }
@@ -426,9 +443,14 @@
 	inset-inline-start: calc(13px + (0.8rem - 13px) * var(--lh));
 	transform: translateY(calc(-80% * var(--lh)));
 	font-size: calc(var(--fs-md) - 0.10rem * var(--lh));
-	opacity: calc(0.4 + 0.6 * var(--lh));
+	opacity: calc(var(--placeholder-opacity) + (1 - var(--placeholder-opacity)) * var(--lh));
 	color: color-mix(in oklab, rgb(var(--text)), rgb(var(--c)) calc(var(--lh) * 100%));
 }
+
+/* Input.Field always emits its placeholder fallback (no JS gate can see a sibling Input.Label during SSR), so the
+   suppression happens here — server and client then ship identical markup, and a hidden label leaves no second
+   accessible name behind. Scoped from .input because Input.Label may sit outside Input.Control. */
+.input:has(.input__label--placeholder:not(.input__label--fallback)) .input__label--fallback { display: none; }
 
 .input__label--label {
 	inset-inline-start: 0.8rem;
@@ -441,9 +463,10 @@
 	color: color-mix(in oklab, rgb(var(--text) / 0.7), rgb(var(--c)) calc(var(--fp) * 100%));
 }
 
-.input__field:has(.input__icon:not(.input__icon--after)) .input__label { inset-inline-start: calc(44px + 0px * var(--fp)); }
-.input__field:has(.input__icon:not(.input__icon--after)) .input__label--placeholder { inset-inline-start: calc(44px + 0px * var(--fp)); }
-.input__field:has(.input__icon:not(.input__icon--after)) .input__label--label { inset-inline-start: 0.8rem; }
+/* Scoped from the wrapper so the offset also lands when Input.Label sits outside Input.Control. */
+.input:has(.input__icon:not(.input__icon--after)) .input__label,
+.input:has(.input__icon:not(.input__icon--after)) .input__label--placeholder { inset-inline-start: calc(var(--input-affordance-w) + 6px); }
+.input:has(.input__icon:not(.input__icon--after)) .input__label--label { inset-inline-start: 0.8rem; }
 
 .input--state-primary .input__label,
 .input--state-success .input__label,
@@ -482,6 +505,7 @@
 /* Textarea field-shell — multiline variant of the field rules above. */
 :where(.textarea) {
 	--c: var(--primary);
+	--on-c: var(--on-accent);
 	--lh: 0;
 	--fp: 0;
 	--vp: 0;
@@ -541,14 +565,17 @@
 .textarea__label {
 	position: absolute;
 	inset-inline-start: calc(13px + 7px * max(var(--fp), var(--vp)));
-	top: 8px;
+	top: var(--space-4);
+	/* The layer is out of flow — cap it to the field box so a long placeholder is clipped instead of spilling onto whatever sits below. */
+	max-block-size: calc(100% - 2 * var(--space-4));
+	overflow: hidden;
 	font-size: var(--fs-md);
 	line-height: 1.4;
 	cursor: text;
 	-webkit-user-select: none;
 	user-select: none;
 	pointer-events: none;
-	opacity: calc(0.4 * (1 - max(var(--fp), var(--vp))));
+	opacity: calc(var(--placeholder-opacity) * (1 - max(var(--fp), var(--vp))));
 	color: rgb(var(--text));
 	transform-origin: left top;
 	z-index: 2;
@@ -558,7 +585,7 @@
 	top: 30px;
 	transform: translateY(calc(-30px * var(--lh)));
 	font-size: calc(var(--fs-md) - 0.10rem * var(--lh));
-	opacity: calc(0.4 + 0.6 * var(--lh));
+	opacity: calc(var(--placeholder-opacity) + (1 - var(--placeholder-opacity)) * var(--lh));
 	color: color-mix(in oklab, rgb(var(--text)), rgb(var(--c)) calc(var(--lh) * 100%));
 }
 .textarea__label--label {

@@ -16,12 +16,14 @@
 			max?: number;
 			/** `linear` (bar) or `circular` (ring). */
 			shape?: ProgressShape;
-			/** Bar height (linear) or stroke width (circular), in px. */
+			/** Bar height (linear, default `8`) or ring stroke (circular, default `max(2, size / 9)`), in px. */
 			thickness?: number;
 			/** Diameter in px (circular only). */
 			size?: number;
 			/** Palette accent driving fill and track. */
 			color?: Color;
+			/** Soft coloured glow around the circular ring. */
+			glow?: boolean;
 			/** Spoken text overriding the computed percentage. */
 			ariaValueText?: string;
 			/** ARIA label for assistive tech when no visible label is supplied. */
@@ -30,8 +32,8 @@
 			children?: Snippet;
 			/** Render-delegation: receive the merged props and render your own root element. */
 			child?: Snippet<[{ props: Record<string, unknown> }]>;
-		} & Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'color'>,
-		HTMLDivElement
+		} & Omit<HTMLAttributes<HTMLSpanElement>, 'children' | 'color'>,
+		HTMLSpanElement
 	>;
 </script>
 
@@ -51,9 +53,10 @@
 		min = 0,
 		max = 100,
 		shape = 'linear',
-		thickness = 8,
+		thickness,
 		size = 64,
 		color = 'primary',
+		glow = false,
 		ariaValueText,
 		ariaLabel,
 		children,
@@ -77,6 +80,7 @@
 			getThickness: () => thickness,
 			getSize: () => size,
 			getColor: () => color,
+			getGlow: () => glow,
 			getId: () => id
 		})
 	);
@@ -84,7 +88,7 @@
 	$effect(() => root.sync());
 
 	let sizeStyle = $derived(
-		shape === 'circular' ? `width:${size}px;height:${size}px;` : `--h:${thickness}px;`
+		shape === 'circular' ? `width:${size}px;height:${size}px;` : `--h:${root.thickness}px;`
 	);
 
 	const refKey = createAttachmentKey();
@@ -107,7 +111,7 @@
 			'data-indeterminate': boolAttr(root.isIndeterminate),
 			'data-shape': shape,
 			'data-testid': 'progress',
-			[refKey]: attachRef<HTMLDivElement>((n) => (ref = n))
+			[refKey]: attachRef<HTMLSpanElement>((n) => (ref = n))
 		})
 	);
 </script>
@@ -124,17 +128,20 @@
 {#if child}
 	{@render child({ props: merged })}
 {:else}
-	<div {...merged}>{#if children}{@render children()}{:else}{@render defaults()}{/if}</div>
+	<!-- span, not div: Progress is routinely nested in <button> / <label>, which only accept phrasing content -->
+	<span {...merged}>{#if children}{@render children()}{:else}{@render defaults()}{/if}</span>
 {/if}
 
 <style>
 	:where(.progress) {
 		--c: var(--primary);
+		--ring-glow: 0 0 3px rgb(var(--c) / 0.45);
 		color: rgb(var(--c));
 	}
 
 	:where(.progress--linear) {
 		position: relative;
+		display: block;
 		width: 100%;
 		height: var(--h);
 	}

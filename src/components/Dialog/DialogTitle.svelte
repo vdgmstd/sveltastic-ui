@@ -48,7 +48,7 @@
 {/if}
 
 <style>
-	.dialog__header {
+	:where(.dialog__header) {
 		flex-shrink: 0;
 		padding-block: var(--space-8) var(--space-6);
 		padding-inline: var(--space-9) 56px;

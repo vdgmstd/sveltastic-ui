@@ -95,7 +95,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: flex-start;
-		color: rgb(255 255 255);
+		color: rgb(var(--on-c));
 		-webkit-user-select: none;
 		user-select: none;
 	}
@@ -110,8 +110,8 @@
 		align-items: center;
 		justify-content: center;
 		padding: var(--space-2) var(--space-4);
-		background: rgb(255 255 255 / 0.15);
-		color: rgb(255 255 255);
+		background: rgb(var(--on-c) / 0.15);
+		color: rgb(var(--on-c));
 		border: 0;
 		border-radius: var(--rad-sm);
 		font-size: var(--fs-lg);
@@ -119,14 +119,14 @@
 		transition: background-color var(--dur) var(--ease-standard);
 	}
 	.alert__pagination button:hover:not(:disabled) {
-		background: rgb(255 255 255 / 0.28);
+		background: rgb(var(--on-c) / 0.28);
 	}
 	.alert__pagination button:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
 	}
 	.alert__pagination button:focus-visible {
-		outline: 2px solid rgb(255 255 255 / 0.6);
+		outline: 2px solid rgb(var(--on-c) / 0.6);
 		outline-offset: 2px;
 	}
 </style>

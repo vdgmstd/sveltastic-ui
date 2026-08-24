@@ -44,7 +44,7 @@
 <script lang="ts" generics="V extends SegmentedValue">
 	import '../../styles/segmented.css';
 	import { createAttachmentKey } from 'svelte/attachments';
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { boolAttr } from '../../utils/attrs';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
@@ -54,7 +54,7 @@
 	let {
 		ref = $bindable(null),
 		value = $bindable(),
-		color = 'primary',
+		color,
 		variant = 'default',
 		size = 'medium',
 		block = false,
@@ -71,7 +71,6 @@
 	}: SegmentedRootProps<V> = $props();
 
 	const baseId = $props.id();
-	let triplet = $derived(rgbTriplet(color));
 
 	const root = setSegmentedContext(
 		new SegmentedRootState({
@@ -91,7 +90,16 @@
 		})
 	);
 
-	let activeTriplet = $derived(rgbTriplet(root.activeColor));
+	// Only explicit colours stamp `--c` / `--at` — an unstamped root keeps the CSS defaults, so a
+	// consumer can retint a whole subtree from a stylesheet.
+	let accentVars = $derived(
+		color === undefined ? '' : `--c:${rgbTriplet(color)};--on-c:${onAccentFor(color)};`
+	);
+	let activeVars = $derived.by(() => {
+		const active = root.activeColor;
+		return active === undefined ? '' : `--at:${rgbTriplet(active)};--on-at:${onAccentFor(active)};`;
+	});
+	let styleVars = $derived(`${accentVars}${activeVars}${userStyle ?? ''}` || undefined);
 	let ripplesLayer = $state<HTMLSpanElement>();
 
 	$effect(() => {
@@ -169,12 +177,9 @@
 {/snippet}
 
 {#if child}
-	{@render child({
-		props: { ...merged, style: `--c:${triplet};--at:${activeTriplet};${userStyle ?? ''}` },
-		body
-	})}
+	{@render child({ props: { ...merged, style: styleVars }, body })}
 {:else}
-	<div {...merged} style:--c={triplet} style:--at={activeTriplet} style={userStyle}>
+	<div {...merged} style={styleVars}>
 		{@render body()}
 	</div>
 {/if}

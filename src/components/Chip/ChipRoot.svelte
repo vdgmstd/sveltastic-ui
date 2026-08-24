@@ -41,7 +41,7 @@
 	import '../../styles/chip.css';
 	import { untrack } from 'svelte';
 	import { ripple as rippleAction } from '../../actions/ripple.svelte';
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { cn } from '../../utils/cn';
 	import { boolAttr } from '../../utils/attrs';
 	import { attachRef } from '../../utils/ref';
@@ -52,7 +52,7 @@
 
 	let {
 		variant = 'default',
-		color = 'primary',
+		color,
 		gradientEnd,
 		size = 'medium',
 		shape = 'default',
@@ -70,7 +70,7 @@
 	}: ChipRootProps = $props();
 
 	let bgEl = $state<HTMLElement>();
-	let triplet = $derived(rgbTriplet(color));
+	let triplet = $derived(color === undefined ? undefined : rgbTriplet(color));
 	let endTriplet = $derived(gradientEnd ? rgbTriplet(gradientEnd) : undefined);
 	let isToggle = $derived(onActiveChange !== undefined);
 	let isInteractive = $derived(!!onclick || isToggle);
@@ -137,8 +137,11 @@
 		rippleHandle?.update?.(rippleOptions);
 	});
 
+	// Only an explicit `color` stamps `--c` — an unstamped chip keeps the CSS default, so a consumer
+	// can retint a whole subtree from a stylesheet.
 	let styleVars = $derived(
-		`--c:${triplet};${endTriplet ? `--ge:${endTriplet};` : ''}${userStyle ?? ''}`
+		`${triplet ? `--c:${triplet};--on-c:${onAccentFor(color)};` : ''}${endTriplet ? `--ge:${endTriplet};` : ''}${userStyle ?? ''}` ||
+			undefined
 	);
 
 	let merged = $derived(

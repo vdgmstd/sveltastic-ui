@@ -175,13 +175,13 @@
 {/if}
 
 <style>
-	.rating {
+	:where(.rating) {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-1);
 		color: rgb(var(--c, var(--warn)));
 	}
-	.rating--vertical {
+	:where(.rating--vertical) {
 		flex-direction: column;
 	}
 	.rating:focus-visible {

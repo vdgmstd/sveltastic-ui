@@ -150,7 +150,7 @@
 	}
 	.pagination__button[data-variant='default'][data-state='active'] {
 		background: rgb(var(--c));
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 	.pagination__button[data-variant='default'][data-state='active']:hover:not(:disabled) {
 		background: rgb(var(--c));
@@ -175,7 +175,7 @@
 	}
 	.pagination__button[data-variant='border'][data-state='active'] {
 		background: rgb(var(--c));
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 		box-shadow: inset 0 0 0 1px rgb(var(--c));
 	}
 

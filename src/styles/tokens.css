@@ -16,6 +16,8 @@
 	/* Surface tokens. */
 	--shadow-opacity: 0.05;
 	--background-opacity: 0.2;
+	/* Resting opacity of placeholder / unfloated label text — the AA contrast floor on both themes. */
+	--placeholder-opacity: 0.62;
 	--radius: var(--rad-md);
 	--line-height: 1.2;
 	--frost: blur(12px) saturate(160%);
@@ -68,7 +70,16 @@
 	/* Neutral canvas (light) — shared by every theme. */
 	--background: 244 247 248;
 	--text: 44 62 80;
+
+	/* Ink painted over an accent fill: `--on-accent` by default, `--on-accent-dark` for fills too
+	   bright to carry it. Per-palette `--on-<token>` picks the one that palette needs — kept literal
+	   rather than `--text`, which inverts per theme while ink follows the fill, not the canvas. */
 	--on-accent: 255 255 255;
+	--on-accent-dark: 44 62 80;
+	--on-light: var(--on-accent-dark);
+	--on-warn: var(--on-accent-dark);
+	/* Ink over `--c`; components stamp it per instance, this is the untinted default. */
+	--on-c: var(--on-accent);
 	--gray-1: 249 252 253;
 	--gray-2: 237 240 242;
 	--gray-3: 240 243 244;

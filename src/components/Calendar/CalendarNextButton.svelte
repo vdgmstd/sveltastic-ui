@@ -25,7 +25,7 @@
 	size="small"
 	iconOnly
 	color={root.color}
-	disabled={root.disabled}
+	disabled={root.disabled || !root.canGoNext}
 	aria-label={ariaLabel}
 	onclick={() => root.handleNext()}
 >

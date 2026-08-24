@@ -156,7 +156,7 @@
 {/if}
 
 <style>
-	.tooltip {
+	:where(.tooltip) {
 		--c: var(--dark);
 		--tooltip-bg: rgb(var(--c) / 0.92);
 		position: fixed;

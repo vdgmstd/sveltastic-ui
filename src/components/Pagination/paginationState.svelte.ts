@@ -16,7 +16,7 @@ export type PaginationRootOptions = {
 	variant: () => PaginationVariant;
 	size: () => Size;
 	shape: () => Shape;
-	color: () => Color;
+	color: () => Color | undefined;
 	ripple: () => boolean;
 	disabled: () => boolean;
 	disabledItems: () => number[];
@@ -66,7 +66,7 @@ export class PaginationRootState {
 	get shape(): Shape {
 		return this.#opts.shape();
 	}
-	get color(): Color {
+	get color(): Color | undefined {
 		return this.#opts.color();
 	}
 	get ripple(): boolean {

@@ -130,9 +130,11 @@ export class SliderRootState {
 	snap(n: number): number {
 		return Math.round(n / this.safeStep) * this.safeStep;
 	}
+	// Clamp first: a stale/out-of-range value (feed switching max under a live value) would otherwise
+	// paint segments and thumbs hundreds of percent past the rail.
 	pct(n: number): number {
 		if (this.max === this.min) return 0;
-		return ((n - this.min) / (this.max - this.min)) * 100;
+		return ((this.clamp(n) - this.min) / (this.max - this.min)) * 100;
 	}
 	fmt(n: number): string {
 		const f = this.formatValue;

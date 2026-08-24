@@ -7,10 +7,10 @@
 		{
 			children?: Snippet;
 			child?: Snippet<[{ props: Record<string, unknown> }]>;
-			/** Fires when the icon is clicked — also makes the icon focusable / clickable. */
+			/** Fires when the icon is clicked — also promotes the decorative `<span>` to a real `<button>`. */
 			oniconclick?: (event: MouseEvent) => void;
 		} & Omit<HTMLButtonAttributes, 'children' | 'onclick'>,
-		HTMLButtonElement
+		HTMLButtonElement | HTMLSpanElement
 	>;
 </script>
 
@@ -36,6 +36,8 @@
 	const pulse = new IconPulseState();
 	$effect(() => pulse.sync(ctx.focusedActive));
 
+	let isClickable = $derived(!!oniconclick);
+
 	function handleClick(event: MouseEvent): void {
 		oniconclick?.(event);
 	}
@@ -44,7 +46,7 @@
 
 	const refKey = createAttachmentKey();
 	// Mint once: `merged` recomputes every icon-pulse frame (pulse.style reads tweens), which would re-run an inline attachment.
-	const refAttach = attachRef<HTMLButtonElement>((n) => {
+	const refAttach = attachRef<HTMLButtonElement | HTMLSpanElement>((n) => {
 		ref = n;
 		pulse.setNode(n ?? undefined);
 	});
@@ -53,32 +55,34 @@
 			class: cn(
 				'input__icon',
 				ctx.iconPosition === 'after' && 'input__icon--after',
-				!!oniconclick && 'input__icon--clickable',
+				isClickable && 'input__icon--clickable',
 				className
 			),
-			type: 'button' as const,
-			tabindex: oniconclick ? 0 : -1,
-			disabled: !oniconclick,
-			'aria-hidden': !oniconclick,
+			type: isClickable ? ('button' as const) : undefined,
+			'aria-hidden': isClickable ? undefined : true,
 			style: fillStyle,
-			onclick: handleClick,
+			onclick: isClickable ? handleClick : undefined,
 			[refKey]: refAttach
 		})
 	);
 </script>
 
+{#snippet glyph()}
+	{#if ctx.isPlainSurface && ctx.isIconFillBg}
+		<span class="input__icon-ripple" aria-hidden="true"></span>
+	{/if}
+	<span class="input__icon-glyph">{@render children?.()}</span>
+	{#if ctx.isPlainSurface && !ctx.isIconFillBg}
+		<span class="input__icon-glyph input__icon-glyph--reveal" aria-hidden="true">
+			{@render children?.()}
+		</span>
+	{/if}
+{/snippet}
+
 {#if child}
 	{@render child({ props: merged })}
+{:else if isClickable}
+	<button {...merged}>{@render glyph()}</button>
 {:else}
-	<button {...merged}>
-		{#if ctx.isPlainSurface && ctx.isIconFillBg}
-			<span class="input__icon-ripple" aria-hidden="true"></span>
-		{/if}
-		<span class="input__icon-glyph">{@render children?.()}</span>
-		{#if ctx.isPlainSurface && !ctx.isIconFillBg}
-			<span class="input__icon-glyph input__icon-glyph--reveal" aria-hidden="true">
-				{@render children?.()}
-			</span>
-		{/if}
-	</button>
+	<span {...merged}>{@render glyph()}</span>
 {/if}

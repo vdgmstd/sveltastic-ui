@@ -38,7 +38,7 @@ export { default as NotificationsHost } from './imperative/NotificationsHost.sve
 export { default as ScrollbarHost } from './imperative/ScrollbarHost.svelte';
 
 export { ripple } from './actions/ripple.svelte';
-export type { RippleOptions } from './actions/ripple.svelte';
+export type { RippleOptions, RippleHandle } from './actions/ripple.svelte';
 
 export {
 	toPlainDate,

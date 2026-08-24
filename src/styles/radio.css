@@ -2,7 +2,7 @@
    Consumed by RadioGroup's compound parts (Item / Indicator / Label); parts emit only classes.
    Wired kit-wide via tokens.css; no part re-declares these. Self-positioning, order-independent. */
 
-.radio-group {
+:where(.radio-group) {
 	display: inline-flex;
 	gap: var(--space-5);
 }
@@ -16,7 +16,7 @@
 	align-items: center;
 }
 
-.radio {
+:where(.radio) {
 	--c: var(--primary);
 	--ap: 0;
 	display: inline-flex;

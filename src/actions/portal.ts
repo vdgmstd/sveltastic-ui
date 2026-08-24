@@ -2,7 +2,7 @@ import type { Action } from 'svelte/action';
 
 export type PortalTarget = HTMLElement | string | undefined;
 
-/** `target` chooses the portal parent; `disabled` leaves the node in place (bits-ui `Portal disabled`). */
+/** `target` chooses the portal parent; `disabled` returns the node to its original position (bits-ui `Portal disabled`). */
 export type PortalOptions = { target?: PortalTarget; disabled?: boolean };
 
 type PortalArg = PortalTarget | PortalOptions;
@@ -14,11 +14,19 @@ function normalize(arg: PortalArg): { target: PortalTarget; disabled: boolean } 
 	return { target: arg, disabled: false };
 }
 
-/** Move the node to a different DOM parent (default: `document.body`); `disabled` keeps it in place. Restores location on destroy. */
+/**
+ * Move the node to a different DOM parent. Without an explicit `target` it lands in the nearest
+ * ancestor `<dialog>`, else `document.body`; `disabled` puts it back where it was declared.
+ */
 export const portal: Action<HTMLElement, PortalArg> = (node, arg) => {
 	let placeholder: Comment | null = null;
 	let parent: HTMLElement | null = null;
 	let mounted = false;
+
+	/** Where the node was declared — while mounted the placeholder holds that spot. */
+	function home(): Element | null {
+		return placeholder?.parentElement ?? node.parentElement;
+	}
 
 	function resolve(t: PortalTarget): HTMLElement {
 		if (t instanceof HTMLElement) return t;
@@ -26,7 +34,17 @@ export const portal: Action<HTMLElement, PortalArg> = (node, arg) => {
 			const el = document.querySelector(t);
 			if (el instanceof HTMLElement) return el;
 		}
-		return document.body;
+		// showModal() inerts everything outside the dialog, so an overlay declared inside one must stay inside it.
+		// Matched regardless of `[open]`: that attribute is stamped by showModal() an effect flush after an overlay
+		// inside an already-open dialog runs this action, and a closed dialog hides the overlay's home anyway.
+		const dialog = home()?.closest('dialog');
+		return dialog instanceof HTMLElement ? dialog : document.body;
+	}
+
+	function clear(): void {
+		placeholder = null;
+		parent = null;
+		mounted = false;
 	}
 
 	function mount(t: PortalTarget): void {
@@ -37,12 +55,17 @@ export const portal: Action<HTMLElement, PortalArg> = (node, arg) => {
 		mounted = true;
 	}
 
-	function unmount(): void {
+	function restore(): void {
+		const spot = placeholder;
+		if (spot?.parentNode) spot.parentNode.insertBefore(node, spot);
+		spot?.remove();
+		clear();
+	}
+
+	function detach(): void {
 		placeholder?.remove();
 		if (mounted) node.remove();
-		placeholder = null;
-		parent = null;
-		mounted = false;
+		clear();
 	}
 
 	const init = normalize(arg);
@@ -52,15 +75,17 @@ export const portal: Action<HTMLElement, PortalArg> = (node, arg) => {
 		update(next) {
 			const { target, disabled } = normalize(next);
 			if (disabled) {
-				if (mounted) unmount();
+				if (mounted) restore();
 				return;
 			}
-			if (mounted && resolve(target) === parent) return;
-			unmount();
+			if (mounted) {
+				if (resolve(target) === parent) return;
+				restore();
+			}
 			mount(target);
 		},
 		destroy() {
-			unmount();
+			detach();
 		}
 	};
 };

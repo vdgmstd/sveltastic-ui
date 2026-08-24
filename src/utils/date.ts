@@ -249,13 +249,42 @@ export function resolveLocale(explicit?: string): string {
 	return explicit ?? 'en-US';
 }
 
-/** Whether the locale starts the week on Sunday — useful as a default for `weekStart`. */
+/**
+ * CLDR week data — the regions whose week does not start on Monday (the CLDR `001` default), transcribed from
+ * ICU 76 / CLDR 46. Mirroring what `getWeekInfo()` reports is what keeps the two paths below from answering
+ * differently for the same locale (an SSR-renders-on-Node / hydrates-on-old-browser mismatch).
+ */
+const SUNDAY_FIRST_REGIONS = new Set([
+	'AG', 'AS', 'BD', 'BR', 'BS', 'BT', 'BW', 'BZ', 'CA', 'CO', 'DM', 'DO',
+	'ET', 'GT', 'GU', 'HK', 'HN', 'ID', 'IL', 'IN', 'IS', 'JM', 'JP', 'KE',
+	'KH', 'KR', 'LA', 'MH', 'MM', 'MO', 'MT', 'MX', 'MZ', 'NI', 'NP', 'PA',
+	'PE', 'PH', 'PK', 'PR', 'PT', 'PY', 'SA', 'SG', 'SV', 'TH', 'TT', 'TW',
+	'UM', 'US', 'VE', 'VI', 'WS', 'YE', 'ZA', 'ZW'
+]);
+const SATURDAY_FIRST_REGIONS = new Set([
+	'AF', 'BH', 'DJ', 'DZ', 'EG', 'IQ', 'IR', 'JO', 'KW', 'LY', 'OM', 'QA', 'SD', 'SY'
+]);
+const FRIDAY_FIRST_REGIONS = new Set(['MV']);
+
+/** `Intl.Locale.getWeekInfo` is ES2024 — absent from the ES2022 lib types this package compiles against. */
+type LocaleWithWeekInfo = Intl.Locale & { getWeekInfo?: () => { firstDay: number } };
+
+/** The locale's first weekday — 0 (Sunday) … 6 (Saturday). Useful as a default for `weekStart`. */
 export function localeWeekStart(locale: string): WeekStart {
-	const region = new Intl.Locale(locale).region ?? 'US';
-	const sundayFirst = new Set([
-		'US', 'CA', 'MX', 'JP', 'IL', 'PH', 'ZA', 'BR', 'CO', 'PE', 'VE', 'KR'
-	]);
-	return sundayFirst.has(region) ? 0 : 1;
+	try {
+		const resolved = new Intl.Locale(locale);
+		const firstDay = (resolved as LocaleWithWeekInfo).getWeekInfo?.().firstDay;
+		// getWeekInfo reports ISO day numbers (1 = Monday … 7 = Sunday); WeekStart is 0 = Sunday.
+		if (firstDay !== undefined && firstDay >= 1 && firstDay <= 7) return (firstDay % 7) as WeekStart;
+		// Region-less tags ('ru', 'de') carry no region until maximized — without it every such locale reads as US.
+		const region = resolved.maximize().region ?? 'US';
+		if (SUNDAY_FIRST_REGIONS.has(region)) return 0;
+		if (SATURDAY_FIRST_REGIONS.has(region)) return 6;
+		if (FRIDAY_FIRST_REGIONS.has(region)) return 5;
+		return 1;
+	} catch {
+		return 1;
+	}
 }
 
 export function formatDate(

@@ -17,7 +17,7 @@ import {
 	plainDateToISO,
 	plainDateTimeToISO
 } from '../../utils/date';
-import type { DateTimePickerType } from './DateTimePicker.svelte';
+import type { DateTimePickerType, DateTimePickerCommitMode } from './DateTimePicker.svelte';
 
 const ZERO_TIME: TimeParts = { h: 0, m: 0, s: 0 };
 const INPUT_SYNC_MS = 500;
@@ -29,6 +29,7 @@ export type DateTimePickerConfig = {
 	getOpen: () => boolean;
 	setOpenProp: (v: boolean) => void;
 	readonly type: DateTimePickerType;
+	readonly commitMode: DateTimePickerCommitMode;
 	readonly showSeconds: boolean;
 	readonly hour12: boolean;
 	readonly mask: MaskOptions | undefined;
@@ -134,6 +135,7 @@ export class DateTimePickerRootState {
 		if (this.readonly) return;
 		// Default: change is panel/programmatic-driven; handleInputText re-flags it as field-driven after.
 		this.#fieldDriven = false;
+		if (next === this.value) return;
 		this.#cfg.setValueProp(next);
 		this.#cfg.onValueChange?.(next);
 	}
@@ -212,6 +214,19 @@ export class DateTimePickerRootState {
 		return hour12 ? { mask: pattern, tokens: PERIOD_TOKENS } : pattern;
 	});
 
+	/**
+	 * Fixed-width shape of a fully-typed entry. The live-typing path commits only on an exact match,
+	 * so half-typed text (`1992-12-2`) can never parse as a complete date and get padded back into the mask.
+	 */
+	readonly #completePattern = $derived.by<RegExp>(() => {
+		if (this.isDate) return /^\d{4}-\d{2}-\d{2}$/;
+		const seconds = this.#cfg.showSeconds ? ':\\d{2}' : '';
+		const period = this.#cfg.hour12 ? ' [AP]M' : '';
+		const time = `\\d{2}:\\d{2}${seconds}${period}`;
+		if (this.isTime) return new RegExp(`^${time}$`);
+		return new RegExp(`^\\d{4}-\\d{2}-\\d{2}[T ]${time}$`);
+	});
+
 	readonly placeholderText = $derived.by(() => {
 		if (this.#cfg.placeholder !== undefined) return this.#cfg.placeholder;
 		const datePart = 'YYYY-MM-DD';
@@ -238,10 +253,22 @@ export class DateTimePickerRootState {
 		});
 	}
 
+	/**
+	 * True while the user's own keystrokes own the field text. Reflecting `display` then resets the caret
+	 * and leaves the mask holding a full buffer, which swallows the next keypress.
+	 * Panel picks clear `#fieldDriven`, so they always reflect even though the field keeps focus.
+	 */
+	#isFieldTyping(): boolean {
+		return this.#fieldDriven && !!this.fieldEl && document.activeElement === this.fieldEl;
+	}
+
 	/** Reflect `display` into the field: instant while closed, debounced while open. */
 	syncInput(): void {
+		// Read both dependencies before any early return so the calling effect keeps tracking them.
 		const target = this.display;
-		if (!this.open) {
+		const isOpen = this.open;
+		if (this.#isFieldTyping()) return;
+		if (!isOpen) {
 			this.#clearSyncTimer();
 			untrack(() => {
 				this.inputValue = target;
@@ -249,9 +276,6 @@ export class DateTimePickerRootState {
 			});
 			return;
 		}
-		// Skip reflection only while the user is typing in the field (field-driven + focused) — that write resets the caret.
-		// Panel picks clear #fieldDriven, so they always reflect even though the field keeps focus.
-		if (this.#fieldDriven && this.fieldEl && document.activeElement === this.fieldEl) return;
 		const now = performance.now();
 		const elapsed = now - this.#lastSync;
 		if (elapsed >= INPUT_SYNC_MS) {
@@ -262,6 +286,7 @@ export class DateTimePickerRootState {
 		} else if (this.#syncTimer === undefined) {
 			this.#syncTimer = window.setTimeout(() => {
 				this.#syncTimer = undefined;
+				if (this.#isFieldTyping()) return;
 				this.inputValue = this.display;
 				this.#lastSync = performance.now();
 			}, INPUT_SYNC_MS - elapsed);
@@ -304,9 +329,9 @@ export class DateTimePickerRootState {
 		this.setValue(timePartsToISO(p, this.#cfg.showSeconds));
 	};
 
-	emitDate = (d: Temporal.PlainDate | null): void => {
+	emitDate = (d: Temporal.PlainDate | null, closePanel = true): void => {
 		this.setValue(d ? plainDateToISO(d) : '');
-		if (d) this.setOpen(false);
+		if (d && closePanel) this.setOpen(false);
 	};
 
 	emitDateTime = (d: Temporal.PlainDate | null, t: TimeParts): void => {
@@ -330,39 +355,38 @@ export class DateTimePickerRootState {
 		this.emitDateTime(parseDateText(date), time);
 	};
 
-	/** Parse the current field text and commit it, or revert to the canonical display. */
+	/** Commit the current field text with the lenient parser (blur / Enter / paste-then-leave), then re-render it canonically. */
 	commitInput(): void {
 		if (this.isTime) {
 			const t = parseTimeParts(this.inputValue);
 			if (t) this.emitTime(t);
-			else this.inputValue = this.display;
-			return;
-		}
-		if (this.isDate) {
+		} else if (this.isDate) {
 			const d = parseDateText(this.inputValue);
 			if (d && this.#inBound(d)) this.emitDate(d);
-			else this.inputValue = this.display;
-			return;
-		}
-		const dt = parseDateTimeText(this.inputValue);
-		if (dt && this.#inBound(dt.toPlainDate()))
-			this.emitDateTime(dt.toPlainDate(), { h: dt.hour, m: dt.minute, s: dt.second });
-		else this.inputValue = this.display;
-	}
-
-	/** Live parse on every keystroke — commit only when the text fully parses. */
-	handleInputText(v: string): void {
-		this.inputValue = v;
-		if (this.isTime) {
-			const t = parseTimeParts(v);
-			if (t) this.emitTime(t);
-		} else if (this.isDate) {
-			const d = parseDateText(v);
-			if (d && this.#inBound(d)) this.emitDate(d);
 		} else {
-			const dt = parseDateTimeText(v);
+			const dt = parseDateTimeText(this.inputValue);
 			if (dt && this.#inBound(dt.toPlainDate()))
 				this.emitDateTime(dt.toPlainDate(), { h: dt.hour, m: dt.minute, s: dt.second });
+		}
+		this.#fieldDriven = false;
+		this.inputValue = this.display;
+	}
+
+	/** Live parse on every keystroke — commits only a complete fixed-width entry, and only under `commitMode: 'input'`. */
+	handleInputText(v: string): void {
+		this.inputValue = v;
+		if (this.#cfg.commitMode === 'input' && this.#completePattern.test(v.trim())) {
+			if (this.isTime) {
+				const t = parseTimeParts(v);
+				if (t) this.emitTime(t);
+			} else if (this.isDate) {
+				const d = parseDateText(v);
+				if (d && this.#inBound(d)) this.emitDate(d, false);
+			} else {
+				const dt = parseDateTimeText(v);
+				if (dt && this.#inBound(dt.toPlainDate()))
+					this.emitDateTime(dt.toPlainDate(), { h: dt.hour, m: dt.minute, s: dt.second });
+			}
 		}
 		// Mark field-driven AFTER the emit (which routes through setValue and clears the flag).
 		this.#fieldDriven = true;
@@ -373,6 +397,7 @@ export class DateTimePickerRootState {
 			this.commitInput();
 			(e.currentTarget as HTMLInputElement).blur();
 		} else if (e.key === 'Escape') {
+			this.#fieldDriven = false;
 			this.inputValue = this.display;
 		} else if (e.key === 'ArrowDown') {
 			e.preventDefault();

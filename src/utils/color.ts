@@ -62,13 +62,30 @@ function rawTripletToTriplet(value: string): string | null {
 	return `${match[1]} ${match[2]} ${match[3]}`;
 }
 
+function parseTriplet(color: string): string | null {
+	if (color.startsWith('#')) return hexToTriplet(color);
+	if (color.startsWith('rgb')) return rgbToTriplet(color);
+	return rawTripletToTriplet(color);
+}
+
+/** Custom-property name behind `var(--x)` / `--x`, without the leading dashes. */
+function customPropertyName(color: string): string | null {
+	if (color.startsWith('--')) return color.slice(2);
+	const match = color.match(/^var\(\s*--([\w-]+)/);
+	return match ? match[1] : null;
+}
+
+const FALLBACK_TRIPLET = 'var(--primary)';
+const INK = 'var(--on-accent)';
+const INK_DARK = 'var(--on-accent-dark)';
+
 /**
  * Returns an `R G B` triplet usable inside `rgb(var(--c) / <alpha>)`.
  * `'primary'` → `var(--primary)` so palette lookups stay live (theme switch updates instantly).
  */
 export function rgbTriplet(color: Color | undefined): string {
-	if (!color) return 'var(--primary)';
-	if (typeof color !== 'string') return 'var(--primary)';
+	if (!color) return FALLBACK_TRIPLET;
+	if (typeof color !== 'string') return FALLBACK_TRIPLET;
 	if (isPaletteName(color)) {
 		const token = TOKEN_ALIAS[color] ?? color;
 		return `var(--${token})`;
@@ -76,9 +93,39 @@ export function rgbTriplet(color: Color | undefined): string {
 	/* `var(--xxx)` and bare `--xxx` pass through — caller is opting into a live CSS var triplet. */
 	if (color.startsWith('var(')) return color;
 	if (color.startsWith('--')) return `var(${color})`;
-	if (color.startsWith('#')) return hexToTriplet(color) ?? 'var(--primary)';
-	if (color.startsWith('rgb')) return rgbToTriplet(color) ?? 'var(--primary)';
-	const raw = rawTripletToTriplet(color);
-	if (raw) return raw;
-	return 'var(--primary)';
+	return parseTriplet(color) ?? FALLBACK_TRIPLET;
+}
+
+function channelLuminance(value: number): number {
+	const c = value / 255;
+	return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+// WCAG contrast of the white default ink against the fill. Above it the kit's accents keep white
+// (success/info/danger sit here by design); below it white is unreadable and the dark ink takes over.
+const MIN_INK_CONTRAST = 2;
+
+function needsDarkInk(triplet: string): boolean {
+	const [r, g, b] = triplet.split(' ').map(Number);
+	const luminance =
+		0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
+	return 1.05 / (luminance + 0.05) < MIN_INK_CONTRAST;
+}
+
+function inkToken(token: string): string {
+	return `var(--on-${token}, ${INK})`;
+}
+
+/**
+ * Returns the ink triplet that stays readable over `color` as a fill — the `--on-c` companion of
+ * `rgbTriplet`. Token-backed colours defer to `--on-<token>` (overridable per palette), resolvable
+ * ones are decided by relative luminance.
+ */
+export function onAccentFor(color: Color | undefined): string {
+	if (!color || typeof color !== 'string') return INK;
+	if (isPaletteName(color)) return inkToken(TOKEN_ALIAS[color] ?? color);
+	const name = customPropertyName(color);
+	if (name) return inkToken(name);
+	const triplet = parseTriplet(color);
+	return triplet !== null && needsDarkInk(triplet) ? INK_DARK : INK;
 }

@@ -2,6 +2,8 @@
 
 	:where(.list-item) {
 		--c: var(--primary);
+		--on-c: var(--on-accent);
+		--sa-color: var(--c);
 		--item-radius: var(--rad-md);
 		--item-pad-y: var(--space-4);
 		--item-pad-x: var(--space-6);
@@ -85,7 +87,7 @@
 	}
 	:where(.list-item[data-active]),
 	:where(.list-item[data-selected]) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 	.list-item[data-active] .list-item__trail,
 	.list-item[data-selected] .list-item__trail { opacity: 0.85; }

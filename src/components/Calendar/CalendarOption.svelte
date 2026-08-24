@@ -15,7 +15,7 @@
 <script lang="ts">
 	import { ripple } from '../../actions/ripple.svelte';
 	import { pressBounce } from '../../actions/pressBounce.svelte';
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { boolAttr } from '../../utils/attrs';
 
 	let {
@@ -39,6 +39,7 @@
 	data-current={boolAttr(current && !selected)}
 	data-disabled={boolAttr(disabled)}
 	style:--c={triplet}
+	style:--on-c={onAccentFor(color)}
 	style:--ps={bounce.scale}
 	{disabled}
 	role="option"
@@ -115,7 +116,7 @@
 
 	.picker-btn--option[data-selected] {
 		background: rgb(var(--c));
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 		box-shadow: var(--shadow-accent-sm);
 	}
 

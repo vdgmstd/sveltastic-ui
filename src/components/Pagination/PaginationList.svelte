@@ -53,7 +53,7 @@
 {/if}
 
 <style>
-	.pagination__list {
+	:where(.pagination__list) {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);

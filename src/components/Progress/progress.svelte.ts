@@ -5,14 +5,19 @@ import type { Color } from '../../types';
 
 export type ProgressShape = 'linear' | 'circular';
 
+const DEFAULT_BAR_HEIGHT = 8;
+const MIN_RING_STROKE = 2;
+const RING_STROKE_RATIO = 9;
+
 export type ProgressRootConfig = {
 	getValue: () => number | null;
 	getMin: () => number;
 	getMax: () => number;
 	getShape: () => ProgressShape;
-	getThickness: () => number;
+	getThickness: () => number | undefined;
 	getSize: () => number;
 	getColor: () => Color | undefined;
+	getGlow: () => boolean;
 	getId: () => string;
 };
 
@@ -44,14 +49,22 @@ export class ProgressRootState {
 	get shape(): ProgressShape {
 		return this.#cfg.getShape();
 	}
+	/** Resolved stroke: the ring default scales with the diameter, so small rings stay rings instead of donuts. */
 	get thickness(): number {
-		return this.#cfg.getThickness();
+		const explicit = this.#cfg.getThickness();
+		if (explicit !== undefined) return explicit;
+		return this.shape === 'circular'
+			? Math.max(MIN_RING_STROKE, this.size / RING_STROKE_RATIO)
+			: DEFAULT_BAR_HEIGHT;
 	}
 	get size(): number {
 		return this.#cfg.getSize();
 	}
 	get color(): Color | undefined {
 		return this.#cfg.getColor();
+	}
+	get glow(): boolean {
+		return this.#cfg.getGlow();
 	}
 	get id(): string {
 		return this.#cfg.getId();

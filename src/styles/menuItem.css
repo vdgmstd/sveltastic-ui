@@ -1,6 +1,6 @@
 /* Single source of truth for the .menu-item row BEM rules, consumed by the MenuItem primitive (Select / Menu); wired kit-wide via tokens.css. */
 
-.menu-item {
+:where(.menu-item) {
 	display: flex;
 	align-items: center;
 	gap: var(--space-4);

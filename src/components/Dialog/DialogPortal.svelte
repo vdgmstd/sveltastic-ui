@@ -3,7 +3,7 @@
 	import type { PortalTarget } from '../../actions/portal';
 
 	export type DialogPortalProps = {
-		/** Portal target for the dialog. CSS selector or element; defaults to `document.body`. */
+		/** Portal target for the dialog. CSS selector or element; defaults to the nearest open ancestor `<dialog>`, else `document.body`. */
 		to?: PortalTarget;
 		/** Render the dialog in place instead of portalling it. */
 		disabled?: boolean;

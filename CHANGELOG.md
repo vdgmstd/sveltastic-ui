@@ -4,6 +4,144 @@ All notable changes to `sveltastic-ui` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project uses
 semantic-ish versioning (see the note on 1.1.0 below).
 
+## [1.1.12] — 2026-08-23
+
+Field-audit release. A live-app debugging campaign (on-device iOS instrumentation plus a
+three-auditor sweep of the consuming app) produced a 40+ item defect registry; this release
+fixes all of it except the pure design-gap entries (locale layer, reduced motion, sheet
+ergonomics, headless mode — tracked for a future minor). Every fix was implemented against
+the registry's evidence and passed an adversarial three-lens review. Several long-standing
+behavioral defaults change deliberately — read **Changed** before upgrading.
+
+### Fixed
+
+- **iOS dialogs are alive again (the WebKit < 17.4 wedge).** `scrollLock` read
+  `getComputedStyle(...).scrollbarGutter` and called a string method on it; Safari
+  implements `scrollbar-gutter` only from 17.4, so the read returned `undefined` and the
+  resulting TypeError aborted the dialog-open `$effect` mid-flight — every control inside
+  any `showModal()` dialog was dead on iOS 16–17.3 while events dispatched perfectly. The
+  read now goes through `getPropertyValue('scrollbar-gutter')` and the whole lock/unlock
+  path is throw-proof on old WebKit. A kit-wide audit found one more bare camelCase read of
+  a modern CSS property (`style.scrollbarWidth` in `overlayScrollbar`, silent no-op below
+  Safari 18.2) — now on the string API with a self-injected, refcounted
+  `::-webkit-scrollbar` fallback rule.
+- **Overlays inside dialogs.** The implicit portal target is now the nearest ancestor
+  `<dialog>` (else `document.body`), so Select / Combobox / Menu / Popover / Tooltip /
+  DateTimePicker panels opened inside a modal are no longer born inert in the top layer;
+  an explicit `to` / `portalTarget` still wins. The scroll-lock `touchmove` blocker now
+  whitelists the kit's own layers (`data-scroll-lock-allow` on the popover body, plus any
+  open `<dialog>` subtree), so listbox panels can be touch-scrolled inside a modal.
+  `portal` with `disabled` toggled true now re-inserts the node at its placeholder instead
+  of detaching it forever.
+- **DateTimePicker keyboard entry.** Typing a two-digit day was impossible (`1 9 9 2 1 2 2 5`
+  committed 1992-12-02 and dropped the 5): the live path parsed every keystroke with a
+  lenient regex, committed the half-typed date, and the canonical write-back filled the
+  mask so the next digit was swallowed. The live path now requires a complete fixed-width
+  match, no commit ever rewrites the field while it is focused, keystroke commits never
+  close the panel, and `setValue` has an equality guard (blur no longer re-emits). Month
+  navigation is clamped to `[min, max]` (no more paging into fully disabled months), and
+  `localeWeekStart` resolves region-less tags via `Intl.Locale.maximize()` /
+  `getWeekInfo()` with a CLDR-backed fallback — bare `'ru'` now starts the week on Monday.
+- **scrollLock restore.** Unlock restores only the three properties the lock owns via
+  `setProperty`/`removeProperty` snapshots instead of rewriting the whole `style`
+  attribute (inline styles written during the lock survive), and the scrollbar-width
+  compensation is skipped on coarse pointers (no more bogus padding while pinch-zoomed).
+- **Pressable / delegated-click hardening (svelte#18070 exposure).** `data-pressing` no
+  longer rides the spread props: a press dirtied the spread, Svelte re-ran
+  `set_attributes`, and the delegated click handler could be replaced mid-propagation —
+  on engines with a long pointerdown→click gap the click was silently skipped. The
+  attribute is now written directly by an effect; press state can no longer invalidate
+  the handler map.
+- **mergeProps** no longer drops the rest of a handler chain when an event *arrives*
+  already-prevented — only a link's own `preventDefault()` (before/after comparison)
+  cancels its chain.
+- **ToggleGroup**: single-select no longer commits the magic `''` on re-tap (see
+  Changed); items no longer submit ancestor forms (`type` defaults to `'button'` and the
+  prop is accepted again). **Combobox** no longer echoes `onInputValueChange` for its own
+  writes (after a pick; `''` on open/close). **Slider** clamps `value` into `[min, max]`
+  before computing percentages and the rail clips overflow (a stale `value > max` could
+  paint a bar across the whole screen). **Tooltip** no longer opens from synthetic hover
+  on touch devices (`(hover: hover)` gate; focus behavior unchanged).
+- **focusTrap** treats `visibility: hidden` content as untabbable (the kit's own Popover
+  uses it), verifies focus actually landed inside the trap, and captures the
+  previously-focused element at activation rather than mount.
+- **Ripple** binds `pointerdown` (was `mousedown`): on touch the ink starts at press, not
+  after release; keyboard activation inks via the press path; a scroll gesture that
+  starts on a rippled surface is cancelled by `pointercancel` instead of blooming a
+  phantom ripple. Sibling `pressBounce` and ripple are now in sync.
+- **Fields.** The trailing-affordance geometry is a composable ledger driven by one
+  `--input-affordance-w` var: password reveal + trailing icon + loading spinner stack
+  without overlapping, and text padding clears all of them (the spinner previously
+  painted over the value when combined with a caret or reveal). `labelStyle="placeholder"`
+  no longer silently discards the `placeholder` prop (it becomes the floating label; SSR
+  and CSR render identically). A leading-icon offset now also applies when `Input.Label`
+  sits outside `Input.Control`. Long `Textarea` placeholders clip at the field box instead
+  of spilling below it. A decorative icon (no `oniconclick`) renders a `<span>` instead of
+  a disabled `aria-hidden` `<button>` — in `Input.Icon` *and* the `InputShell` behind
+  Select / Combobox / DateTimePicker.
+- **Ink over accent fills is derived, not assumed.** `--on-accent` was a global white
+  constant read blind by ~18 fill sites, so `color="light"` / `color="warning"` (and any
+  bright custom fill) painted white-on-light. Ink is now derived from the fill via WCAG
+  relative luminance (`onAccentFor`), palette colours defer to overridable
+  `--on-<token>` tokens, the Segmented active thumb and filled-thumb ripples follow the
+  same `--on-c` / `--on-at` companions, and the ripple's own hard-coded white is gone
+  (pressed labels no longer lerp toward white).
+- **Inline `--c` is stamped only when `color` is explicitly passed.** Every instance used
+  to force `--c: var(--primary)` inline, which killed the kit's own CSS defaults and made
+  subtree retinting impossible without `!important`. Rendered defaults are unchanged;
+  consumer CSS can now retint a subtree with one rule.
+- **Dialog.** The panel no longer paints a permanent identity `transform: scale(1)` — no
+  stray containing block / stacking context in the top layer at rest. `List size` works
+  again (an unwrapped base rule out-specified its own `:where()` size modifiers — xl /
+  large / small / mini now actually apply).
+- **Specificity surface (`:where()` sweep).** The kit's structural/layout selectors are
+  now specificity 0, so a consumer override of any specificity wins deterministically
+  instead of tying on stylesheet emit order (the "import shuffle silently killed my
+  bottom-sheet width cap" class of failure).
+
+### Changed — behavioral defaults, read before upgrading
+
+- **DateTimePicker commits on blur/Enter by default.** New `commitMode: 'input' | 'blur'`
+  prop, default `'blur'`; pass `commitMode="input"` to restore live commit-per-keystroke
+  (which now only fires on a complete date anyway).
+- **Every button-rendering part defaults `type="button"`.** A bare `<Button>` /
+  `ToggleGroup.Item` inside a form no longer submits it. Pass `type="submit"` explicitly
+  where submission was intended.
+- **ToggleGroup single mode no longer deselects by default.** Re-tapping the active item
+  is a no-op; opt in with `allowDeselect` (commits `undefined`, never `''`).
+- **Bottom-aligned Dialog respects `size` on desktop.** Sheets are no longer full-bleed
+  above 480 px; they cap at the `size` preset and center. Below 481 px nothing changes.
+- **`.button--block` no longer carries the intrinsic inline margin** (block buttons
+  filled their container minus 12 px and overflowed it by 6 px).
+- **`cursor: pointer` on Card and the circular Progress glow are opt-in** (`pointer` /
+  `glow` props, both default false). Progress rings without an explicit `thickness` now
+  stroke proportionally (`max(2, size / 9)`) instead of a fixed 8 px.
+- **Resting placeholder/label opacity raised 0.4 → 0.62** (AA-driven), themable via the
+  new `--placeholder-opacity` token.
+- **Dialog.Close hit target grew to 44×44** (the painted 32 px plate is unchanged;
+  `--dialog-close-hit` / `--dialog-close-plate` / `--dialog-close-inset` override it).
+
+### Added
+
+- `ToggleGroup.Root`: `allowDeselect`, `wrap`. `ToggleGroup.Item`: `type`.
+  `DateTimePicker.Root`: `commitMode`. `Progress.Root`: `glow`. `Card.Root`: `pointer`.
+- `ripple`: `spawnAt(origin?)` on the action handle for programmatic/keyboard ink;
+  `RippleHandle` type exported from the barrel.
+- Tokens / CSS vars: `--on-light`, `--on-warn`, `--on-accent-dark`, per-instance `--on-c`
+  / `--on-at` derived-ink companions, `--placeholder-opacity`, `--input-affordance-w`,
+  `--dialog-close-*`.
+- `data-scroll-lock-allow` — opt-out attribute for the scroll-lock touchmove blocker
+  (stamped on the kit's own scrollable layers; available to consumers).
+
+### Type-level notes (no runtime impact)
+
+- `Progress.Root` / `.Track` / `.Indicator` render `<span>` — the `ref` types are now
+  `HTMLSpanElement`.
+- `InputIconProps['ref']` widened to `HTMLButtonElement | HTMLSpanElement` (decorative
+  icons render a span).
+- `ToggleGroup.Root` single mode keeps `onValueChange: (value: string) => void`; only the
+  `allowDeselect: true` union member widens it to `string | undefined`.
+
 ## [1.1.8] — 2026-06-19
 
 Feature release: seven new components — Combobox, PinInput, Popover, RatingGroup,

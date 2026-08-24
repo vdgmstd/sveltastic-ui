@@ -205,22 +205,23 @@ export class ComboboxRootState<V = unknown> {
 
 	removeChip = (v: V): void => this.#list.removeChip(v);
 
-	#commitInput(text: string): void {
+	/** Write the query text without notifying — the kit's own rewrites (pick, open, close) are not consumer edits. */
+	#writeInput(text: string): void {
 		this.#cfg.setInputValueProp(text);
-		this.#cfg.onInputValueChange?.(text);
 	}
 
 	#afterPick(item: ComboboxItem<V>): void {
 		if (this.#cfg.filter) {
-			this.#commitInput('');
+			this.#writeInput('');
 		} else if (!this.isMultiple) {
-			this.#commitInput(item.label);
+			this.#writeInput(item.label);
 		}
 	}
 
-	/** Field `oninput`: store the query, open the panel, re-seat the active option. */
+	/** Field `oninput`: store the query, notify, open the panel, re-seat the active option. */
 	setInputValue = (text: string): void => {
-		this.#commitInput(text);
+		this.#writeInput(text);
+		this.#cfg.onInputValueChange?.(text);
 		if (!this.open) this.setOpen(true);
 		this.#list.refreshActiveForFilter();
 	};
@@ -236,10 +237,10 @@ export class ComboboxRootState<V = unknown> {
 	#applyOpenSideEffects(next: boolean): void {
 		this.#list.clearTypeahead();
 		if (next) {
-			if (this.#cfg.filter) this.#commitInput('');
+			if (this.#cfg.filter) this.#writeInput('');
 			this.#list.syncActiveToSelection();
 		} else {
-			if (this.#cfg.filter) this.#commitInput('');
+			if (this.#cfg.filter) this.#writeInput('');
 			this.#list.resetActive();
 		}
 	}

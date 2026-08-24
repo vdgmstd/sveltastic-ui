@@ -41,7 +41,7 @@
 
 <script lang="ts" generics="T">
 	import { createAttachmentKey } from 'svelte/attachments';
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { boolAttr } from '../../utils/attrs';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
@@ -50,7 +50,7 @@
 
 	let {
 		variant = 'default',
-		color = 'primary',
+		color,
 		size = 'medium',
 		divided = false,
 		disabled = false,
@@ -67,7 +67,12 @@
 		...rest
 	}: ListProps<T> = $props();
 
-	let triplet = $derived(rgbTriplet(color));
+	// Only an explicit `color` stamps `--c` — an unstamped surface keeps the CSS default, so a consumer
+	// can retint a whole subtree from a stylesheet.
+	let styleVars = $derived(
+		`${color === undefined ? '' : `--c:${rgbTriplet(color)};--on-c:${onAccentFor(color)};`}${userStyle ?? ''}` ||
+			undefined
+	);
 	let resolvedRole = $derived<ListRole>(role ?? (type ? 'listbox' : 'list'));
 	let resolvedMultiple = $derived(type === 'multiple' || multiple);
 
@@ -110,16 +115,21 @@
 </script>
 
 {#if child}
-	{@render child({ props: { ...merged, style: `--c:${triplet};${userStyle ?? ''}` } })}
+	{@render child({ props: { ...merged, style: styleVars } })}
 {:else}
-	<div {...merged} style:--c={triplet} style={userStyle}>
+	<div {...merged} style={styleVars}>
 		{@render children?.()}
 	</div>
 {/if}
 
 <style>
-	:where(.list) {
+	/* Global so the defaults also reach a `child`-delegated root, which carries no scope class. */
+	:global(:where(.list)) {
 		--c: var(--primary);
+		--on-c: var(--on-accent);
+	}
+
+	:where(.list) {
 		display: flex;
 		flex-direction: column;
 		color: rgb(var(--text));

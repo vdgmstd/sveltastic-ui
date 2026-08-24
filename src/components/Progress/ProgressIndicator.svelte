@@ -9,8 +9,8 @@
 			stripes?: boolean;
 			/** Render-delegation: receive the merged props and render your own indicator element. */
 			child?: Snippet<[{ props: Record<string, unknown> }]>;
-		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
-		HTMLDivElement
+		} & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>,
+		HTMLSpanElement
 	>;
 </script>
 
@@ -44,7 +44,7 @@
 			'data-indeterminate': boolAttr(ctx.isIndeterminate),
 			'data-stripes': boolAttr(showStripes),
 			'data-testid': 'progress-indicator',
-			[refKey]: attachRef((n) => (ref = n as HTMLDivElement))
+			[refKey]: attachRef((n) => (ref = n as HTMLSpanElement))
 		})
 	);
 </script>
@@ -71,6 +71,7 @@
 			</defs>
 			<circle
 				class="progress__ring"
+				data-glow={boolAttr(ctx.glow)}
 				cx={ctx.size / 2}
 				cy={ctx.size / 2}
 				r={ctx.radius}
@@ -84,7 +85,7 @@
 		</svg>
 	{/if}
 {:else}
-	<div {...merged} style:width={ctx.isIndeterminate ? undefined : `${ctx.pct}%`}></div>
+	<span {...merged} style:width={ctx.isIndeterminate ? undefined : `${ctx.pct}%`}></span>
 {/if}
 
 <style>
@@ -135,7 +136,9 @@
 	}
 	.progress__ring {
 		stroke-linecap: round;
-		filter: drop-shadow(0 0 3px rgb(var(--c) / 0.45));
+	}
+	.progress__ring[data-glow] {
+		filter: drop-shadow(var(--ring-glow));
 	}
 
 	@keyframes progress-stripes {

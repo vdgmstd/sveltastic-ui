@@ -17,13 +17,23 @@ export type FocusTrapOptions = {
 const CANDIDATE_SELECTOR =
 	'a[href],button,input,textarea,select,details,iframe,object,embed,[tabindex],[contenteditable]';
 
+function isVisible(el: HTMLElement): boolean {
+	if (typeof el.checkVisibility === 'function') {
+		return el.checkVisibility({ checkVisibilityCSS: true });
+	}
+	// Engines without checkVisibility (Safari < 17.4): `offsetParent` alone misses `visibility: hidden`,
+	// which the kit's own Popover uses while a panel is mounted but not yet shown.
+	const style = getComputedStyle(el);
+	if (style.visibility === 'hidden') return false;
+	return el.offsetParent !== null || style.position === 'fixed';
+}
+
 function isTabbable(el: HTMLElement): boolean {
 	if (el.hasAttribute('disabled')) return false;
 	if (el.getAttribute('aria-hidden') === 'true') return false;
 	if (el.tabIndex < 0) return false;
 	if (el instanceof HTMLInputElement && el.type === 'hidden') return false;
-	if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false;
-	return true;
+	return isVisible(el);
 }
 
 /** Dependency-free tabbable query via a TreeWalker — replaces the `tabbable` lib. */
@@ -48,12 +58,16 @@ export const focusTrap: Action<HTMLElement, FocusTrapOptions | undefined> = (nod
 	const scope: FocusScope = { id: 'focus-trap' };
 	let ac = new AbortController();
 	let everActive = false;
-	const previouslyFocused =
-		document.activeElement instanceof HTMLElement ? document.activeElement : null;
+	let previouslyFocused: HTMLElement | null = null;
 
-	function homeFocus(): void {
+	/** Focus the first candidate that actually takes it — a hidden or inert target would silently leave focus outside. */
+	function focusInto(preferred?: HTMLElement): void {
 		const items = tabbables(node);
-		(items[0] ?? node).focus({ preventScroll: true });
+		for (const candidate of preferred ? [preferred, ...items] : items) {
+			candidate.focus({ preventScroll: true });
+			if (node.contains(document.activeElement)) return;
+		}
+		node.focus({ preventScroll: true });
 	}
 
 	function handleKeydown(event: KeyboardEvent): void {
@@ -83,27 +97,24 @@ export const focusTrap: Action<HTMLElement, FocusTrapOptions | undefined> = (nod
 		const target = event.target as Node | null;
 		if (target && node.contains(target)) return;
 		event.stopImmediatePropagation();
-		homeFocus();
-	}
-
-	function activate(): void {
-		const target = opts.initialFocus ?? tabbables(node)[0] ?? node;
-		target.focus({ preventScroll: true });
+		focusInto();
 	}
 
 	function start(): void {
 		everActive = true;
+		const active = document.activeElement;
+		if (active instanceof HTMLElement && !node.contains(active)) previouslyFocused = active;
 		ac = new AbortController();
 		focusScopeManager.register(scope);
 		document.addEventListener('focusin', handleFocusin, { capture: true, signal: ac.signal });
 		node.addEventListener('keydown', handleKeydown, { signal: ac.signal });
 		const observer = new MutationObserver(() => {
 			if (!focusScopeManager.isTopmost(scope)) return;
-			if (!node.contains(document.activeElement)) homeFocus();
+			if (!node.contains(document.activeElement)) focusInto();
 		});
 		observer.observe(node, { childList: true, subtree: true });
 		ac.signal.addEventListener('abort', () => observer.disconnect());
-		if (!opts.noAutoFocus) queueMicrotask(activate);
+		if (!opts.noAutoFocus) queueMicrotask(() => focusInto(opts.initialFocus));
 	}
 
 	function stop(): void {

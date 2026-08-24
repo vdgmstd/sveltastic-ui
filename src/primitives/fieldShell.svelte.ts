@@ -5,7 +5,7 @@ import type { MaskInputOptions } from 'maska';
 import type { Color, ColorName, Shape, Variant } from '../types';
 import type { MaskOptions, MaskaDetail } from '../actions/mask';
 import { maskHint } from '../actions/mask';
-import { rgbTriplet } from '../utils/color';
+import { onAccentFor, rgbTriplet } from '../utils/color';
 
 const POINTER_FOCUS_WINDOW_MS = 300;
 
@@ -199,6 +199,10 @@ export class FieldShellState {
 	}
 	get iconTriplet(): string | null {
 		return this.iconColor ? rgbTriplet(this.iconColor) : null;
+	}
+	/** Ink painted over the icon fill — null unless `iconColor` was passed, so the CSS default chain survives. */
+	get onIconTriplet(): string | null {
+		return this.iconColor ? onAccentFor(this.iconColor) : null;
 	}
 	get isPlainSurface(): boolean {
 		return this.variant === 'default' && this.fieldState === 'default' && !this.transparent;

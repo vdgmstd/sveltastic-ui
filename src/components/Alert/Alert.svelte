@@ -42,7 +42,7 @@
 	import { cubicInOut } from 'svelte/easing';
 	import { createAttachmentKey } from 'svelte/attachments';
 
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { cn } from '../../utils/cn';
 	import { boolAttr } from '../../utils/attrs';
 	import { attachRef } from '../../utils/ref';
@@ -52,7 +52,7 @@
 
 	let {
 		variant = 'relief',
-		color = 'primary',
+		color,
 		gradientEnd,
 		open = $bindable(true),
 		collapsed = $bindable(undefined),
@@ -84,8 +84,13 @@
 		)
 	);
 
-	let triplet = $derived(rgbTriplet(color));
 	let endTriplet = $derived(gradientEnd ? rgbTriplet(gradientEnd) : undefined);
+	// Only an explicit `color` stamps `--c` — an unstamped alert keeps the CSS default, so a consumer
+	// can retint a whole subtree from a stylesheet.
+	let styleVars = $derived(
+		`${color === undefined ? '' : `--c:${rgbTriplet(color)};--on-c:${onAccentFor(color)};`}${endTriplet ? `--ge:${endTriplet};` : ''}${userStyle ?? ''}` ||
+			undefined
+	);
 
 	const refKey = createAttachmentKey();
 	const rootProps = $derived(
@@ -98,7 +103,7 @@
 			'data-dismissible': boolAttr(root.hasDismiss),
 			'data-interactive': boolAttr(root.isInteractive),
 			'data-testid': 'alert',
-			style: `--c:${triplet};${endTriplet ? `--ge:${endTriplet};` : ''}${userStyle ?? ''}`,
+			style: styleVars,
 			[refKey]: attachRef<HTMLElement>((n) => (ref = n))
 		})
 	);
@@ -122,13 +127,14 @@
 <style>
 	:where(.alert) {
 		--c: var(--primary);
+		--on-c: var(--on-accent);
 		--ge: var(--gradient-end);
 
 		position: relative;
 		width: 100%;
 		padding: 0 var(--space-8);
 		background: rgb(var(--c));
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 		border-radius: var(--rad-xl);
 		font-size: var(--fs-md);
 		z-index: 10;
@@ -136,7 +142,7 @@
 		box-sizing: border-box;
 	}
 
-	.alert :global(::selection) { background: rgb(255 255 255 / 0.2); }
+	.alert :global(::selection) { background: rgb(var(--on-c) / 0.2); }
 
 	.alert :global(b) { font-weight: 600; }
 	.alert :global(a) {
@@ -184,7 +190,7 @@
 		justify-content: center;
 		padding: 0;
 		background: transparent;
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 		border: 0;
 		border-radius: var(--rad-sm);
 		cursor: pointer;
@@ -200,7 +206,7 @@
 		background: rgb(0 0 0 / 0.2);
 	}
 	.alert :global(.alert__close:focus-visible) {
-		outline: 2px solid rgb(255 255 255 / 0.6);
+		outline: 2px solid rgb(var(--on-c) / 0.6);
 		outline-offset: 2px;
 	}
 	.alert :global(.alert__close svg) { fill: currentColor; }
@@ -211,14 +217,14 @@
 		left: 0;
 		width: 100%;
 		height: 2px;
-		background: rgb(255 255 255 / 0.2);
+		background: rgb(var(--on-c) / 0.2);
 	}
 	.alert :global(.alert__progress__bar) {
 		position: relative;
 		left: 0;
 		width: 100%;
 		height: 100%;
-		background: rgb(255 255 255);
+		background: rgb(var(--on-c));
 		transform: scaleX(var(--w, 0));
 		transform-origin: left;
 	}

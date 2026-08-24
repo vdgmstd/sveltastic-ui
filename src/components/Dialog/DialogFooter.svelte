@@ -36,7 +36,7 @@
 {/if}
 
 <style>
-	.dialog__footer {
+	:where(.dialog__footer) {
 		flex-shrink: 0;
 		display: flex;
 		justify-content: flex-end;

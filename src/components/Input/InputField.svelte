@@ -53,9 +53,11 @@
 	let resolvedType = $derived(isPassword && passwordReveal && isPasswordRevealed ? 'text' : type);
 
 	// Fake placeholder — the kit's animated placeholder; native is blanked. Non-floating modes (default/inline) show it.
-	let showFakePlaceholder = $derived(
-		!!placeholder && ctx.labelStyle !== 'placeholder' && !ctx.maskTemplate
-	);
+	let showFakePlaceholder = $derived(!!placeholder && !ctx.isFloating && !ctx.maskTemplate);
+	// Floating mode owns the resting slot: with no Input.Label to claim it, the placeholder becomes the floating label.
+	// Emitted unconditionally — an Input.Label rendered after this one is invisible to any JS gate during SSR, so
+	// field.css suppresses the fallback when a real label claims the slot (identical markup on server and client).
+	let placeholderAsLabel = $derived(!!placeholder && ctx.isFloating);
 
 	$effect(() => ctx.syncMask());
 
@@ -113,6 +115,10 @@
 	/>
 	{#if showFakePlaceholder}
 		<span class="input__label" aria-hidden="true">{placeholder}</span>
+	{:else if placeholderAsLabel}
+		<label class="input__label input__label--placeholder input__label--fallback" for={ctx.id}
+			>{placeholder}</label
+		>
 	{/if}
 	{#if ctx.showMask}
 		<span class="input__mask" aria-hidden="true"

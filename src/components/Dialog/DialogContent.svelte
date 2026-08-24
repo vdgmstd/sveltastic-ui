@@ -121,6 +121,11 @@
 	});
 	const merged = $derived(mergeProps(rest, attrs, { class: cn('dialog', className) }));
 
+	// A painted transform makes the panel a containing block for `position: fixed` descendants — keep it off while the bounce rests.
+	const reboundTransform = $derived(
+		root.rebound.current === 1 ? undefined : `scale(${root.rebound.current})`
+	);
+
 	const isEdge = (a: DialogAlign): boolean => a === 'start' || a === 'end' || a === 'bottom';
 
 	// Edge drawers slide off their anchored edge; direction is inline-axis (RTL-aware) for start/end, block for bottom.
@@ -169,7 +174,7 @@
 			role="document"
 			tabindex="-1"
 			{@attach (n) => void n.focus({ preventScroll: true })}
-			style:--rb={root.rebound.current}
+			style:--rb-t={reboundTransform}
 			in:panelIn={{ align: root.align }}
 			out:panelOut={{ align: root.align }}
 			onoutroend={onExit}
@@ -239,20 +244,26 @@
 	:where(.dialog[data-align='top']) { margin-top: 6vh; margin-bottom: auto; }
 	:where(.dialog[data-size='fullscreen'][data-align='top']) { margin: 0; }
 
-	.dialog[data-align='start'],
-	.dialog[data-align='end'] {
+	:where(.dialog[data-align='start']),
+	:where(.dialog[data-align='end']) {
 		height: 100vh;
 		max-height: 100vh;
 		margin-block: 0;
 	}
-	.dialog[data-align='start'] { margin-inline: 0 auto; }
-	.dialog[data-align='end'] { margin-inline: auto 0; }
-	.dialog[data-align='bottom'] {
+	:where(.dialog[data-align='start']) { margin-inline: 0 auto; }
+	:where(.dialog[data-align='end']) { margin-inline: auto 0; }
+	:where(.dialog[data-align='bottom']) {
 		width: 100%;
 		max-width: 100%;
 		max-height: 90vh;
 		margin-block: auto 0;
 		margin-inline: auto;
+	}
+	/* Sheets stay full-bleed on phones; from tablet up the `size` preset caps the width. */
+	@media (min-width: 481px) {
+		:where(.dialog[data-align='bottom']:not([data-size='fullscreen'])) {
+			max-width: min(var(--w, 100%), 100%);
+		}
 	}
 
 	.dialog[data-align='start'] .dialog__panel,
@@ -270,7 +281,8 @@
 		border-end-end-radius: 0;
 	}
 
-	.dialog__panel {
+	:where(.dialog__panel) {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
@@ -280,7 +292,7 @@
 		box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45);
 		overflow: hidden;
 		font-size: var(--fs-md);
-		transform: scale(var(--rb, 1));
+		transform: var(--rb-t, none);
 		transform-origin: center;
 	}
 </style>

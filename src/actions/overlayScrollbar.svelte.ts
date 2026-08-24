@@ -9,6 +9,27 @@ export type OverlayScrollbarOptions = {
 
 const DEFAULTS = { hideDelay: 900, minThumb: 28 };
 
+const FALLBACK_ATTR = 'data-overlay-scrollbar';
+const FALLBACK_SHEET_ID = 'sveltastic-overlay-scrollbar';
+const FALLBACK_STYLES = `[${FALLBACK_ATTR}]::-webkit-scrollbar{display:none;width:0;height:0}`;
+
+let fallbackUsers = 0;
+
+function acquireFallbackStyles(): void {
+	fallbackUsers += 1;
+	if (document.getElementById(FALLBACK_SHEET_ID)) return;
+	const style = document.createElement('style');
+	style.id = FALLBACK_SHEET_ID;
+	style.textContent = FALLBACK_STYLES;
+	document.head.appendChild(style);
+}
+
+function releaseFallbackStyles(): void {
+	fallbackUsers = Math.max(0, fallbackUsers - 1);
+	if (fallbackUsers > 0) return;
+	document.getElementById(FALLBACK_SHEET_ID)?.remove();
+}
+
 /**
  * Turns an `overflow:auto` element into an OVERLAY-scrolled one: the native scrollbar is hidden
  * (zero reserved layout width) and a thin thumb floats over the content, tracking scroll directly
@@ -16,7 +37,8 @@ const DEFAULTS = { hideDelay: 900, minThumb: 28 };
  *
  * The host must scroll itself (`overflow-y:auto`) and live inside a positioned ancestor (the kit's
  * `.popover` satisfies this). Native-bar hiding uses `scrollbar-width:none` (Firefox + modern
- * Chromium/Safari); legacy WebKit also needs a `::-webkit-scrollbar{display:none}` rule on the host.
+ * Chromium/Safari); where the engine drops that declaration (Safari < 18.2) the action self-injects
+ * a refcounted `::-webkit-scrollbar` rule instead.
  */
 export const overlayScrollbar: Action<HTMLElement, OverlayScrollbarOptions | undefined> = (
 	host,
@@ -26,8 +48,16 @@ export const overlayScrollbar: Action<HTMLElement, OverlayScrollbarOptions | und
 	const ac = new AbortController();
 	const { signal } = ac;
 
-	const prevScrollbarWidth = host.style.scrollbarWidth;
-	host.style.scrollbarWidth = 'none';
+	// String CSSOM API: `scrollbar-width` is absent below Safari 18.2, where the camelCase property reads
+	// `undefined` and assigning to it silently does nothing — the read-back tells us which engine we are on.
+	const prevScrollbarWidth = host.style.getPropertyValue('scrollbar-width');
+	const prevScrollbarWidthPriority = host.style.getPropertyPriority('scrollbar-width');
+	host.style.setProperty('scrollbar-width', 'none');
+	const usesFallback = host.style.getPropertyValue('scrollbar-width') !== 'none';
+	if (usesFallback) {
+		host.setAttribute(FALLBACK_ATTR, '');
+		acquireFallbackStyles();
+	}
 
 	const thumb = document.createElement('div');
 	thumb.setAttribute('aria-hidden', 'true');
@@ -163,7 +193,13 @@ export const overlayScrollbar: Action<HTMLElement, OverlayScrollbarOptions | und
 			if (raf) cancelAnimationFrame(raf);
 			if (dragRaf) cancelAnimationFrame(dragRaf);
 			if (hideTimer) clearTimeout(hideTimer);
-			host.style.scrollbarWidth = prevScrollbarWidth;
+			if (prevScrollbarWidth)
+				host.style.setProperty('scrollbar-width', prevScrollbarWidth, prevScrollbarWidthPriority);
+			else host.style.removeProperty('scrollbar-width');
+			if (usesFallback) {
+				host.removeAttribute(FALLBACK_ATTR);
+				releaseFallbackStyles();
+			}
 			thumb.remove();
 		}
 	};

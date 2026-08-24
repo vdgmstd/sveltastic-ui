@@ -5,7 +5,12 @@ type Props = Record<string, unknown>;
 const isEventHandler = (key: string, value: unknown): value is (...args: unknown[]) => unknown =>
 	key.length > 2 && key[0] === 'o' && key[1] === 'n' && typeof value === 'function';
 
-/** Merge prop bags left-to-right: `class` resolves via `cn` (conflicts → later wins), same-named `on*` handlers chain, symbol keys (attachments) pass through, everything else is last-wins. */
+/**
+ * Merge prop bags left-to-right: `class` resolves via `cn` (conflicts → later wins), same-named `on*` handlers chain
+ * in bag order (earliest bag first), symbol keys (attachments) pass through, everything else is last-wins.
+ * A link cancels the rest of its chain by calling `preventDefault()` on an event that was not already prevented;
+ * on an event that arrives already prevented, no link can cancel the chain.
+ */
 export function mergeProps(...bags: Array<Props | undefined | null>): Props {
 	const out: Props = {};
 	for (const bag of bags) {
@@ -25,9 +30,10 @@ export function mergeProps(...bags: Array<Props | undefined | null>): Props {
 					const a = prev as (...args: unknown[]) => unknown;
 					const b = value;
 					out[key] = (...args: unknown[]) => {
-						a(...args);
 						const e = args[0];
-						if (e instanceof Event && e.defaultPrevented) return;
+						const preventedBefore = e instanceof Event && e.defaultPrevented;
+						a(...args);
+						if (!preventedBefore && e instanceof Event && e.defaultPrevented) return;
 						return b(...args);
 					};
 				} else {

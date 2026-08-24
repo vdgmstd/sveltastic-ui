@@ -53,8 +53,8 @@
 		role: 'presentation',
 		'data-state': dataState(root.open ? 'open' : 'closed'),
 		'data-testid': 'tooltip-trigger',
-		onmouseenter: root.handleEnter,
-		onmouseleave: root.handleLeave,
+		onmouseenter: root.handlePointerEnter,
+		onmouseleave: root.handlePointerLeave,
 		onfocusin: root.handleEnter,
 		onfocusout: root.handleLeave,
 		onclick: root.handleClick

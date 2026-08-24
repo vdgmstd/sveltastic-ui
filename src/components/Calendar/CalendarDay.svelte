@@ -22,7 +22,7 @@
 	import type { Temporal } from '@js-temporal/polyfill';
 	import { createAttachmentKey } from 'svelte/attachments';
 	import { ripple } from '../../actions/ripple.svelte';
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { boolAttr } from '../../utils/attrs';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
@@ -83,7 +83,7 @@
 		onfocus: () => root.previewDay(date)
 	});
 
-	let dayStyle = $derived(`--c:${triplet};--ps:1`);
+	let dayStyle = $derived(`--c:${triplet};--on-c:${onAccentFor(accent)};--ps:1`);
 
 	let merged = $derived(
 		mergeProps(rest, attrs, {
@@ -178,7 +178,7 @@
 	.picker-btn--cell[data-selected],
 	.picker-btn--cell[data-range-start],
 	.picker-btn--cell[data-range-end] {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 
 	.picker-btn[data-disabled] {

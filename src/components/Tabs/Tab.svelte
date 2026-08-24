@@ -53,7 +53,8 @@
 
 	let rippleOptions = $derived({
 		disabled: isInert || variant === 'underline' || !ctx.ripple,
-		color: onFilledThumb && isActive ? '255 255 255' : color,
+		// Over a filled thumb the bloom is the thumb's ink, not its accent.
+		color: onFilledThumb && isActive ? 'var(--on-c)' : color,
 		soft: true,
 		duration: 1000,
 		mountTo: ctx.thumbLayer,
@@ -168,6 +169,6 @@
 
 	:global(:where(.tab--variant-default[data-state='active'])),
 	:global(:where(.tab--variant-relief[data-state='active'])) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 </style>

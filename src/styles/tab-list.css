@@ -1,6 +1,7 @@
 /* TabList styles — global (not scoped) so render-delegated `child` tablist elements get them too. */
 
 	:where(.tab-list) {
+		--sa-color: var(--c);
 		--x: 0px;
 		--y: 0px;
 		--w: 0px;

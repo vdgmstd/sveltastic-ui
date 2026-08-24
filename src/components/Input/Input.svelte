@@ -32,7 +32,7 @@
 			transparent?: boolean;
 			/** Custom palette color. */
 			color?: Color;
-			/** When set, the icon background fills with this color on focus (and the glyph turns white). When unset, only the glyph color changes on focus. */
+			/** When set, the icon background fills with this color on focus (the glyph takes the derived contrast ink). When unset, only the glyph color changes on focus. */
 			iconColor?: Color;
 			/** Mask pattern — string (e.g. `'###-###'`), alternatives array, or full maska options. Tokens: `#` digit, `@` letter, `*` alphanumeric. */
 			mask?: MaskOptions;
@@ -148,6 +148,7 @@
 			style:
 				`--c:${root.triplet};` +
 				(root.iconTriplet ? `--icon-c:${root.iconTriplet};` : '') +
+				(root.onIconTriplet ? `--on-icon-c:${root.onIconTriplet};` : '') +
 				`--lh:${root.lhTween.current};` +
 				`--fp:${root.fpTween.current};` +
 				`--vp:${root.vpTween.current};` +

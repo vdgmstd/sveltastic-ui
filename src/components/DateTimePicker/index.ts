@@ -2,4 +2,8 @@ import Root from './DateTimePicker.svelte';
 
 export const DateTimePicker = { Root };
 
-export type { DateTimePickerRootProps, DateTimePickerType } from './DateTimePicker.svelte';
+export type {
+	DateTimePickerRootProps,
+	DateTimePickerType,
+	DateTimePickerCommitMode
+} from './DateTimePicker.svelte';

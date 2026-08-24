@@ -61,7 +61,8 @@
 
 	let rippleOptions = $derived({
 		disabled: isInert || !ctx.ripple,
-		color: onFilledThumb ? '255 255 255' : (color ?? groupColor),
+		// Over a filled thumb the bloom is the thumb's ink, not its accent.
+		color: onFilledThumb ? 'var(--on-at)' : (color ?? groupColor),
 		soft: true,
 		duration: 1000,
 		mountTo: ctx.ripplesLayer,
@@ -156,7 +157,7 @@
 
 	/* Ramp the active colour in step with the spring thumb — neither front-loaded (white-on-track flash) nor back-loaded (late). */
 	:global(:where(.segmented__item[data-state='active'])) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-at));
 		transition: color 240ms cubic-bezier(0.35, 0, 0.65, 1);
 	}
 

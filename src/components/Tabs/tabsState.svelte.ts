@@ -21,7 +21,7 @@ export type TabsRootOptions = {
 	baseId: string;
 	getValue: () => string | undefined;
 	setValueProp: (value: string) => void;
-	color: () => Color;
+	color: () => Color | undefined;
 	variant: () => TabsVariant;
 	size: () => Size;
 	panelVariant: () => TabsPanelVariant;
@@ -70,7 +70,7 @@ export class TabsRootState {
 	get value(): string | undefined {
 		return this.#opts.getValue();
 	}
-	get color(): Color {
+	get color(): Color | undefined {
 		return this.#opts.color();
 	}
 	get variant(): TabsVariant {

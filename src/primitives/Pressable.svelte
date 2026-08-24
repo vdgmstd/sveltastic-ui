@@ -58,7 +58,7 @@
 			href?: string;
 			/** Disabled (button) / inert (link). */
 			disabled?: boolean;
-			/** Native button type (button-mode). */
+			/** Native button type (button-mode). Defaults to `'button'` — opt into `'submit'` explicitly. */
 			type?: HTMLButtonAttributes['type'];
 			/** Link target (href-mode). */
 			target?: HTMLAnchorAttributes['target'];
@@ -79,7 +79,7 @@
 	import { pressBounce } from '../actions/pressBounce.svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
-	import { rgbTriplet } from '../utils/color';
+	import { onAccentFor, rgbTriplet } from '../utils/color';
 	import { cn } from '../utils/cn';
 	import { boolAttr } from '../utils/attrs';
 	import { mergeProps } from '../utils/mergeProps';
@@ -87,7 +87,7 @@
 
 	let {
 		variant = 'default',
-		color = 'primary',
+		color,
 		gradientEnd,
 		size = 'medium',
 		shape = 'default',
@@ -105,7 +105,7 @@
 		ripple: rippleEnabled = true,
 		disabled = false,
 		href,
-		type,
+		type = 'button',
 		ref = $bindable(null),
 		children,
 		animate,
@@ -118,11 +118,8 @@
 		...rest
 	}: PressableProps = $props();
 
-	let triplet = $derived(rgbTriplet(color));
+	let triplet = $derived(color === undefined ? undefined : rgbTriplet(color));
 	let endTriplet = $derived(gradientEnd ? rgbTriplet(gradientEnd) : undefined);
-	let isWhite = $derived(
-		triplet === '255 255 255' || (typeof color === 'string' && /^white$/i.test(color.trim()))
-	);
 	let isInert = $derived(disabled || loading || pressedDisabled);
 	let hasAnimate = $derived(!!animate && !animateInactive);
 	let isDarkColor = $derived(color === 'dark');
@@ -166,6 +163,8 @@
 		mountTo: bgEl
 	});
 
+	const PRESS_KEYS: readonly string[] = ['Enter', ' '];
+
 	let isPressing = $state(false);
 	let hostEl = $state<HTMLElement | null>(null);
 	const press = pressBounce({
@@ -174,8 +173,19 @@
 		outDuration: 260,
 		rest: () => ((hostEl?.matches(':hover') ?? false) && !active ? 1.06 : 1),
 		disabled: () => isInert,
+		keys: PRESS_KEYS,
 		onstart: () => (isPressing = true),
 		onsettle: () => (isPressing = false)
+	});
+
+	// Kept off the spread props on purpose: a props recompute during pointerdown re-runs `set_attributes`
+	// and swaps the delegated click handler mid-propagation (sveltejs/svelte#18070).
+	$effect(() => {
+		const el = hostEl;
+		if (!el) return;
+		if (isPressing) el.setAttribute('data-pressing', '');
+		else el.removeAttribute('data-pressing');
+		return () => el.removeAttribute('data-pressing');
 	});
 
 	let rootClass = $derived(
@@ -191,7 +201,6 @@
 			upload && 'button--upload',
 			pressedDisabled && 'button--pressed-disabled',
 			hasAnimate && 'button--animate',
-			isWhite && 'button--white',
 			isDarkColor && 'button--color-dark',
 			className
 		)
@@ -248,11 +257,16 @@
 		if (onActiveChange !== undefined) setActive(!active);
 	}
 
+	function handleKeydown(event: KeyboardEvent): void {
+		press.onkeydown(event);
+		if (event.repeat || !PRESS_KEYS.includes(event.key)) return;
+		rippleHandle?.spawnAt();
+	}
+
 	const sharedProps = $derived({
 		class: rootClass,
 		'aria-label': ariaLabel,
 		'data-active': boolAttr(active),
-		'data-pressing': boolAttr(isPressing),
 		'data-variant': variant,
 		'data-size': size,
 		'data-shape': shape,
@@ -260,15 +274,18 @@
 		'data-disabled': boolAttr(isInert),
 		'data-testid': 'button',
 		onclick: handleClick,
-		onpointerdown: (event: PointerEvent) => press.onpointerdown(event),
-		onkeydown: (event: KeyboardEvent) => press.onkeydown(event),
+		onpointerdown: press.onpointerdown,
+		onkeydown: handleKeydown,
 		[hostKey]: attachHost,
 		[uploadKey]: attachUpload
 	});
 
 	const consumerHandlers = $derived(isInert ? {} : { onclick, onpointerdown, onkeydown });
+	// Only an explicit `color` stamps `--c` — an unstamped host keeps the CSS default, so a consumer
+	// can retint a whole subtree from a stylesheet.
 	const styleVars = $derived(
-		`--c:${triplet};${endTriplet ? `--ge:${endTriplet};` : ''}${userStyle ?? ''}`
+		`${triplet ? `--c:${triplet};--on-c:${onAccentFor(color)};` : ''}${endTriplet ? `--ge:${endTriplet};` : ''}${userStyle ?? ''}` ||
+			undefined
 	);
 
 	const anchorProps = $derived(
@@ -315,7 +332,7 @@
 	{/if}
 	{#if loading}
 		<span class="button__loading" aria-hidden="true">
-			<Spinner color="#fff" size={17} thickness={2.3} speed={600} />
+			<Spinner color="var(--on-c)" size={17} thickness={2.3} speed={600} />
 		</span>
 	{/if}
 {/snippet}
@@ -336,6 +353,7 @@
 	:where(.button) {
 		--button-radius: var(--radius);
 		--c: var(--primary);
+		--on-c: var(--on-accent);
 		--ge: var(--gradient-end);
 		--sa-color: var(--c);
 		--swap-duration: 320ms;
@@ -403,9 +421,6 @@
 	:where(.button.button--pressed-disabled) {
 		pointer-events: none;
 		opacity: 0.6;
-	}
-	:where(.button--white:focus-visible) {
-		color: rgb(30 30 30);
 	}
 
 	.button__inner {
@@ -527,6 +542,8 @@
 	:where(.button--block) {
 		display: flex;
 		width: 100%;
+		/* The intrinsic inline margin would push a 100%-wide button past its container on both edges. */
+		margin-inline: 0;
 	}
 
 	.button--icon .button__content,
@@ -597,7 +614,7 @@
 	}
 
 	:where(.button--default) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 	.button--default .button__bg {
 		background: rgb(var(--c));
@@ -613,14 +630,14 @@
 		background: rgb(var(--c) / 0.15);
 	}
 	:where(.button--flat[data-active]) {
-		color: rgb(var(--on-accent)) !important;
+		color: rgb(var(--on-c));
 	}
 	.button--flat[data-active] .button__bg {
 		background: rgb(var(--c));
 	}
 
 	:where(.button--floating) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 	.button--floating .button__bg {
 		background: rgb(var(--c));
@@ -653,7 +670,7 @@
 		color: rgb(var(--c));
 	}
 	:where(.button--border.button--upload) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 	.button--border .button__bg::before {
 		content: '';
@@ -665,14 +682,14 @@
 		pointer-events: none;
 	}
 	:where(.button--border[data-active]) {
-		color: rgb(var(--on-accent)) !important;
+		color: rgb(var(--on-c));
 	}
 	.button--border[data-active] .button__bg {
 		background: rgb(var(--c));
 	}
 
 	:where(.button--gradient) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 	.button--gradient .button__bg {
 		background: rgb(var(--c));
@@ -688,7 +705,7 @@
 	}
 
 	:where(.button--relief) {
-		color: rgb(var(--on-accent));
+		color: rgb(var(--on-c));
 	}
 	.button--relief .button__bg {
 		background: rgb(var(--c));

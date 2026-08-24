@@ -64,7 +64,7 @@
 	import { untrack } from 'svelte';
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
 	import { ripple as rippleAction } from '../../actions/ripple.svelte';
-	import { rgbTriplet } from '../../utils/color';
+	import { onAccentFor, rgbTriplet } from '../../utils/color';
 	import { boolAttr } from '../../utils/attrs';
 	import { mergeProps } from '../../utils/mergeProps';
 	import { attachRef } from '../../utils/ref';
@@ -111,9 +111,15 @@
 	// null→node every recompute.
 	const attachNode = attachRef<HTMLElement>((n) => (ref = n));
 
-	let resolvedColor = $derived<Color>(color ?? ctx?.color ?? 'primary');
+	let resolvedColor = $derived<Color | undefined>(color ?? ctx?.color);
 	let resolvedSize = $derived<Size>(size ?? ctx?.size ?? 'medium');
-	let triplet = $derived(rgbTriplet(resolvedColor));
+	// Only an explicit colour (own or inherited from the list) stamps `--c` — an unstamped row keeps
+	// the CSS default, so a consumer can retint a whole subtree from a stylesheet.
+	let styleVars = $derived(
+		resolvedColor === undefined
+			? undefined
+			: `--c:${rgbTriplet(resolvedColor)};--on-c:${onAccentFor(resolvedColor)};`
+	);
 
 	let isInert = $derived(item.isInert);
 	let isSelected = $derived(item.isSelected);
@@ -197,6 +203,9 @@
 			[rippleKey]: attachRipple
 		})
 	);
+	const rowStyle = $derived(
+		`${styleVars ?? ''}${(merged.style as string | undefined) ?? ''}` || undefined
+	);
 
 	$effect(() => {
 		item.claimInitial(id, active);
@@ -212,9 +221,9 @@
 {/snippet}
 
 {#if child}
-	{@render child({ props: { ...merged, style: `--c:${triplet};${(merged.style as string | undefined) ?? ''}` }, body })}
+	{@render child({ props: { ...merged, style: rowStyle }, body })}
 {:else}
-	<svelte:element this={Tag} {...merged} style:--c={triplet}>
+	<svelte:element this={Tag} {...merged} style={rowStyle}>
 		{@render body()}
 	</svelte:element>
 {/if}

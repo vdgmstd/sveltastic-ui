@@ -11,6 +11,8 @@
 		loop?: boolean;
 		/** Layout + arrow-key axis. */
 		orientation?: ToggleGroupOrientation;
+		/** Let the row break onto more lines instead of overflowing at narrow widths. */
+		wrap?: boolean;
 		/** Roving tabindex (one tab-stop, arrows move within). Off → every item is tabbable. */
 		rovingFocus?: boolean;
 		/** Button visual variant applied to every item. Defaults to `transparent`. */
@@ -31,10 +33,26 @@
 		child?: Snippet<[{ props: Record<string, unknown> }]>;
 	} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>;
 
+	// Single mode is split in two so a consumer who never opts into deselection keeps the source-compatible
+	// `(value: string) => void` contract; passing `allowDeselect` anything but a literal `false` picks the
+	// variant whose callback also receives the `undefined` a cleared selection commits.
 	export type ToggleGroupRootProps = WithElementRef<
 		ToggleGroupBaseProps &
 			(
-				| { type: 'single'; value?: string; onValueChange?: (value: string) => void }
+				| {
+						type: 'single';
+						value?: string;
+						onValueChange?: (value: string) => void;
+						/** Re-tapping the active item clears the selection (commits `undefined`). Single mode only. */
+						allowDeselect?: false;
+				  }
+				| {
+						type: 'single';
+						value?: string;
+						onValueChange?: (value: string | undefined) => void;
+						/** Re-tapping the active item clears the selection (commits `undefined`). Single mode only. */
+						allowDeselect: boolean;
+				  }
 				| { type: 'multiple'; value?: string[]; onValueChange?: (value: string[]) => void }
 			),
 		HTMLDivElement
@@ -54,8 +72,10 @@
 		value = $bindable(),
 		onValueChange,
 		disabled = false,
+		allowDeselect = false,
 		loop = true,
 		orientation = 'horizontal',
+		wrap = false,
 		rovingFocus = true,
 		variant = 'transparent',
 		color = 'primary',
@@ -68,7 +88,7 @@
 		child,
 		class: className,
 		...rest
-	}: ToggleGroupRootProps = $props();
+	}: ToggleGroupRootProps & { allowDeselect?: boolean } = $props();
 
 	const uid = $props.id();
 
@@ -81,8 +101,10 @@
 				value = v;
 			},
 			// Reunify the discriminated callback: the `type` prop guarantees the consumer's handler matches the value shape.
-			onValueChange: () => onValueChange as ((v: ToggleGroupValue) => void) | undefined,
+			onValueChange: () =>
+				onValueChange as ((v: ToggleGroupValue | undefined) => void) | undefined,
 			disabled: () => disabled,
+			allowDeselect: () => type !== 'multiple' && allowDeselect,
 			loop: () => loop,
 			orientation: () => orientation,
 			rovingFocus: () => rovingFocus,
@@ -103,7 +125,12 @@
 	const attrs = $derived({
 		role: 'group' as const,
 		'aria-label': ariaLabel,
-		class: cn('toggle-group', `toggle-group--${orientation}`, className),
+		class: cn(
+			'toggle-group',
+			`toggle-group--${orientation}`,
+			wrap && 'toggle-group--wrap',
+			className
+		),
 		'data-orientation': orientation,
 		'data-toggle-group-root': '',
 		[refKey]: attachRef<HTMLDivElement>((n) => (ref = n))
@@ -118,13 +145,16 @@
 {/if}
 
 <style>
-	.toggle-group {
+	:where(.toggle-group) {
 		display: inline-flex;
 		gap: var(--space-2);
 	}
-	.toggle-group--vertical {
+	:where(.toggle-group--vertical) {
 		flex-direction: column;
 		align-items: stretch;
+	}
+	:where(.toggle-group--wrap) {
+		flex-wrap: wrap;
 	}
 	/* Items are Pressable button-cores; drop their standalone margin so group gap controls spacing. */
 	.toggle-group :global(.button) {

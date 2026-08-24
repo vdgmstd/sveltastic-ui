@@ -70,7 +70,7 @@
 </div>
 
 <style>
-	.checkbox-group {
+	:where(.checkbox-group) {
 		display: inline-flex;
 		flex-direction: column;
 		gap: var(--space-4);

@@ -21,6 +21,8 @@
 			color?: Color;
 			/** Render the image with insets / padding around it instead of edge-to-edge. */
 			imgInset?: boolean;
+			/** Show `cursor: pointer` on the card surface — set it when the whole card is clickable. */
+			pointer?: boolean;
 			/** Override the image cell's main dimension. Number is treated as `px`; any CSS length is accepted as a string. */
 			imgSize?: number | string;
 			/** Class merged onto the inner `.card` surface (the visible, styled element — for a glass/flush/lift treatment or a `max-width` constraint). */
@@ -48,6 +50,7 @@
 		variant = 'default',
 		color = 'primary',
 		imgInset = false,
+		pointer = false,
 		imgSize,
 		cardClass,
 		cardStyle,
@@ -90,7 +93,7 @@
 </script>
 
 {#snippet tree()}
-	<div class={cn('card', cardClass)} style={cardStyle}>
+	<div class={cn('card', pointer && 'card--pointer', cardClass)} style={cardStyle}>
 		{@render children?.()}
 	</div>
 {/snippet}
@@ -109,7 +112,7 @@
 		display: block;
 	}
 
-	.card {
+	:where(.card) {
 		background: rgb(var(--gray-1));
 		color: rgb(var(--text));
 		width: 100%;
@@ -119,11 +122,14 @@
 			transform var(--dur) var(--ease-standard),
 			box-shadow var(--dur) var(--ease-standard),
 			border-radius var(--dur) var(--ease-standard);
-		cursor: pointer;
 		position: relative;
 	}
 
-	:global(.card__img) {
+	:where(.card--pointer) {
+		cursor: pointer;
+	}
+
+	:where(:global(.card__img)) {
 		position: relative;
 		max-height: var(--img-size, 250px);
 		overflow: visible;
@@ -136,7 +142,7 @@
 			border-radius var(--dur) var(--ease-standard);
 	}
 
-	:global(.card__img-clip) {
+	:where(:global(.card__img-clip)) {
 		width: 100%;
 		height: 100%;
 		max-height: inherit;
@@ -158,7 +164,7 @@
 		transition: transform var(--dur) var(--ease-standard);
 	}
 
-	:global(.card__text) {
+	:where(:global(.card__text)) {
 		font-size: var(--fs-md);
 		padding: 0 var(--space-7);
 		padding-bottom: var(--space-5);
@@ -170,7 +176,7 @@
 		opacity: 0.8;
 	}
 
-	:global(.card__title) {
+	:where(:global(.card__title)) {
 		padding-top: var(--space-5);
 		padding-bottom: var(--space-3);
 	}
@@ -187,7 +193,7 @@
 		color: inherit;
 	}
 
-	:global(.card__interactions) {
+	:where(:global(.card__interactions)) {
 		position: absolute;
 		bottom: 0;
 		padding: var(--space-3) var(--space-7);
@@ -197,7 +203,7 @@
 		left: 0;
 	}
 
-	:global(.card__buttons) {
+	:where(:global(.card__buttons)) {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -206,7 +212,7 @@
 		padding: 0 var(--space-7) var(--space-7);
 	}
 
-	:global(.card__actions) {
+	:where(:global(.card__actions)) {
 		position: absolute;
 		left: 0;
 		right: 0;
@@ -608,7 +614,6 @@
 		border-radius: 35px;
 		box-shadow: 0 15px 30px -8px rgb(0 0 0 / 0.08);
 		overflow: visible;
-		cursor: default;
 		transition: none;
 	}
 	:global(.card-content--compact) .card:hover {

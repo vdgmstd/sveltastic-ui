@@ -38,7 +38,7 @@
 	outline-color: rgb(var(--c) / 0.55);
 }
 
-.input-number__field {
+:where(.input-number__field) {
 	position: relative;
 	display: flex;
 	align-items: stretch;

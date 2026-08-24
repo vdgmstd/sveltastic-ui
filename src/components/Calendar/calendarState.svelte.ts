@@ -115,8 +115,9 @@ export class CalendarRootState {
 			toPlainDate(typeof rawValue === 'string' ? rawValue : undefined) ??
 			toPlainDate(typeof rawValue === 'object' ? rawValue?.from : undefined) ??
 			todayFn();
-		this.#viewMonthInternal = seed;
-		this.yearPageStart = seed.year - ((seed.year - 1) % YEARS_PER_PAGE);
+		const anchor = this.#clampViewMonth(seed);
+		this.#viewMonthInternal = anchor;
+		this.yearPageStart = anchor.year - ((anchor.year - 1) % YEARS_PER_PAGE);
 	}
 
 	get type(): CalendarType { return this.#opts.getType(); }
@@ -133,6 +134,47 @@ export class CalendarRootState {
 
 	readonly minDate = $derived.by(() => toPlainDate(this.#opts.min()));
 	readonly maxDate = $derived.by(() => toPlainDate(this.#opts.max()));
+
+	#monthIndex(d: Temporal.PlainDate): number {
+		return d.year * 12 + d.month;
+	}
+
+	/** Whether the inclusive month span holds at least one day inside `[min, max]`. */
+	#spanReachable(from: number, to: number): boolean {
+		const min = this.minDate;
+		const max = this.maxDate;
+		if (min && to < this.#monthIndex(min)) return false;
+		if (max && from > this.#monthIndex(max)) return false;
+		return true;
+	}
+
+	/** Pull a view anchor back to the bound whose month it overshot — leaves in-range months untouched. */
+	#clampViewMonth(d: Temporal.PlainDate): Temporal.PlainDate {
+		const min = this.minDate;
+		const max = this.maxDate;
+		const idx = this.#monthIndex(d);
+		if (min && idx < this.#monthIndex(min)) return min;
+		if (max && idx > this.#monthIndex(max)) return max;
+		return d;
+	}
+
+	#canShift(delta: 1 | -1): boolean {
+		if (this.view === 'days') {
+			const idx = this.#monthIndex(this.viewMonth) + delta;
+			return this.#spanReachable(idx, idx);
+		}
+		if (this.view === 'months') {
+			const year = this.viewMonth.year + delta;
+			return this.#spanReachable(year * 12 + 1, year * 12 + 12);
+		}
+		const start = this.yearPageStart + delta * YEARS_PER_PAGE;
+		return this.#spanReachable(start * 12 + 1, (start + YEARS_PER_PAGE - 1) * 12 + 12);
+	}
+
+	/** False when the previous month / year / year-page lies entirely outside `[min, max]`. */
+	readonly canGoPrev = $derived.by(() => this.#canShift(-1));
+	/** False when the next month / year / year-page lies entirely outside `[min, max]`. */
+	readonly canGoNext = $derived.by(() => this.#canShift(1));
 
 	readonly #rawValue = $derived.by(() => this.#opts.getValue());
 	readonly #singleValue = $derived.by(() =>
@@ -187,6 +229,7 @@ export class CalendarRootState {
 			items.push({
 				key: m,
 				label: fmt.format(stub),
+				disabled: !this.#spanReachable(this.viewMonth.year * 12 + m, this.viewMonth.year * 12 + m),
 				selected: m === this.viewMonth.month,
 				current: m === todayP.month && this.viewMonth.year === todayP.year
 			});
@@ -202,6 +245,7 @@ export class CalendarRootState {
 			items.push({
 				key: y,
 				label: String(y),
+				disabled: !this.#spanReachable(y * 12 + 1, y * 12 + 12),
 				selected: y === this.viewMonth.year,
 				current: y === todayP.year
 			});
@@ -226,10 +270,11 @@ export class CalendarRootState {
 	}
 
 	#setViewMonth(d: Temporal.PlainDate): void {
-		this.#viewMonthInternal = d;
+		const next = this.#clampViewMonth(d);
+		this.#viewMonthInternal = next;
 		if (this.placeholderDate !== null || this.#opts.getPlaceholder() !== undefined) {
-			this.#opts.setPlaceholderProp(plainDateToISO(d));
-			this.#opts.onPlaceholderChange?.()?.(plainDateToISO(d));
+			this.#opts.setPlaceholderProp(plainDateToISO(next));
+			this.#opts.onPlaceholderChange?.()?.(plainDateToISO(next));
 		}
 	}
 
@@ -403,12 +448,14 @@ export class CalendarRootState {
 	}
 
 	handlePrev(): void {
+		if (!this.canGoPrev) return;
 		if (this.view === 'days') this.#shiftMonth(-1);
 		else if (this.view === 'months') this.#shiftYear(-1);
 		else this.#shiftYearPage(-1);
 	}
 
 	handleNext(): void {
+		if (!this.canGoNext) return;
 		if (this.view === 'days') this.#shiftMonth(1);
 		else if (this.view === 'months') this.#shiftYear(1);
 		else this.#shiftYearPage(1);
@@ -423,9 +470,11 @@ export class CalendarRootState {
 	}
 
 	#focusChange(d: Temporal.PlainDate): void {
-		this.focusedDate = d;
-		if (d.year !== this.viewMonth.year || d.month !== this.viewMonth.month) this.#setViewMonth(d);
-		if (this.type === 'range' && this.rangeFrom && !this.rangeTo) this.preview = d;
+		const next = this.#clampViewMonth(d);
+		this.focusedDate = next;
+		if (next.year !== this.viewMonth.year || next.month !== this.viewMonth.month)
+			this.#setViewMonth(next);
+		if (this.type === 'range' && this.rangeFrom && !this.rangeTo) this.preview = next;
 	}
 
 	previewDay(d: Temporal.PlainDate): void {

@@ -10,7 +10,7 @@ export type SegmentedRootOptions = {
 	baseId: string;
 	getValue: () => SegmentedValue | undefined;
 	setValueProp: (value: SegmentedValue) => void;
-	color: () => Color;
+	color: () => Color | undefined;
 	variant: () => SegmentedVariant;
 	size: () => Size;
 	block: () => boolean;
@@ -41,7 +41,7 @@ export class SegmentedRootState {
 	get value(): SegmentedValue | undefined {
 		return this.#opts.getValue();
 	}
-	get color(): Color {
+	get color(): Color | undefined {
 		return this.#opts.color();
 	}
 	get variant(): SegmentedVariant {
@@ -62,7 +62,7 @@ export class SegmentedRootState {
 	get loop(): boolean {
 		return this.#opts.loop();
 	}
-	/** Filled-thumb variants render white ripples and `--on-accent` active labels. */
+	/** Filled-thumb variants render the ripple and the active label in the thumb's ink (`--on-at`). */
 	get onFilledThumb(): boolean {
 		return this.variant === 'default' || this.variant === 'relief';
 	}
@@ -73,7 +73,7 @@ export class SegmentedRootState {
 		return this.#ripplesLayer;
 	}
 	/** Active item's accent (per-item `color` override, falling back to the group `color`). Drives the thumb `--at`. */
-	get activeColor(): Color {
+	get activeColor(): Color | undefined {
 		return this.#activeColor ?? this.color;
 	}
 

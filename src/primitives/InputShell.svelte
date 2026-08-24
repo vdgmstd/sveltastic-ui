@@ -270,7 +270,7 @@
 	// Mint once: an inline attachment in a $derived bag re-runs on every tween frame, bouncing the public ref.
 	const wrapperRefAttach = attachRef<HTMLDivElement>((n) => (ref = n));
 	const inputRefAttach = attachRef<HTMLInputElement>((n) => (inputRef = n));
-	const iconRefAttach = attachRef<HTMLButtonElement>((n) => {
+	const iconRefAttach = attachRef<HTMLButtonElement | HTMLSpanElement>((n) => {
 		pulse.setNode(n ?? undefined);
 	});
 
@@ -297,6 +297,7 @@
 		style:
 			`--c:${shell.triplet};` +
 			(shell.iconTriplet ? `--icon-c:${shell.iconTriplet};` : '') +
+			(shell.onIconTriplet ? `--on-icon-c:${shell.onIconTriplet};` : '') +
 			`--lh:${shell.lhTween.current};` +
 			`--fp:${shell.fpTween.current};` +
 			`--vp:${shell.vpTween.current};` +
@@ -334,20 +335,32 @@
 		})
 	);
 
+	let isIconClickable = $derived(!!oniconclick);
+
 	const iconAttrs = $derived({
 		class: cn(
 			'input__icon',
 			iconPosition === 'after' && 'input__icon--after',
-			!!oniconclick && 'input__icon--clickable'
+			isIconClickable && 'input__icon--clickable'
 		),
-		type: 'button' as const,
-		tabindex: oniconclick ? 0 : -1,
-		disabled: !oniconclick,
-		'aria-hidden': !oniconclick,
-		onclick: handleIconClick,
+		type: isIconClickable ? ('button' as const) : undefined,
+		'aria-hidden': isIconClickable ? undefined : true,
+		onclick: isIconClickable ? handleIconClick : undefined,
 		[iconRefKey]: iconRefAttach
 	});
 </script>
+
+{#snippet iconGlyph()}
+	{#if shell.isPlainSurface && shell.isIconFillBg}
+		<span class="input__icon-ripple" aria-hidden="true"></span>
+	{/if}
+	<span class="input__icon-glyph">{@render icon?.()}</span>
+	{#if shell.isPlainSurface && !shell.isIconFillBg}
+		<span class="input__icon-glyph input__icon-glyph--reveal" aria-hidden="true">
+			{@render icon?.()}
+		</span>
+	{/if}
+{/snippet}
 
 <div {...wrapperAttrs}>
 	{#if label && isInline}
@@ -408,17 +421,11 @@
 		{/if}
 
 		{#if icon}
-			<button {...iconAttrs} style={pulse.style}>
-				{#if shell.isPlainSurface && shell.isIconFillBg}
-					<span class="input__icon-ripple" aria-hidden="true"></span>
-				{/if}
-				<span class="input__icon-glyph">{@render icon()}</span>
-				{#if shell.isPlainSurface && !shell.isIconFillBg}
-					<span class="input__icon-glyph input__icon-glyph--reveal" aria-hidden="true">
-						{@render icon()}
-					</span>
-				{/if}
-			</button>
+			{#if isIconClickable}
+				<button {...iconAttrs} style={pulse.style}>{@render iconGlyph()}</button>
+			{:else}
+				<span {...iconAttrs} style={pulse.style}>{@render iconGlyph()}</span>
+			{/if}
 		{/if}
 
 		{#if showFieldLabel}

@@ -1,4 +1,4 @@
-import type { Action } from 'svelte/action';
+import type { ActionReturn } from 'svelte/action';
 import { Tween } from 'svelte/motion';
 import { cubicOut, quintOut } from 'svelte/easing';
 import { rgbTriplet } from '../utils/color';
@@ -21,11 +21,11 @@ export type RippleOptions = {
 	origin?: { x: number; y: number } | ((host: HTMLElement) => { x: number; y: number });
 	/** Layer clip radius, for hosts whose `border-radius` changes mid-ripple (e.g. range-start cells). */
 	radius?: string;
-	/** Only spawn when `mousedown.target.closest(trigger)` matches inside the host. */
+	/** Only spawn when `pointerdown.target.closest(trigger)` matches inside the host. */
 	trigger?: string;
 	/** Mount the visual layer here instead of the host; click capture stays on the host. */
 	mountTo?: HTMLElement;
-	/** Host text colour during the bloom. Defaults to `rgb(var(--on-accent))`; `'currentColor'` disables the shift. */
+	/** Host text colour during the bloom. Defaults to the host's `--on-c` ink; `'currentColor'` disables the shift. */
 	textColor?: Color | 'currentColor';
 };
 
@@ -122,6 +122,7 @@ function installStyles(): void {
 }
 
 const RIPPLE_COVER = 2.5;
+const CANCEL_FADE = 180;
 
 function coverSize(width: number, height: number, x: number, y: number): number {
 	return Math.ceil(
@@ -134,13 +135,24 @@ function coverSize(width: number, height: number, x: number, y: number): number 
 	);
 }
 
-export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, initial) => {
+/** Live handle of a mounted `ripple` action. */
+export interface RippleHandle extends ActionReturn<RippleOptions | undefined> {
+	update(next: RippleOptions | undefined): void;
+	destroy(): void;
+	/** Ink without a pointer event (keyboard activation). Origin defaults to `options.origin`, else the host centre. */
+	spawnAt(origin?: { x: number; y: number }): void;
+}
+
+export const ripple = (host: HTMLElement, initial?: RippleOptions): RippleHandle => {
 	let opts: RippleOptions = initial ?? {};
 	const ac = new AbortController();
 	const { signal } = ac;
 	const liveStops = new Set<() => void>();
 	// Each live disc keeps its origin so a host resize (e.g. an expanding collapse panel) can recompute its cover.
 	const liveEffects = new Set<{ node: HTMLElement; x: number; y: number }>();
+	// Discs still blooming, keyed by the pointer that spawned them: a touch scroll starting on the host fires
+	// pointercancel, and without dissolving them the surface inks for a tap that never happens.
+	const inFlight = new Map<number, () => void>();
 	let activeRipples = 0;
 	let restActive = false;
 
@@ -175,15 +187,6 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 	installStyles();
 	host.classList.add(HOST_CLASS);
 
-	function resolveAccentTriplet(): string {
-		if (opts.color) return rgbTriplet(opts.color);
-		const styles = getComputedStyle(host);
-		const fromSa = styles.getPropertyValue('--sa-color').trim();
-		if (fromSa) return fromSa;
-		const fromC = styles.getPropertyValue('--c').trim();
-		return fromC || '25 91 255';
-	}
-
 	function parseRgb(s: string): [number, number, number] | null {
 		const m = s.match(/-?\d*\.?\d+/g);
 		return m && m.length >= 3 ? [Number(m[0]), Number(m[1]), Number(m[2])] : null;
@@ -197,7 +200,11 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 			if (triplet.startsWith('var('))
 				triplet = cs.getPropertyValue(triplet.slice(4, -1).trim()).trim();
 		} else {
-			triplet = cs.getPropertyValue('--on-accent').trim() || '255 255 255';
+			// `--on-c` is the ink derived from this host's own fill; `--on-accent` is the kit-wide default.
+			triplet =
+				cs.getPropertyValue('--on-c').trim() ||
+				cs.getPropertyValue('--on-accent').trim() ||
+				'255 255 255';
 		}
 		return parseRgb(triplet);
 	}
@@ -225,25 +232,14 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 		restActive = false;
 	}
 
-	function spawn(evt: MouseEvent): void {
-		if (opts.disabled) return;
-		if (evt.button !== 0) return;
-		if (opts.trigger) {
-			const target = evt.target as Element | null;
-			if (!target || !target.closest(opts.trigger)) return;
-		}
-
+	function resolveOrigin(evt?: PointerEvent): { x: number; y: number } {
+		if (opts.origin) return typeof opts.origin === 'function' ? opts.origin(host) : opts.origin;
+		if (!evt) return { x: host.clientWidth / 2, y: host.clientHeight / 2 };
 		const r = host.getBoundingClientRect();
-		let x: number;
-		let y: number;
-		if (opts.origin) {
-			const o = typeof opts.origin === 'function' ? opts.origin(host) : opts.origin;
-			x = o.x;
-			y = o.y;
-		} else {
-			x = evt.clientX - r.left;
-			y = evt.clientY - r.top;
-		}
+		return { x: evt.clientX - r.left, y: evt.clientY - r.top };
+	}
+
+	function ink(x: number, y: number, pointerId?: number): void {
 		const w = host.clientWidth;
 		const h = host.clientHeight;
 		const size = coverSize(w, h, x, y);
@@ -292,42 +288,73 @@ export const ripple: Action<HTMLElement, RippleOptions | undefined> = (host, ini
 
 		signal.addEventListener('abort', cleanup, { once: true });
 
+		const fadeDuration = Math.round(inkDuration * 1.1);
+		let released = false;
+
+		/** Hand the disc from its bloom to its fade; a cancelled gesture passes the live scale and a short duration so the ink and the text shift dissolve at once. */
+		function release(scaleTo: number, duration: number): void {
+			if (released) return;
+			released = true;
+			// Identity check: a re-press reusing this pointerId has already claimed the slot for its own disc.
+			if (pointerId !== undefined && inFlight.get(pointerId) === cancel) inFlight.delete(pointerId);
+			activeRipples = Math.max(0, activeRipples - 1);
+			if (activeRipples === 0) fill.set(0, { duration, easing: quintOut });
+			if (signal.aborted) return;
+			void Promise.all([
+				scale.set(scaleTo, { duration, easing: quintOut }),
+				opacity.set(0, { duration, easing: quintOut })
+			]).then(cleanup);
+		}
+
+		const cancel = (): void => release(scale.current, CANCEL_FADE);
+
 		activeRipples++;
 		activateRest();
 		fill.set(1, { duration: inkDuration, easing: cubicOut });
+		if (pointerId !== undefined) inFlight.set(pointerId, cancel);
 
-		const fadeDuration = Math.round(inkDuration * 1.1);
-
-		void (async () => {
-			await Promise.all([
-				opacity.set(1, { duration: 180, easing: cubicOut }),
-				scale.set(1, { duration: inkDuration, easing: cubicOut })
-			]);
-			if (signal.aborted) {
-				activeRipples = Math.max(0, activeRipples - 1);
-				if (activeRipples === 0) fill.set(0, { duration: fadeDuration, easing: quintOut });
-				return;
-			}
-			activeRipples = Math.max(0, activeRipples - 1);
-			if (activeRipples === 0) fill.set(0, { duration: fadeDuration, easing: quintOut });
-			await Promise.all([
-				scale.set(1.55, { duration: fadeDuration, easing: quintOut }),
-				opacity.set(0, { duration: fadeDuration, easing: quintOut })
-			]);
-			cleanup();
-		})();
+		// Svelte never settles an interrupted `set()`, so a cancelled disc never reaches this hand-off.
+		void Promise.all([
+			opacity.set(1, { duration: 180, easing: cubicOut }),
+			scale.set(1, { duration: inkDuration, easing: cubicOut })
+		]).then(() => release(1.55, fadeDuration));
 	}
 
-	host.addEventListener('mousedown', spawn, { signal });
+	function spawn(evt: PointerEvent): void {
+		if (opts.disabled) return;
+		// Same gate as pressBounce: secondary mouse buttons never press; touch/pen report button 0.
+		if (evt.button !== 0 && evt.pointerType === 'mouse') return;
+		if (opts.trigger) {
+			const target = evt.target as Element | null;
+			if (!target || !target.closest(opts.trigger)) return;
+		}
+		const o = resolveOrigin(evt);
+		ink(o.x, o.y, evt.pointerId);
+	}
+
+	function handlePointerCancel(evt: PointerEvent): void {
+		inFlight.get(evt.pointerId)?.();
+	}
+
+	function spawnAt(origin?: { x: number; y: number }): void {
+		if (opts.disabled) return;
+		const o = origin ?? resolveOrigin();
+		ink(o.x, o.y);
+	}
+
+	host.addEventListener('pointerdown', spawn, { signal, passive: true });
+	host.addEventListener('pointercancel', handlePointerCancel, { signal, passive: true });
 
 	return {
 		update(next) {
 			opts = next ?? {};
 		},
+		spawnAt,
 		destroy() {
 			ac.abort();
 			ro.disconnect();
 			liveEffects.clear();
+			inFlight.clear();
 			deactivateRest();
 			host.classList.remove(HOST_CLASS);
 			for (const s of liveStops) s();

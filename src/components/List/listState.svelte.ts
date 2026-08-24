@@ -5,7 +5,7 @@ import type { ListRole, ListVariant } from './context';
 
 export type ListRootOptions = {
 	variant: () => ListVariant;
-	color: () => Color;
+	color: () => Color | undefined;
 	size: () => Size;
 	divided: () => boolean;
 	disabled: () => boolean;
@@ -29,7 +29,7 @@ export class ListRootState {
 	get variant(): ListVariant {
 		return this.#opts.variant();
 	}
-	get color(): Color {
+	get color(): Color | undefined {
 		return this.#opts.color();
 	}
 	get size(): Size {

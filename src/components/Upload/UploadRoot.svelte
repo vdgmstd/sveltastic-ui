@@ -299,10 +299,10 @@
 		opacity: 0.12;
 		mix-blend-mode: screen;
 	}
-	.upload--field.upload--wide {
+	:where(.upload--field.upload--wide) {
 		max-width: 480px;
 	}
-	.upload--field.upload--full-width {
+	:where(.upload--field.upload--full-width) {
 		max-width: none;
 	}
 

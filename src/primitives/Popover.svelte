@@ -63,7 +63,7 @@
 		modal?: boolean;
 		/** Accessible label for the popup when it has no visible heading. */
 		ariaLabel?: string;
-		/** Portal target for the popup; defaults to `document.body`. CSS selector or element. */
+		/** Portal target for the popup; defaults to the nearest ancestor `<dialog>`, else `document.body`. CSS selector or element. */
 		portalTarget?: PortalTarget;
 		/** Render the popup in place instead of portalling it. */
 		portalDisabled?: boolean;
@@ -412,6 +412,7 @@
 			class: 'popover__body',
 			role: 'presentation',
 			'data-state': dataState(visible ? 'open' : 'closed'),
+			'data-scroll-lock-allow': '',
 			onclick: handleBodyClick,
 			[bodyRefKey]: bodyRefAttach
 		})
@@ -549,7 +550,7 @@
 		width: 100%;
 	}
 
-	.popover {
+	:where(.popover) {
 		position: fixed;
 		z-index: 90000;
 		min-width: 180px;
@@ -577,7 +578,7 @@
 		);
 	}
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-		.popover {
+		:where(.popover) {
 			background: rgb(var(--gray-2));
 		}
 	}
@@ -599,19 +600,21 @@
 		background: transparent;
 	}
 
-	.popover__body {
+	:where(.popover__body) {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
 		min-height: 0;
 		overflow-y: auto;
+		/* The body opts out of the scroll-lock touch blocker, so it must not chain its overscroll to the page. */
+		overscroll-behavior: contain;
 		scrollbar-width: none;
 	}
 	.popover__body::-webkit-scrollbar {
 		display: none;
 	}
-	.popover__header,
-	.popover__footer {
+	:where(.popover__header),
+	:where(.popover__footer) {
 		flex-shrink: 0;
 	}
 

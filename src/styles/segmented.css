@@ -2,7 +2,10 @@
 
 	:where(.segmented) {
 		--c: var(--primary);
+		--on-c: var(--on-accent);
 		--at: var(--c);
+		--on-at: var(--on-c);
+		--sa-color: var(--c);
 		--x: 0px;
 		--w: 0px;
 		--pad: 3px;

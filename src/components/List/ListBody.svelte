@@ -66,7 +66,7 @@
 {/if}
 
 <style>
-	.list__body {
+	:where(.list__body) {
 		--list-radius: var(--rad-xl);
 		--list-pad-y: var(--space-4);
 		--list-pad-x: var(--space-4);

@@ -224,6 +224,7 @@
 		--side-bg: rgb(var(--c) / 0.22);
 	}
 
+	/* Stays visible: the thumb, tooltip and the native input all live in the rail and are taller than it — clipping here would cut them and their hit areas. Runaway paint is contained on the segments instead. */
 	:global(.slider .slider__rail) {
 		position: absolute;
 		left: calc(var(--thumb-w) / 2);
@@ -240,6 +241,7 @@
 		height: 100%;
 		border-radius: var(--rad-pill);
 		min-width: 0;
+		max-width: 100%;
 	}
 
 	:global(.slider .slider__seg--side) {

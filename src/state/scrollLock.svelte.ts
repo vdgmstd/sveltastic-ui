@@ -1,35 +1,71 @@
+const OWNED_PROPERTIES = ['overflow', 'padding-right', '--scrollbar-width'] as const;
+
+const ALLOW_SELECTOR = '[data-scroll-lock-allow], dialog[open]';
+const POPOVER_ALLOW_SELECTOR = `${ALLOW_SELECTOR}, [popover]:popover-open`;
+
+let cachedAllowSelector: string | null = null;
+
+function touchAllowSelector(): string {
+	if (cachedAllowSelector === null) {
+		try {
+			document.querySelector(POPOVER_ALLOW_SELECTOR);
+			cachedAllowSelector = POPOVER_ALLOW_SELECTOR;
+		} catch {
+			// `:popover-open` is a SyntaxError on WebKit < 17 — one throwing selector must not disable the blocker.
+			cachedAllowSelector = ALLOW_SELECTOR;
+		}
+	}
+	return cachedAllowSelector;
+}
+
+type OwnedDeclaration = { value: string; priority: string };
+
 class ScrollLock {
 	#count = 0;
-	#priorStyle: string | null = null;
+	#priorProperties: Map<string, OwnedDeclaration> | null = null;
 	#touchHandler: ((e: TouchEvent) => void) | null = null;
 	#pendingRestore: number | null = null;
 	#allowed = new Set<Element>();
 
-	#hasStableGutter(): boolean {
-		if (typeof window === 'undefined') return false;
-		const gutter = getComputedStyle(document.documentElement).scrollbarGutter;
-		return gutter.includes('stable');
+	#gutterCompensation(): number {
+		if (typeof window === 'undefined') return 0;
+		// A coarse pointer has nothing to compensate: touch scrollbars are overlays that reserve no layout
+		// space, and iOS reports the VISUAL viewport in innerWidth (bogus width while pinch-zoomed).
+		if (window.matchMedia?.('(pointer: coarse)').matches) return 0;
+		// Read via the string API: `scrollbar-gutter` is absent below Safari 17.4, where the camelCase
+		// property is `undefined` and any string method on it throws.
+		const gutter = getComputedStyle(document.documentElement).getPropertyValue('scrollbar-gutter');
+		if (gutter.includes('stable')) return 0;
+		return Math.max(0, window.innerWidth - document.documentElement.clientWidth);
 	}
 
 	#apply(): void {
 		const body = document.body;
-		this.#priorStyle = body.getAttribute('style') ?? '';
 
-		const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-		const compensate = !this.#hasStableGutter() && scrollbarWidth > 0;
+		const prior = new Map<string, OwnedDeclaration>();
+		for (const property of OWNED_PROPERTIES) {
+			prior.set(property, {
+				value: body.style.getPropertyValue(property),
+				priority: body.style.getPropertyPriority(property)
+			});
+		}
+		this.#priorProperties = prior;
 
-		body.style.overflow = 'hidden';
-		if (compensate) {
+		body.style.setProperty('overflow', 'hidden');
+
+		const scrollbarWidth = this.#gutterCompensation();
+		if (scrollbarWidth > 0) {
 			const priorPad = parseFloat(getComputedStyle(body).paddingRight) || 0;
-			body.style.paddingRight = `${priorPad + scrollbarWidth}px`;
+			body.style.setProperty('padding-right', `${priorPad + scrollbarWidth}px`);
 			body.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
 		}
 
+		const allowSelector = touchAllowSelector();
 		this.#touchHandler = (e: TouchEvent): void => {
 			if (e.touches.length > 1) return;
-			const target = e.target as Element | null;
+			const target = e.target instanceof Element ? e.target : null;
 			if (!target) return;
-			if (target.closest('[data-scroll-lock-allow]')) return;
+			if (target.closest(allowSelector)) return;
 			for (const el of this.#allowed) if (el.contains(target)) return;
 			e.preventDefault();
 		};
@@ -38,9 +74,13 @@ class ScrollLock {
 
 	#release(): void {
 		const body = document.body;
-		if (this.#priorStyle) body.setAttribute('style', this.#priorStyle);
-		else body.removeAttribute('style');
-		this.#priorStyle = null;
+		if (this.#priorProperties) {
+			for (const [property, { value, priority }] of this.#priorProperties) {
+				if (value) body.style.setProperty(property, value, priority);
+				else body.style.removeProperty(property);
+			}
+			this.#priorProperties = null;
+		}
 		this.#allowed.clear();
 		if (this.#touchHandler) {
 			document.removeEventListener('touchmove', this.#touchHandler);
@@ -48,11 +88,15 @@ class ScrollLock {
 		}
 	}
 
-	/** Lock body scroll (ref-counted). Pass the scrollable layer to keep touch scrolling inside it. Returns an idempotent unlock. */
+	/**
+	 * Lock body scroll (ref-counted). Pass the scrollable layer to keep touch scrolling inside it; layers
+	 * outside the DOM subtree (portaled popovers, toasts) opt in with a `data-scroll-lock-allow` attribute.
+	 * Returns an idempotent unlock.
+	 */
 	lock(allow?: Element | null): () => void {
 		if (typeof document === 'undefined') return () => {};
 		if (allow) this.#allowed.add(allow);
-		// Relock within the deferred-release window: body is still locked and #priorStyle still holds the true original — resume without re-#apply (which would capture the locked style).
+		// Relock within the deferred-release window: body is still locked and #priorProperties still holds the true original — resume without re-#apply (which would capture the locked style).
 		if (this.#pendingRestore !== null) {
 			clearTimeout(this.#pendingRestore);
 			this.#pendingRestore = null;

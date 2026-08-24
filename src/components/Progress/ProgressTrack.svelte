@@ -9,8 +9,8 @@
 			children?: Snippet;
 			/** Render-delegation: receive the merged props and render your own track element. */
 			child?: Snippet<[{ props: Record<string, unknown> }]>;
-		} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
-		HTMLDivElement
+		} & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>,
+		HTMLSpanElement
 	>;
 </script>
 
@@ -39,7 +39,7 @@
 			'aria-hidden': true,
 			'data-shape': ctx.shape,
 			'data-testid': 'progress-track',
-			[refKey]: attachRef((n) => (ref = n as HTMLDivElement))
+			[refKey]: attachRef((n) => (ref = n as HTMLSpanElement))
 		})
 	);
 </script>
@@ -62,7 +62,7 @@
 	{/if}
 	{@render children?.()}
 {:else}
-	<div {...merged}>{@render children?.()}</div>
+	<span {...merged}>{@render children?.()}</span>
 {/if}
 
 <style>

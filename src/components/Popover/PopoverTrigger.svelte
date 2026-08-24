@@ -53,7 +53,7 @@
 {/snippet}
 
 <style>
-	.popover-trigger {
+	:where(.popover-trigger) {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);

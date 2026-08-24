@@ -9,9 +9,14 @@
 
 	export type DateTimePickerType = 'time' | 'date' | 'datetime';
 
+	/** When typed text reaches `value`: on blur / Enter / panel pick, or on every complete keystroke. */
+	export type DateTimePickerCommitMode = 'blur' | 'input';
+
 	export type DateTimePickerRootProps = {
 		/** What kind of value the picker captures. */
 		type?: DateTimePickerType;
+		/** When typing commits to `value`. `'input'` emits on every fully-typed entry; defaults to `'blur'`. */
+		commitMode?: DateTimePickerCommitMode;
 		/** Bound value for `'time'` (`HH:MM[:SS]`), `'date'` (`YYYY-MM-DD`), `'datetime'` (`YYYY-MM-DDTHH:MM[:SS]`). */
 		value?: string;
 		/** Bindable open state of the dropdown. */
@@ -92,6 +97,7 @@
 
 	let {
 		type = 'time',
+		commitMode = 'blur',
 		value = $bindable(''),
 		open = $bindable(false),
 		closeOnClickOutside = true,
@@ -132,6 +138,7 @@
 			getOpen: () => open,
 			setOpenProp: (v) => { open = v; },
 			get type() { return type; },
+			get commitMode() { return commitMode; },
 			get showSeconds() { return showSeconds; },
 			get hour12() { return hour12; },
 			get mask() { return mask; },
@@ -247,7 +254,7 @@
 {/snippet}
 
 <style>
-	.dtp-shell {
+	:where(.dtp-shell) {
 		display: inline-flex;
 		min-height: 64px;
 		max-width: calc(100vw - 16px);
@@ -258,6 +265,6 @@
 		user-select: none;
 	}
 	@media (max-width: 480px) {
-		.dtp-shell { padding: var(--space-5); }
+		:where(.dtp-shell) { padding: var(--space-5); }
 	}
 </style>

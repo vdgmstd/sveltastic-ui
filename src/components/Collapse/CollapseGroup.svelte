@@ -156,7 +156,7 @@
 		box-sizing: border-box;
 	}
 
-	.collapse-group__body {
+	:where(.collapse-group__body) {
 		display: flex;
 		flex-direction: column;
 		min-width: 0;

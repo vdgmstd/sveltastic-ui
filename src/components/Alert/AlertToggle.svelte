@@ -77,7 +77,7 @@
 		padding-right: 0;
 	}
 	.alert__title--collapsible:focus-visible {
-		outline: 2px solid rgb(255 255 255 / 0.6);
+		outline: 2px solid rgb(var(--on-c) / 0.6);
 		outline-offset: -2px;
 		border-radius: inherit;
 	}

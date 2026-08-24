@@ -75,7 +75,7 @@
 </div>
 
 <style>
-	.datetime-panel {
+	:where(.datetime-panel) {
 		display: grid;
 		grid-template-columns: auto auto;
 		align-items: stretch;
@@ -107,7 +107,7 @@
 	}
 
 	@media (max-width: 480px) {
-		.datetime-panel {
+		:where(.datetime-panel) {
 			grid-template-columns: 1fr;
 			gap: var(--space-5);
 		}

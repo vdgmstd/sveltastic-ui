@@ -48,7 +48,7 @@
 		color?: Color;
 		/** Accessible name for the input when no visible label is present. */
 		ariaLabel?: string;
-		/** Fires whenever the query text changes. */
+		/** Fires when the user edits the query text — not for the combobox's own rewrites (clear after a pick, on open, on close). */
 		onInputValueChange?: (value: string) => void;
 		/** Fires whenever `open` changes (open or close). */
 		onOpenChange?: (open: boolean) => void;
