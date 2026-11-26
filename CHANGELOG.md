@@ -4,6 +4,57 @@ All notable changes to `sveltastic-ui` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project uses
 semantic-ish versioning (see the note on 1.1.0 below).
 
+## [1.1.13] — 2026-08-24
+
+Regional date entry (app registry BUG-048). Additive release: two new props, no renames,
+no removals; consumers who pass neither see byte-identical rendering (verified by
+adversarial re-derivation against the 1.1.12 expressions, plus real-browser keystroke
+traces through the maska engine).
+
+### Added
+
+- **`DateTimePicker.Root format?: string`** (default `'YYYY-MM-DD'`) — custom date
+  entry/display order for `type="date"` and the date half of `type="datetime"`:
+  a permutation of one `YYYY`, one `MM`, one `DD` joined by single `-` `.` `/` or space
+  separators (`DD-MM-YYYY`, `MM/DD/YYYY`, `DD.MM.YYYY`, …). Fixed-width tokens only —
+  `D`/`M`/`YY` and separator-less strings are rejected; an invalid pattern dev-warns and
+  falls back to ISO; `type="time"` ignores it with a dev-warn. The derived mask,
+  placeholder, typing ghost, complete-entry gate and both parse paths all follow the
+  format; **the bound `value` / `min` / `max` / `onValueChange` stay ISO** (same contract
+  precedent as `hour12`). With `format` set and no `maskHint`, the typing ghost shows the
+  letter pattern itself (`DD-MM-YYYY`) instead of zeros, so the order is visible before
+  the first keystroke. An explicit `mask` prop still wins the mask; `mask` and `format`
+  are mutually exclusive in practice and a conflicting pair dev-warns.
+- **`maskHint?: string` on `DateTimePicker.Root` and `Input.Root`** — literal override
+  for the mask typing ghost, for localized templates (`ДД-ММ-ГГГГ`) or any custom hint;
+  the kit stays i18n-agnostic (the string comes from the consumer). Its code-point length
+  is trusted to match the mask's (a mismatch dev-warns; longer leaves ghost residue,
+  shorter blanks the ghost early). `''` counts as unset; on `Input`, `maskHint` without a
+  `mask` is a no-op. Ghost slicing is code-point-aware, so non-Latin and non-BMP
+  templates render without broken glyphs.
+
+### Fixed
+
+- **Typed impossible dates no longer silently constrain.** In 1.1.12 a fully-typed
+  `1992-02-31` (or a pasted `1992-13-01`) committed a Temporal-constrained neighbour
+  (`1992-02-29` / `1992-12-01`) on blur. Field-text parsing now uses
+  `overflow: 'reject'`: an impossible date commits nothing and the field stays
+  recoverable. Programmatic `value` handling is unchanged.
+- **12-hour datetime entry never committed** (since 1.1.12): with `hour12`, a fully
+  typed `… 02:30 PM` matched the complete-entry gate but the parser had no AM/PM branch,
+  so neither keystroke nor blur commit fired. The time half now parses through the same
+  path as programmatic values; 24-hour behavior is unchanged.
+- **`type="datetime"` display zero-pads years below 1000** (`0999-12-25`, was
+  `999-12-25`), matching the `type="date"` branch. Under a custom `format`, a value with
+  a year outside 0–9999 renders an empty field instead of a truncated wrong-looking date;
+  the ISO path keeps its expanded-year rendering.
+
+### Internal
+
+- The kit-wide dev-only logger now lives in `utils/dom.ts` (single sanctioned
+  `console.warn` site, message-deduped, dev-gated in a bundler-foldable way that also
+  survives CJS transpilation and un-bundled ESM).
+
 ## [1.1.12] — 2026-08-23
 
 Field-audit release. A live-app debugging campaign (on-device iOS instrumentation plus a

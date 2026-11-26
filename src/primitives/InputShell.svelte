@@ -39,6 +39,14 @@
 		iconColor?: Color;
 		/** Mask pattern. */
 		mask?: MaskOptions;
+		/**
+		 * Literal ghost template drawn behind the typed value, replacing the zeros derived from `mask`
+		 * (e.g. `'DD-MM-YYYY'`). Requires `mask` — without one there is no ghost to override, and `''` reads as unset.
+		 * Give it exactly as many characters as the mask has slots (dev-warns otherwise): a longer hint keeps
+		 * painting ghost characters over a complete value, a shorter one blanks the ghost while the field is
+		 * still incomplete and under-reports how much is left to type.
+		 */
+		maskHint?: string;
 		/** Force-focused override — renders as focused regardless of real DOM focus. */
 		forceFocus?: boolean;
 		/** Disabled state. */
@@ -116,6 +124,7 @@
 		color,
 		iconColor,
 		mask,
+		maskHint,
 		forceFocus = false,
 		disabled = false,
 		readonly = false,
@@ -165,6 +174,7 @@
 		getDisabled: () => disabled,
 		getReadonly: () => readonly,
 		getMask: () => mask,
+		getMaskHint: () => maskHint,
 		getId: () => id
 	});
 
@@ -302,7 +312,7 @@
 			`--fp:${shell.fpTween.current};` +
 			`--vp:${shell.vpTween.current};` +
 			`--pp:${shell.progressTween.current}%;` +
-			`--mask-len:${shell.maskTemplate.length};` +
+			`--mask-len:${shell.maskLength};` +
 			(userStyle ?? ''),
 		'data-state': dataState(shell.focusedActive ? 'focused' : undefined),
 		'data-disabled': boolAttr(disabled),
@@ -400,7 +410,7 @@
 		{/if}
 		{#if !control && shell.showMask}
 			<span class="input__mask" aria-hidden="true"
-				><span class="input__mask-typed">{shell.maskedValue.slice(0, shell.typedLen)}</span><span
+				><span class="input__mask-typed">{shell.typedText}</span><span
 					class="input__mask-rest">{shell.maskRemainder}</span
 				></span
 			>

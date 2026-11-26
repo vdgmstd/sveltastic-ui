@@ -63,8 +63,31 @@
 		forceMount?: boolean;
 		/** Side of the field where the icon sits. Defaults to `'after'`. */
 		iconPosition?: 'before' | 'after';
-		/** Override the input mask. Defaults are derived from `type`, `showSeconds`, and `hour12`. */
+		/**
+		 * Override the input mask. Defaults are derived from `type`, `format`, `showSeconds`, and `hour12`.
+		 * Mutually exclusive with `format` — a mask that shapes text the format cannot parse leaves the field
+		 * unable to commit anything (dev-warns).
+		 */
 		mask?: MaskOptions;
+		/**
+		 * Date entry / display order — a permutation of one `YYYY`, one `MM` and one `DD` joined by single
+		 * `-`, `.`, `/` or space separators (e.g. `'DD.MM.YYYY'`). Presentation only: `value`, `min` and `max`
+		 * stay ISO. Ignored for `type="time"`; an invalid pattern falls back to `'YYYY-MM-DD'`.
+		 * Mutually exclusive with an explicit `mask`.
+		 * Blur commits leniently, and that leniency is position-dependent: a trailing `MM`/`DD` may be typed
+		 * as one digit, so a truncated `1992-12-2` commits as `1992-12-02` under `'YYYY-MM-DD'`, while the same
+		 * truncation under `'DD-MM-YYYY'` leaves the year short and commits nothing.
+		 */
+		format?: string;
+		/**
+		 * Literal ghost template drawn behind the typed value, replacing the zeros derived from the mask
+		 * (e.g. the localized letters for `'DD-MM-YYYY'`). Defaults to the `format` pattern when `format` is set,
+		 * to the mask's zeros otherwise; `''` reads as unset, so an unresolved i18n lookup takes those defaults.
+		 * Give it exactly as many characters as the mask has slots (dev-warns otherwise): a longer hint keeps
+		 * painting ghost characters over a complete value, a shorter one blanks the ghost while the field is
+		 * still incomplete and under-reports how much is left to type.
+		 */
+		maskHint?: string;
 		/** Custom icon glyph snippet. Falls back to a clock (time) or calendar (date / datetime). */
 		icon?: Snippet;
 		/** Fires on every committed value change. */
@@ -122,6 +145,8 @@
 		forceMount = false,
 		iconPosition = 'after',
 		mask,
+		format,
+		maskHint,
 		icon,
 		onValueChange,
 		onOpenChange,
@@ -142,6 +167,7 @@
 			get showSeconds() { return showSeconds; },
 			get hour12() { return hour12; },
 			get mask() { return mask; },
+			get format() { return format; },
 			get placeholder() { return placeholder; },
 			get label() { return label; },
 			get ariaLabel() { return ariaLabel; },
@@ -159,6 +185,7 @@
 	);
 	setDtpCtx(picker);
 
+	$effect(() => picker.syncFormatWarning());
 	$effect(() => picker.syncPendingTime());
 	$effect(() => picker.syncInput());
 	$effect(() => picker.syncFocusReturn());
@@ -198,6 +225,7 @@
 			icon={iconSnippet}
 			{iconPosition}
 			mask={picker.resolvedMask}
+			maskHint={maskHint || picker.maskHintText}
 			forceFocus={open}
 			oninput={(e: Event) => picker.handleInputText((e.currentTarget as HTMLInputElement).value)}
 			onkeydown={(e: KeyboardEvent) => picker.handleFieldKeydown(e)}

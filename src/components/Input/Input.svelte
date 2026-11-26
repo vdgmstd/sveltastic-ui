@@ -37,6 +37,14 @@
 			/** Mask pattern — string (e.g. `'###-###'`), alternatives array, or full maska options. Tokens: `#` digit, `@` letter, `*` alphanumeric. */
 			mask?: MaskOptions;
 			/**
+			 * Literal ghost template drawn behind the typed value, replacing the zeros derived from `mask`
+			 * (e.g. `'DD-MM-YYYY'`). Requires `mask` — without one there is no ghost to override, and `''` reads as unset.
+			 * Give it exactly as many characters as the mask has slots (dev-warns otherwise): a longer hint keeps
+			 * painting ghost characters over a complete value, a shorter one blanks the ghost while the field is
+			 * still incomplete and under-reports how much is left to type.
+			 */
+			maskHint?: string;
+			/**
 			 * External force-focused override. When `true`, the field renders as if focused (icon lifts, ripple fills,
 			 * label floats) regardless of real DOM focus. For composite controls (Select / DateTimePicker) that own
 			 * their own activation state and need the trigger to look active while a popover is open.
@@ -79,6 +87,7 @@
 		color,
 		iconColor,
 		mask,
+		maskHint,
 		forceFocus = false,
 		disabled = false,
 		readonly = false,
@@ -115,6 +124,7 @@
 			getDisabled: () => disabled,
 			getReadonly: () => readonly,
 			getMask: () => mask,
+			getMaskHint: () => maskHint,
 			getId: () => id
 		})
 	);
@@ -153,7 +163,7 @@
 				`--fp:${root.fpTween.current};` +
 				`--vp:${root.vpTween.current};` +
 				`--pp:${root.progressTween.current}%;` +
-				`--mask-len:${root.maskTemplate.length};` +
+				`--mask-len:${root.maskLength};` +
 				(userStyle ?? ''),
 			'data-state': dataState(root.focusedActive ? 'focused' : undefined),
 			'data-disabled': boolAttr(disabled),

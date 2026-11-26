@@ -8,7 +8,14 @@ import { boolAttr, dataState } from '../../utils/attrs';
 import {
 	type TimeParts,
 	type DateLike,
-	pad,
+	type DateFormat,
+	ISO_DATE_FORMAT,
+	parseDateFormat,
+	formatDateByPattern,
+	dateFormatMask,
+	dateFormatCompleteSource,
+	parseDateByPattern,
+	parseDateTimeByPattern,
 	parseTimeParts,
 	timePartsToISO,
 	formatTimeParts,
@@ -17,6 +24,7 @@ import {
 	plainDateToISO,
 	plainDateTimeToISO
 } from '../../utils/date';
+import { devWarn } from '../../utils/dom';
 import type { DateTimePickerType, DateTimePickerCommitMode } from './DateTimePicker.svelte';
 
 const ZERO_TIME: TimeParts = { h: 0, m: 0, s: 0 };
@@ -33,6 +41,7 @@ export type DateTimePickerConfig = {
 	readonly showSeconds: boolean;
 	readonly hour12: boolean;
 	readonly mask: MaskOptions | undefined;
+	readonly format: string | undefined;
 	readonly placeholder: string | undefined;
 	readonly label: string | undefined;
 	readonly ariaLabel: string | undefined;
@@ -51,31 +60,36 @@ const PERIOD_TOKENS = {
 	'@': { pattern: /[AaPpMm]/, transform: (c: string) => c.toUpperCase() }
 } as const;
 
-function parseDateText(text: string): Temporal.PlainDate | null {
+/**
+ * Parse date text in `format` (defaults to ISO — the shape `value` always carries).
+ * The generic Temporal fallback is reserved for ISO: under a custom token order it would silently
+ * re-read `1992-12-25` as if the consumer's format did not apply.
+ */
+function parseDateText(text: string, format: DateFormat = ISO_DATE_FORMAT): Temporal.PlainDate | null {
 	const trimmed = (text ?? '').trim();
 	if (!trimmed) return null;
-	const m = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-	if (!m) return toPlainDate(trimmed);
-	try {
-		return Temporal.PlainDate.from({ year: +m[1], month: +m[2], day: +m[3] });
-	} catch {
-		return null;
-	}
+	const parsed = parseDateByPattern(trimmed, format);
+	if (parsed) return parsed;
+	return format.pattern === ISO_DATE_FORMAT.pattern ? toPlainDate(trimmed) : null;
 }
 
-function parseDateTimeText(text: string): Temporal.PlainDateTime | null {
+function parseDateTimeText(
+	text: string,
+	format: DateFormat = ISO_DATE_FORMAT
+): Temporal.PlainDateTime | null {
 	const trimmed = (text ?? '').trim();
 	if (!trimmed) return null;
-	const m = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
-	if (!m) return toPlainDateTime(trimmed);
-	try {
-		return Temporal.PlainDateTime.from({
-			year: +m[1], month: +m[2], day: +m[3],
-			hour: +m[4], minute: +m[5], second: m[6] ? +m[6] : 0
-		});
-	} catch {
-		return null;
-	}
+	const parsed = parseDateTimeByPattern(trimmed, format);
+	if (parsed) return parsed;
+	return format.pattern === ISO_DATE_FORMAT.pattern ? toPlainDateTime(trimmed) : null;
+}
+
+/** The single literal pattern behind a mask option — `null` for function masks and multi-alternative arrays. */
+function maskPattern(opts: MaskOptions): string | null {
+	const raw = typeof opts === 'string' || Array.isArray(opts) ? opts : opts.mask;
+	if (typeof raw === 'string') return raw;
+	if (Array.isArray(raw)) return raw.length === 1 ? (raw[0] ?? null) : null;
+	return null;
 }
 
 /** Shared DateTimePicker state: value/open proxied to the bindable props, parse/format deriveds, the field-text debounce, managed focus, and per-part attribute bags. */
@@ -90,6 +104,7 @@ export class DateTimePickerRootState {
 	#lastSync = 0;
 	/** True when the last value change came from typing in the field (vs a panel pick) — gates the input reflection. */
 	#fieldDriven = false;
+	#lastFormatPattern: string | undefined;
 
 	readonly fieldId: string;
 	fieldEl = $state<HTMLInputElement | null>(null);
@@ -120,6 +135,13 @@ export class DateTimePickerRootState {
 	get max(): DateLike | undefined { return this.#cfg.max; }
 
 	get triplet(): string { return rgbTriplet(this.#cfg.color); }
+
+	/** The validated entry/display format. Falls back to ISO when `format` is unset, malformed, or the type is `time`. */
+	readonly dateFormat = $derived.by<DateFormat>(() => {
+		const raw = this.#cfg.format;
+		if (raw === undefined || this.isTime) return ISO_DATE_FORMAT;
+		return parseDateFormat(raw) ?? ISO_DATE_FORMAT;
+	});
 
 	get fallbackName(): string {
 		return this.isTime ? 'Time' : this.isDate ? 'Date' : 'Date and time';
@@ -188,15 +210,17 @@ export class DateTimePickerRootState {
 		const showSeconds = this.#cfg.showSeconds;
 		const hour12 = this.#cfg.hour12;
 		if (this.isTime) return formatTimeParts(this.parsedTime, { withSeconds: showSeconds, hour12 });
-		if (this.isDate) return this.parsedDate ? plainDateToISO(this.parsedDate) : '';
+		if (this.isDate)
+			return this.parsedDate ? formatDateByPattern(this.parsedDate, this.dateFormat) : '';
 		const parts = this.#dateTimePartsFromValue(this.value);
 		if (!parts.date) return '';
-		const date = `${parts.date.year}-${pad(parts.date.month)}-${pad(parts.date.day)}`;
+		const date = formatDateByPattern(parts.date, this.dateFormat);
+		if (!date) return '';
 		return `${date} ${formatTimeParts(parts.time, { withSeconds: showSeconds, hour12 })}`;
 	});
 
-	readonly resolvedMask = $derived.by<MaskOptions | undefined>(() => {
-		if (this.#cfg.mask !== undefined) return this.#cfg.mask;
+	/** Mask implied by `type`, `format`, `showSeconds` and `hour12`. An explicit `mask` prop replaces it wholesale. */
+	readonly #derivedMask = $derived.by<MaskOptions>(() => {
 		const showSeconds = this.#cfg.showSeconds;
 		const hour12 = this.#cfg.hour12;
 		if (this.isTime) {
@@ -206,39 +230,86 @@ export class DateTimePickerRootState {
 					: { mask: '##:## @@', tokens: PERIOD_TOKENS };
 			return showSeconds ? '##:##:##' : '##:##';
 		}
-		if (this.isDate) return '####-##-##';
+		if (this.isDate) return dateFormatMask(this.dateFormat);
 		const timePart = hour12
 			? (showSeconds ? '##:##:## @@' : '##:## @@')
 			: (showSeconds ? '##:##:##' : '##:##');
-		const pattern = `####-##-## ${timePart}`;
+		const pattern = `${dateFormatMask(this.dateFormat)} ${timePart}`;
 		return hour12 ? { mask: pattern, tokens: PERIOD_TOKENS } : pattern;
 	});
+
+	readonly resolvedMask = $derived.by<MaskOptions | undefined>(() =>
+		this.#cfg.mask !== undefined ? this.#cfg.mask : this.#derivedMask
+	);
 
 	/**
 	 * Fixed-width shape of a fully-typed entry. The live-typing path commits only on an exact match,
 	 * so half-typed text (`1992-12-2`) can never parse as a complete date and get padded back into the mask.
 	 */
 	readonly #completePattern = $derived.by<RegExp>(() => {
-		if (this.isDate) return /^\d{4}-\d{2}-\d{2}$/;
+		const date = dateFormatCompleteSource(this.dateFormat);
+		if (this.isDate) return new RegExp(`^${date}$`);
 		const seconds = this.#cfg.showSeconds ? ':\\d{2}' : '';
 		const period = this.#cfg.hour12 ? ' [AP]M' : '';
 		const time = `\\d{2}:\\d{2}${seconds}${period}`;
 		if (this.isTime) return new RegExp(`^${time}$`);
-		return new RegExp(`^\\d{4}-\\d{2}-\\d{2}[T ]${time}$`);
+		return new RegExp(`^${date}[T ]${time}$`);
 	});
+
+	/** Letter template for the time half — same width as its mask, so it can stand in as a ghost. */
+	readonly #timeTemplate = $derived.by(() =>
+		this.#cfg.hour12
+			? this.#cfg.showSeconds ? 'HH:MM:SS AM' : 'HH:MM AM'
+			: this.#cfg.showSeconds ? 'HH:MM:SS' : 'HH:MM'
+	);
 
 	readonly placeholderText = $derived.by(() => {
 		if (this.#cfg.placeholder !== undefined) return this.#cfg.placeholder;
-		const datePart = 'YYYY-MM-DD';
-		const showSeconds = this.#cfg.showSeconds;
-		const hour12 = this.#cfg.hour12;
-		const timePart = hour12
-			? showSeconds ? 'HH:MM:SS AM' : 'HH:MM AM'
-			: showSeconds ? 'HH:MM:SS' : 'HH:MM';
-		if (this.isTime) return timePart;
-		if (this.isDate) return datePart;
-		return `${datePart} ${timePart}`;
+		if (this.isTime) return this.#timeTemplate;
+		if (this.isDate) return this.dateFormat.pattern;
+		return `${this.dateFormat.pattern} ${this.#timeTemplate}`;
 	});
+
+	/**
+	 * Ghost template spelling out the token order, for a picker whose consumer chose the order explicitly.
+	 * `undefined` unless `format` was passed, so a format-less field keeps the mask-derived zeros.
+	 * Its length equals the derived mask's by construction — every token is the same width as its slots.
+	 */
+	readonly maskHintText = $derived.by<string | undefined>(() => {
+		if (this.#cfg.format === undefined || this.isTime) return undefined;
+		if (this.isDate) return this.dateFormat.pattern;
+		return `${this.dateFormat.pattern} ${this.#timeTemplate}`;
+	});
+
+	/**
+	 * Dev-only diagnostics for `format` — ignored on `type="time"`, malformed patterns fall back to ISO,
+	 * and an explicit `mask` contradicting `format` can never commit. Call from an `$effect`.
+	 */
+	syncFormatWarning(): void {
+		const raw = this.#cfg.format;
+		if (raw === undefined) return;
+		if (this.isTime) {
+			devWarn(`DateTimePicker: "format" is ignored for type="time" (got ${JSON.stringify(raw)}).`);
+			return;
+		}
+		if (parseDateFormat(raw) === null) {
+			devWarn(
+				`DateTimePicker: invalid "format" ${JSON.stringify(raw)} — expected one YYYY, one MM and one DD ` +
+					`joined by single "-", ".", "/" or space separators. Falling back to "${ISO_DATE_FORMAT.pattern}".`
+			);
+		}
+		const explicit = this.#cfg.mask;
+		if (explicit === undefined) return;
+		const typed = maskPattern(explicit);
+		const expected = maskPattern(this.#derivedMask);
+		if (typed !== null && expected !== null && typed !== expected) {
+			devWarn(
+				`DateTimePicker: "mask" ${JSON.stringify(typed)} contradicts "format" ${JSON.stringify(raw)} ` +
+					`(which needs ${JSON.stringify(expected)}) — text shaped by the mask can never parse in the format, ` +
+					`so the field never commits. "mask" and "format" are mutually exclusive.`
+			);
+		}
+	}
 
 	/** Mirror `pendingTime` from the value when a `datetime` value carries a date. */
 	syncPendingTime(): void {
@@ -264,9 +335,15 @@ export class DateTimePickerRootState {
 
 	/** Reflect `display` into the field: instant while closed, debounced while open. */
 	syncInput(): void {
-		// Read both dependencies before any early return so the calling effect keeps tracking them.
+		// Read every dependency before any early return so the calling effect keeps tracking them.
 		const target = this.display;
 		const isOpen = this.open;
+		const pattern = this.dateFormat.pattern;
+		// A format switch strands the text the user owns in the previous order, under a mask that already changed.
+		if (pattern !== this.#lastFormatPattern) {
+			this.#lastFormatPattern = pattern;
+			this.#fieldDriven = false;
+		}
 		if (this.#isFieldTyping()) return;
 		if (!isOpen) {
 			this.#clearSyncTimer();
@@ -355,16 +432,21 @@ export class DateTimePickerRootState {
 		this.emitDateTime(parseDateText(date), time);
 	};
 
-	/** Commit the current field text with the lenient parser (blur / Enter / paste-then-leave), then re-render it canonically. */
+	/**
+	 * Commit the current field text with the lenient parser (blur / Enter / paste-then-leave), then re-render it canonically.
+	 * The leniency is position-dependent by design: a trailing `MM`/`DD` may still be one digit, so a truncated
+	 * `1992-12-2` commits as `1992-12-02` under `YYYY-MM-DD`, while the same truncation under `DD-MM-YYYY`
+	 * (`25-12-199`) leaves the year short, commits nothing, and the field resets to the last committed value.
+	 */
 	commitInput(): void {
 		if (this.isTime) {
 			const t = parseTimeParts(this.inputValue);
 			if (t) this.emitTime(t);
 		} else if (this.isDate) {
-			const d = parseDateText(this.inputValue);
+			const d = parseDateText(this.inputValue, this.dateFormat);
 			if (d && this.#inBound(d)) this.emitDate(d);
 		} else {
-			const dt = parseDateTimeText(this.inputValue);
+			const dt = parseDateTimeText(this.inputValue, this.dateFormat);
 			if (dt && this.#inBound(dt.toPlainDate()))
 				this.emitDateTime(dt.toPlainDate(), { h: dt.hour, m: dt.minute, s: dt.second });
 		}
@@ -380,10 +462,10 @@ export class DateTimePickerRootState {
 				const t = parseTimeParts(v);
 				if (t) this.emitTime(t);
 			} else if (this.isDate) {
-				const d = parseDateText(v);
+				const d = parseDateText(v, this.dateFormat);
 				if (d && this.#inBound(d)) this.emitDate(d, false);
 			} else {
-				const dt = parseDateTimeText(v);
+				const dt = parseDateTimeText(v, this.dateFormat);
 				if (dt && this.#inBound(dt.toPlainDate()))
 					this.emitDateTime(dt.toPlainDate(), { h: dt.hour, m: dt.minute, s: dt.second });
 			}

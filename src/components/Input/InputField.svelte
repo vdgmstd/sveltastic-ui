@@ -122,7 +122,7 @@
 	{/if}
 	{#if ctx.showMask}
 		<span class="input__mask" aria-hidden="true"
-			><span class="input__mask-typed">{ctx.maskedValue.slice(0, ctx.typedLen)}</span><span
+			><span class="input__mask-typed">{ctx.typedText}</span><span
 				class="input__mask-rest">{ctx.maskRemainder}</span
 			></span
 		>

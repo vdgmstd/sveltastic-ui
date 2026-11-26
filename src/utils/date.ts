@@ -154,6 +154,186 @@ export function formatTimeParts(
 	return `${pad(p.h)}:${pad(p.m)}${sec}`;
 }
 
+/** Fixed-width date-format token. `D` / `M` / `YY` are deliberately absent — variable widths break complete-match typing. */
+export type DateFormatToken = 'YYYY' | 'MM' | 'DD';
+
+/** A validated date format: the source pattern, its token order, and the two literal separators between the tokens. */
+export type DateFormat = {
+	pattern: string;
+	order: readonly [DateFormatToken, DateFormatToken, DateFormatToken];
+	separators: readonly [string, string];
+};
+
+/** The kit default — plain ISO. Also the fallback for an unset or malformed format pattern. */
+export const ISO_DATE_FORMAT: DateFormat = {
+	pattern: 'YYYY-MM-DD',
+	order: ['YYYY', 'MM', 'DD'],
+	separators: ['-', '-']
+};
+
+const DATE_FORMAT_SEPARATORS = new Set(['-', '.', '/', ' ']);
+const DATE_FORMAT_WIDTH: Record<DateFormatToken, number> = { YYYY: 4, MM: 2, DD: 2 };
+const DATE_FORMAT_LENIENT: Record<DateFormatToken, string> = {
+	YYYY: '(\\d{4})',
+	MM: '(\\d{1,2})',
+	DD: '(\\d{1,2})'
+};
+const LENIENT_TIME_SOURCE = '(\\d{1,2}:\\d{1,2}(?::\\d{1,2})?(?:\\s*[AaPp][Mm])?)';
+
+function escapeRegExp(s: string): string {
+	return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Validate a date-format pattern — a permutation of exactly one `YYYY`, one `MM` and one `DD`,
+ * joined by single `-`, `.`, `/` or space separators. Returns `null` for anything else; never throws.
+ */
+export function parseDateFormat(pattern: string): DateFormat | null {
+	if (!pattern) return null;
+	const order: DateFormatToken[] = [];
+	const separators: string[] = [];
+	let i = 0;
+	while (i < pattern.length) {
+		if (order.length === 3) return null;
+		const token: DateFormatToken | null = pattern.startsWith('YYYY', i)
+			? 'YYYY'
+			: pattern.startsWith('MM', i)
+				? 'MM'
+				: pattern.startsWith('DD', i)
+					? 'DD'
+					: null;
+		if (token === null || order.includes(token)) return null;
+		order.push(token);
+		i += DATE_FORMAT_WIDTH[token];
+		if (i >= pattern.length) break;
+		if (!DATE_FORMAT_SEPARATORS.has(pattern[i])) return null;
+		separators.push(pattern[i]);
+		i += 1;
+	}
+	if (order.length !== 3 || separators.length !== 2) return null;
+	return {
+		pattern,
+		order: [order[0], order[1], order[2]],
+		separators: [separators[0], separators[1]]
+	};
+}
+
+/** Outside ISO's four-digit year range, where only the signed six-digit expanded form can represent the year. */
+function isExpandedYear(year: number): boolean {
+	return year < 0 || year > 9999;
+}
+
+/** Year as ISO 8601 renders it — four digits inside 0…9999, the signed six-digit expanded form outside. */
+function isoYearSegment(year: number): string {
+	if (!isExpandedYear(year)) return String(year).padStart(4, '0');
+	return (year < 0 ? '-' : '+') + String(Math.abs(year)).padStart(6, '0');
+}
+
+/**
+ * Render a date in the format's token order, every segment padded to its fixed width.
+ * ISO keeps an expanded year (outside 0…9999) in its signed six-digit form; any other format renders the
+ * empty string, because the seven characters cannot survive the four-digit `YYYY` slot — the mask would
+ * reshape them into a different, plausible date that then commits over the value.
+ */
+export function formatDateByPattern(date: Temporal.PlainDate, format: DateFormat): string {
+	if (isExpandedYear(date.year) && format.pattern !== ISO_DATE_FORMAT.pattern) return '';
+	const segment = (token: DateFormatToken): string =>
+		token === 'YYYY' ? isoYearSegment(date.year) : pad(token === 'MM' ? date.month : date.day);
+	const [a, b, c] = format.order;
+	return segment(a) + format.separators[0] + segment(b) + format.separators[1] + segment(c);
+}
+
+/** `maska` pattern matching the format's fixed widths — e.g. `'##-##-####'` for `DD-MM-YYYY`. */
+export function dateFormatMask(format: DateFormat): string {
+	const [a, b, c] = format.order;
+	const slot = (token: DateFormatToken): string => '#'.repeat(DATE_FORMAT_WIDTH[token]);
+	return slot(a) + format.separators[0] + slot(b) + format.separators[1] + slot(c);
+}
+
+/** Unanchored regex source matching a fully-typed date in this format — each segment at its exact width. */
+export function dateFormatCompleteSource(format: DateFormat): string {
+	const [a, b, c] = format.order;
+	const segment = (token: DateFormatToken): string => `\\d{${DATE_FORMAT_WIDTH[token]}}`;
+	return (
+		segment(a) +
+		escapeRegExp(format.separators[0]) +
+		segment(b) +
+		escapeRegExp(format.separators[1]) +
+		segment(c)
+	);
+}
+
+/** Unanchored regex source with three capture groups in token order — day/month 1–2 digits, year always 4. */
+function dateFormatLenientSource(format: DateFormat): string {
+	const [a, b, c] = format.order;
+	return (
+		DATE_FORMAT_LENIENT[a] +
+		escapeRegExp(format.separators[0]) +
+		DATE_FORMAT_LENIENT[b] +
+		escapeRegExp(format.separators[1]) +
+		DATE_FORMAT_LENIENT[c]
+	);
+}
+
+function dateFieldsFromGroups(
+	format: DateFormat,
+	groups: RegExpMatchArray
+): Record<DateFormatToken, number> {
+	const fields: Record<DateFormatToken, number> = { YYYY: 0, MM: 0, DD: 0 };
+	format.order.forEach((token, i) => {
+		fields[token] = parseInt(groups[i + 1], 10);
+	});
+	return fields;
+}
+
+/**
+ * Parse date text written in `format` — day/month may be 1–2 digits, the year is always 4.
+ * `null` when it does not match, and `overflow: 'reject'` keeps an out-of-range field (month 25,
+ * 31 February) from silently committing a constrained date the user never typed.
+ */
+export function parseDateByPattern(text: string, format: DateFormat): Temporal.PlainDate | null {
+	const trimmed = (text ?? '').trim();
+	if (!trimmed) return null;
+	const m = trimmed.match(new RegExp(`^${dateFormatLenientSource(format)}$`));
+	if (!m) return null;
+	const f = dateFieldsFromGroups(format, m);
+	try {
+		return Temporal.PlainDate.from(
+			{ year: f.YYYY, month: f.MM, day: f.DD },
+			{ overflow: 'reject' }
+		);
+	} catch {
+		return null;
+	}
+}
+
+/** Parse `<date in format><T or space><HH:MM[:SS][ am/pm]>` text. Same leniency and rejection rules as `parseDateByPattern`. */
+export function parseDateTimeByPattern(
+	text: string,
+	format: DateFormat
+): Temporal.PlainDateTime | null {
+	const trimmed = (text ?? '').trim();
+	if (!trimmed) return null;
+	const m = trimmed.match(
+		new RegExp(`^${dateFormatLenientSource(format)}[T\\s]${LENIENT_TIME_SOURCE}$`)
+	);
+	if (!m) return null;
+	const f = dateFieldsFromGroups(format, m);
+	const t = parseTimeParts(m[4]);
+	if (!t) return null;
+	try {
+		return Temporal.PlainDateTime.from(
+			{
+				year: f.YYYY, month: f.MM, day: f.DD,
+				hour: t.h, minute: t.m, second: t.s
+			},
+			{ overflow: 'reject' }
+		);
+	} catch {
+		return null;
+	}
+}
+
 /** Today as `PlainDate` in the host's timezone (fallback to UTC under SSR). */
 export function today(timeZone?: string): Temporal.PlainDate {
 	try {

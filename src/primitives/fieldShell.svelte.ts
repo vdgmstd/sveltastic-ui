@@ -4,8 +4,9 @@ import { cubicOut } from 'svelte/easing';
 import type { MaskInputOptions } from 'maska';
 import type { Color, ColorName, Shape, Variant } from '../types';
 import type { MaskOptions, MaskaDetail } from '../actions/mask';
-import { maskHint } from '../actions/mask';
+import { maskHint as maskHintFromMask } from '../actions/mask';
 import { onAccentFor, rgbTriplet } from '../utils/color';
+import { devWarn } from '../utils/dom';
 
 const POINTER_FOCUS_WINDOW_MS = 300;
 
@@ -34,6 +35,8 @@ export type FieldShellConfig = {
 	getDisabled: () => boolean;
 	getReadonly: () => boolean;
 	getMask: () => MaskOptions | undefined;
+	/** Optional literal ghost template overriding the one derived from the mask. Ignored without a mask; `''` reads as absent. */
+	getMaskHint?: () => string | undefined;
 	getId: () => string;
 };
 
@@ -120,8 +123,13 @@ export class FieldShellState {
 	get focusedActive(): boolean {
 		return this.focused || this.forceFocus;
 	}
+	/**
+	 * Ghost template behind the typed value — an explicit hint wins verbatim over the mask-derived zeros.
+	 * Gated on the mask: without one there is no ghost to override, and an empty hint reads as "not supplied"
+	 * so an unresolved i18n lookup falls back to the zeros instead of tearing the overlay down.
+	 */
 	get maskTemplate(): string {
-		return this.mask ? maskHint(this.mask) : '';
+		return this.mask ? (this.cfg.getMaskHint?.() || maskHintFromMask(this.mask)) : '';
 	}
 	get hasMask(): boolean {
 		return !!this.maskTemplate;
@@ -130,11 +138,28 @@ export class FieldShellState {
 		return `${this.id}-message`;
 	}
 
+	/** The template split into code points — a non-BMP hint must not be sliced into lone surrogates. */
+	get maskChars(): string[] {
+		return [...this.maskTemplate];
+	}
+	/** Ghost width in columns, not code units — drives `--mask-len`. */
+	get maskLength(): number {
+		return this.maskChars.length;
+	}
+
+	/** The typed value split into code points — measured in the same unit as `maskChars`, never mixed with it. */
+	get typedChars(): string[] {
+		return [...this.maskedValue];
+	}
 	get typedLen(): number {
-		return Math.min(this.maskedValue.length, this.maskTemplate.length);
+		return Math.min(this.typedChars.length, this.maskLength);
+	}
+	/** Typed half of the ghost — sliced on code points, so a non-BMP token never renders a lone surrogate. */
+	get typedText(): string {
+		return this.typedChars.slice(0, this.typedLen).join('');
 	}
 	get maskRemainder(): string {
-		return this.maskTemplate ? this.maskTemplate.slice(this.typedLen) : '';
+		return this.maskChars.slice(this.typedLen).join('');
 	}
 	get showMask(): boolean {
 		return !!this.maskTemplate && (!this.isFloating || this.focusedActive || this.hasValue);
@@ -159,8 +184,25 @@ export class FieldShellState {
 
 	/** Seed the masked display from the raw value — call inside an `$effect`; the mask action overrides it on input. */
 	syncMask(): void {
+		this.#warnHintWidth();
 		if (!this.maskTemplate) this.maskedValue = '';
 		else this.maskedValue = this.value;
+	}
+
+	/** Dev-only: the typed/remainder split trusts the hint to be exactly as wide as the mask. */
+	#warnHintWidth(): void {
+		const mask = this.mask;
+		const hint = this.cfg.getMaskHint?.();
+		if (!mask || !hint) return;
+		const expected = [...maskHintFromMask(mask)].length;
+		if (expected === 0) return;
+		const actual = [...hint].length;
+		if (actual === expected) return;
+		devWarn(
+			`maskHint ${JSON.stringify(hint)} is ${actual} characters wide but its mask is ${expected} — ` +
+				`a longer hint keeps painting ghost characters over a complete value, a shorter one blanks the ghost ` +
+				`while the field is still incomplete.`
+		);
 	}
 
 	/** Record a pointer-down so a pointer-driven focus skips caret repositioning. */
